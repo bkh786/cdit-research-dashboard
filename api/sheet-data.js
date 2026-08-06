@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
   try {
     const sheetId = process.env.GOOGLE_SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
-    const rangesQuery = TABS.map(t => `ranges=${encodeURIComponent(t)}`).join("&");
+    const rangesQuery = TABS.map(t => `ranges=${encodeURIComponent(`'${t}'`)}`).join("&");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?${rangesQuery}&valueRenderOption=UNFORMATTED_VALUE&key=${apiKey}`;
 
     const response = await fetch(url);
