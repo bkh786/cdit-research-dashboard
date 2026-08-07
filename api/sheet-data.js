@@ -19,7 +19,10 @@ const TABS = [
 ];
 
 module.exports = async (req, res) => {
-  const suppliedPassword = req.headers["x-dashboard-password"];
+  // Header is what the browser dashboard uses. Query-string ?password= is
+  // a fallback for the automated research task, whose fetch tool can only
+  // issue plain GET requests with no custom headers.
+  const suppliedPassword = req.headers["x-dashboard-password"] || req.query.password;
   if (!process.env.DASHBOARD_PASSWORD || suppliedPassword !== process.env.DASHBOARD_PASSWORD) {
     res.status(401).json({ error: "Unauthorized" });
     return;
