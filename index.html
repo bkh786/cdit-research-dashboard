@@ -37,7 +37,7 @@
   .card .label{color:var(--muted);font-size:12px;margin-top:4px;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th{text-align:left;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);white-space:nowrap;}
-  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere;max-width:340px;}
   tr:hover td{background:var(--row-hover);}
   .panel{background:var(--panel2);border:1px solid var(--border);border-radius:12px;overflow:auto;max-height:70vh;}
   .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
@@ -85,17 +85,28 @@
   .detail-header h2{margin:0;font-size:24px;}
   .section{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;}
   .section h3{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
-  .exec-summary{font-size:14px;line-height:1.7;}
+  .exec-summary{font-size:14px;line-height:1.7;overflow-wrap:anywhere;}
   .stars{color:var(--star);font-size:20px;letter-spacing:2px;}
   .stars .empty-star{color:var(--border);}
   .score-value{font-size:13px;color:var(--muted);margin-top:4px;}
   .score-line-label{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;}
   .news-item{border-bottom:1px solid var(--border);padding:14px 0;}
   .news-item:last-child{border-bottom:none;}
-  .news-item .meta{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:11px;color:var(--muted);}
-  .news-item h4{margin:0 0 6px;font-size:14px;}
-  .news-item p{margin:0 0 6px;font-size:13px;line-height:1.6;color:var(--text);}
-  .cat-tag{background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:999px;font-weight:700;}
+  .news-item .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:11px;color:var(--muted);}
+  .news-item h4{margin:0 0 6px;font-size:14px;overflow-wrap:anywhere;}
+  .news-item p{margin:0 0 6px;font-size:13px;line-height:1.6;color:var(--text);overflow-wrap:anywhere;}
+  .cat-tag{background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:999px;font-weight:700;white-space:nowrap;}
+
+  /* Competitor Watch cards */
+  .competitor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start;}
+  .competitor-card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:border-color .15s,transform .15s;min-width:0;}
+  .competitor-card:hover{border-color:var(--accent);}
+  .competitor-card .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--muted);}
+  .competitor-card h4{margin:0 0 8px;font-size:14.5px;line-height:1.4;overflow-wrap:anywhere;}
+  .competitor-card p{margin:0;font-size:13px;line-height:1.65;color:var(--text);overflow-wrap:anywhere;}
+  .competitor-card .expand{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+  .competitor-card .expand p{margin-bottom:8px;}
+  .competitor-card .expand-hint{margin-top:10px;font-size:11px;color:var(--accent);font-weight:600;}
   .contact-card .cf{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;gap:10px;}
   .contact-card .cf:last-child{border-bottom:none;}
   .contact-card .cf-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
@@ -453,24 +464,28 @@ function renderCompetitors(){
   }
   const sorted = sortByDateDesc(rows, "Date");
   const list = sorted.map((r, i) => `
-    <div class="news-item" style="cursor:pointer;" onclick="toggleCompetitorItem(${i})">
+    <div class="competitor-card" onclick="toggleCompetitorItem(${i})">
       <div class="meta"><span class="cat-tag">${escapeHtml(r["Category"] || r["Related Tracked Brand"] || "")}</span><span>${escapeHtml(r["Date"])}</span><span>· ${escapeHtml(r["Source"])}</span></div>
       <h4>${escapeHtml(r["Headline"])}</h4>
       <p>${escapeHtml(r["Summary"])}</p>
-      <div id="competitor-expand-${i}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+      <div id="competitor-expand-${i}" class="expand">
         <p><strong>Competitor:</strong> ${escapeHtml(r["Competitor"])} &nbsp;·&nbsp; <strong>Related to your brand:</strong> ${escapeHtml(r["Related Tracked Brand"])}</p>
         <p>${escapeHtml(r["Full Analysis"] || r["Summary"])}</p>
         ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View source &#8594;</a>` : ""}
       </div>
+      <div class="expand-hint" id="competitor-hint-${i}">Click to expand full analysis &#8595;</div>
     </div>`).join("");
   document.getElementById("content").innerHTML = `
     <div class="toolbar"><input type="text" id="searchBox" placeholder="Search competitor watch..."></div>
-    <div class="panel" style="max-height:none;">${list}</div>`;
+    <div class="competitor-grid">${list}</div>`;
   wireSearch();
 }
 function toggleCompetitorItem(i){
   const el = document.getElementById(`competitor-expand-${i}`);
-  el.style.display = el.style.display === "none" ? "block" : "none";
+  const hint = document.getElementById(`competitor-hint-${i}`);
+  const open = el.style.display === "block";
+  el.style.display = open ? "none" : "block";
+  hint.innerHTML = open ? "Click to expand full analysis &#8595;" : "Click to collapse &#8593;";
 }
 
 function wireSearch(){
@@ -478,7 +493,7 @@ function wireSearch(){
   if (!box) return;
   box.addEventListener("input", (e) => {
     const q = e.target.value.toLowerCase();
-    document.querySelectorAll("#dataTable tbody tr, .news-item").forEach(tr => {
+    document.querySelectorAll("#dataTable tbody tr, .news-item, .competitor-card").forEach(tr => {
       tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none";
     });
   });
