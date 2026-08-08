@@ -16,9 +16,6 @@
 const CHANNELPLAY_URLS = [
   "https://www.channelplay.in/",
   "https://www.channelplay.in/success-stories",
-  "https://www.channelplay.in/practice/sales-outsourcing-company",
-  "https://www.channelplay.in/practice/visual-merchandising-agency",
-  "https://www.channelplay.in/practice/audits-and-research",
 ];
 
 module.exports = async (req, res) => {
@@ -62,13 +59,7 @@ ${topOpportunity ? `Type: ${topOpportunity.type}\nBusiness impact: ${topOpportun
 CHANNELPLAY WEBSITE CONTENT (fetched live just now -- only reference services or case studies that actually appear in this text; do not invent client names, numbers, or case studies that aren't here):
 ${channelplayContext || "(site content unavailable right now -- describe Channelplay generically as a retail execution and field force outsourcing partner without citing specific case studies or client names)"}
 
-TASK: Respond with ONLY a JSON object (no markdown fences, no commentary) with exactly these keys:
-{
-  "subject": "a short, specific subject line referencing this brand's actual situation, not generic",
-  "hookLine": "one punchy sentence, under 20 words, tied directly to the specific news/signal above -- shown as a bold header at the top of the email",
-  "paragraphs": ["3 to 4 short paragraphs, 2-3 sentences each -- not long blocks -- that (1) reference the specific news/signal, (2) connect it to a genuine business need, (3) pitch 1-2 specific Channelplay services relevant to that need, citing a real case study or capability from the website content ONLY if one is genuinely present there, (4) end with a soft call-to-action for a short call"],
-  "signOff": "closing line, then \\n\\nBikash Roy\\nGroup Program Manager, Channelplay"
-}`;
+TASK: Write the email content -- subject, hook line, 3-4 short paragraphs (2-3 sentences each, not long blocks) that (1) reference the specific news/signal, (2) connect it to a genuine business need, (3) pitch 1-2 specific Channelplay services relevant to that need, citing a real case study or capability from the website content ONLY if one is genuinely present there, (4) end with a soft call-to-action for a short call, and a sign-off.`;
 
     const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
     const geminiResp = await fetch(
@@ -78,7 +69,21 @@ TASK: Respond with ONLY a JSON object (no markdown fences, no commentary) with e
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.6, maxOutputTokens: 1200 },
+          generationConfig: {
+            temperature: 0.6,
+            maxOutputTokens: 3000,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                subject: { type: "STRING" },
+                hookLine: { type: "STRING" },
+                paragraphs: { type: "ARRAY", items: { type: "STRING" } },
+                signOff: { type: "STRING" },
+              },
+              required: ["subject", "hookLine", "paragraphs", "signOff"],
+            },
+          },
         }),
       }
     );
@@ -87,10 +92,15 @@ TASK: Respond with ONLY a JSON object (no markdown fences, no commentary) with e
       throw new Error(`Gemini API error ${geminiResp.status}: ${errText}`);
     }
     const geminiData = await geminiResp.json();
+    const finishReason = geminiData.candidates?.[0]?.finishReason;
     const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Gemini did not return parseable JSON: " + rawText.slice(0, 300));
-    const parsed = JSON.parse(jsonMatch[0]);
+    if (!rawText) throw new Error(`Gemini returned no content (finishReason: ${finishReason || "unknown"}). Try again.`);
+    let parsed;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (e) {
+      throw new Error(`Gemini's response was truncated or malformed (finishReason: ${finishReason || "unknown"}). Try again -- if this keeps happening, the prompt may need trimming.`);
+    }
 
     const bodyHtml =
       `<p class="email-hook">${escapeHtmlServer(parsed.hookLine || "")}</p>` +
@@ -124,7 +134,7 @@ async function fetchChannelplayContext() {
         .replace(/&nbsp;/g, " ")
         .replace(/\s+/g, " ")
         .trim()
-        .slice(0, 6000);
+        .slice(0, 3500);
       if (text) chunks.push(`--- ${url} ---\n${text}`);
     } catch (e) {
       // skip this page on failure, keep going with whatever else we got

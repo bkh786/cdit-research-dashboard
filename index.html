@@ -634,8 +634,13 @@ function renderBrandDetail(brandName){
       <p><strong>Next action:</strong> ${escapeHtml(o["Suggested Next Action"])}</p>
     </div>`).join("") : `<div class="empty">No scored opportunities yet.</div>`;
 
-  const { subject, bodyHtml, isTemplate } = buildEmailDraft(brand, topOpp, news, sheetDraft);
-  window.__emailDraftState = { subject, bodyHtml };
+  const hasSheetDraft = !!sheetDraft;
+  if (hasSheetDraft) {
+    const { subject, bodyHtml } = buildEmailDraft(brand, topOpp, news, sheetDraft);
+    window.__emailDraftState = { subject, bodyHtml };
+  } else {
+    window.__emailDraftState = null;
+  }
   const contactHtml = renderContactCard(contact);
   const stages = ["Prospect","Researching","Connected","Meeting Scheduled","Proposal Shared","Negotiation","Won","Lost","Dormant"];
   const currentStage = pipelineRow ? pipelineRow["Stage"] : "Prospect";
@@ -670,16 +675,18 @@ function renderBrandDetail(brandName){
         <div class="section">
           <h3>Drafted Outreach Email</h3>
           <div class="ai-draft-bar">
-            <button class="btn tiny" id="aiDraftBtn">&#10024; Generate AI draft (Gemini)</button>
-            <span class="spinner-text" id="aiDraftStatus"></span>
+            <button class="btn tiny" id="aiDraftBtn">&#10024; Generate AI Email draft</button>
+            <span class="spinner-text" id="aiDraftStatus">${hasSheetDraft ? "" : "No draft yet — click to generate one."}</span>
           </div>
-          <div class="email-box" id="emailBoxContent">
-            <div class="email-subject" id="emailSubjectLine">${escapeHtml(subject)}</div>
-            <div id="emailBodyContent">${bodyHtml}</div>
-          </div>
-          <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-            <button class="btn tiny" id="copyEmailBtn">Copy formatted email</button>
-            <span class="draft-note" id="emailDraftNote">${isTemplate ? `Auto-generated from research data — click &#8220;Generate AI draft&#8221; above for a personalized, live-researched version.` : `Sourced from Email Drafts sheet.`}</span>
+          <div id="emailResultWrap" style="${hasSheetDraft ? "" : "display:none;"}">
+            <div class="email-box" id="emailBoxContent">
+              <div class="email-subject" id="emailSubjectLine">${hasSheetDraft ? escapeHtml(window.__emailDraftState.subject) : ""}</div>
+              <div id="emailBodyContent">${hasSheetDraft ? window.__emailDraftState.bodyHtml : ""}</div>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="btn tiny" id="copyEmailBtn">Copy formatted email</button>
+              <span class="draft-note" id="emailDraftNote">${hasSheetDraft ? "Sourced from Email Drafts sheet." : ""}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -770,6 +777,7 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
     if (!resp.ok || data.error) throw new Error(data.error || "Generation failed");
 
     window.__emailDraftState = { subject: data.subject, bodyHtml: data.bodyHtml };
+    document.getElementById("emailResultWrap").style.display = "";
     document.getElementById("emailSubjectLine").textContent = data.subject;
     document.getElementById("emailBodyContent").innerHTML = data.bodyHtml;
     document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news and live channelplay.in content.";

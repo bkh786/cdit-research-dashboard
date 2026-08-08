@@ -74,7 +74,7 @@ If you cannot verify a fact, write "Not publicly confirmed" for that field rathe
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           tools: [{ google_search: {} }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 1500 },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 3000 },
         }),
       }
     );
@@ -83,10 +83,16 @@ If you cannot verify a fact, write "Not publicly confirmed" for that field rathe
       throw new Error(`Gemini API error ${geminiResp.status}: ${errText}`);
     }
     const geminiData = await geminiResp.json();
+    const finishReason = geminiData.candidates?.[0]?.finishReason;
     const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Gemini did not return parseable JSON: " + rawText.slice(0, 300));
-    const r = JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) throw new Error(`Gemini returned no usable content (finishReason: ${finishReason || "unknown"}). Try again.`);
+    let r;
+    try {
+      r = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      throw new Error(`Gemini's response was truncated or malformed (finishReason: ${finishReason || "unknown"}). Try again.`);
+    }
 
     const today = new Date().toISOString().slice(0, 10);
     const brandRow = {
