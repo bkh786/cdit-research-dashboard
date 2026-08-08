@@ -5,6 +5,9 @@
 //   APPS_SCRIPT_URL     - the /exec URL from your Apps Script deployment
 //   APPS_SCRIPT_SECRET  - must match the WRITE_SECRET script property in Code.gs
 //   DASHBOARD_PASSWORD  - same password gate as the read side
+//
+// Supported actions (forwarded as-is to Apps Script): appendRows, addBrand,
+// updateRow, createSheet.
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {

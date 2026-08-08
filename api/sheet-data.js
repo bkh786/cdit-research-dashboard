@@ -16,6 +16,7 @@ const TABS = [
   "Contacts",
   "Pipeline",
   "Email Drafts",
+  "Competitor Watch",
 ];
 
 module.exports = async (req, res) => {

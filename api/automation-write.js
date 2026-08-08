@@ -7,6 +7,12 @@
 // Query params:
 //   ?password=...&action=appendRows&sheet=News+feed&rows=<url-encoded JSON array>
 //   ?password=...&action=addBrand&brand=<url-encoded JSON>&pipeline=<url-encoded JSON>
+//   ?password=...&action=updateRow&sheet=Pipeline&matchColumn=Brand&matchValue=Haier&updates=<url-encoded JSON>
+//   ?password=...&action=createSheet&sheet=Competitor+Watch&headers=<url-encoded JSON array of column names>
+//
+// NOTE: this is meant to be called via a real browser navigation (Claude-in-
+// Chrome), not a bare fetch tool — long query strings exceed most fetch
+// tools' URL length limits but browsers have no such restriction.
 //
 // Reuses the same env vars as sheet-data.js / sheet-write.js:
 //   DASHBOARD_PASSWORD, APPS_SCRIPT_URL, APPS_SCRIPT_SECRET
@@ -19,12 +25,16 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { action, sheet, rows, brand, pipeline } = req.query;
+    const { action, sheet, rows, brand, pipeline, matchColumn, matchValue, updates, headers } = req.query;
     const body = { secret: process.env.APPS_SCRIPT_SECRET, action };
     if (sheet) body.sheet = sheet;
     if (rows) body.rows = JSON.parse(rows);
     if (brand) body.brand = JSON.parse(brand);
     if (pipeline) body.pipeline = JSON.parse(pipeline);
+    if (matchColumn) body.matchColumn = matchColumn;
+    if (matchValue) body.matchValue = matchValue;
+    if (updates) body.updates = JSON.parse(updates);
+    if (headers) body.headers = JSON.parse(headers);
 
     const response = await fetch(process.env.APPS_SCRIPT_URL, {
       method: "POST",
