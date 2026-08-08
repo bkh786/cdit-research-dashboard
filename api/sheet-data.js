@@ -34,7 +34,10 @@ module.exports = async (req, res) => {
     // Sheet names containing spaces must be single-quoted in A1 notation,
     // e.g. 'Brands Master', otherwise the Sheets API fails to parse the range.
     const rangesQuery = TABS.map(t => `ranges=${encodeURIComponent(`'${t}'`)}`).join("&");
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?${rangesQuery}&valueRenderOption=UNFORMATTED_VALUE&key=${apiKey}`;
+    // FORMATTED_VALUE (not UNFORMATTED_VALUE) so date cells come back as the
+    // readable text shown in the sheet (e.g. "2026-08-07") instead of Sheets'
+    // internal date serial number (e.g. 46241).
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?${rangesQuery}&valueRenderOption=FORMATTED_VALUE&key=${apiKey}`;
 
     const response = await fetch(url);
     if (!response.ok) {
