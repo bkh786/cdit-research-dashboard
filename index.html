@@ -88,6 +88,7 @@
   .stars{color:var(--star);font-size:20px;letter-spacing:2px;}
   .stars .empty-star{color:var(--border);}
   .score-value{font-size:13px;color:var(--muted);margin-top:4px;}
+  .score-line-label{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;}
   .news-item{border-bottom:1px solid var(--border);padding:14px 0;}
   .news-item:last-child{border-bottom:none;}
   .news-item .meta{display:flex;gap:8px;align-items:center;margin-bottom:6px;font-size:11px;color:var(--muted);}
@@ -138,11 +139,9 @@
 
 <nav id="tabs" style="display:none;">
   <button data-tab="overview" class="active">Overview</button>
-  <button data-tab="brands">Brands</button>
   <button data-tab="news">News Feed</button>
   <button data-tab="opportunities">Opportunities</button>
   <button data-tab="contacts">Contacts</button>
-  <button data-tab="pipeline">Pipeline</button>
   <button data-tab="emails">Email Drafts</button>
 </nav>
 
@@ -351,6 +350,7 @@ function renderOverview(){
       <td>${escapeHtml(top ? top["Opportunity Type"] : "-")}</td>
       <td class="score">${top ? escapeHtml(top["Priority Score (1-5)"]) : "-"}</td>
       <td>${escapeHtml(pipelineByBrand[b["Brand"]] || "-")}</td>
+      <td>${escapeHtml(b["Date Added"] || "-")}</td>
     </tr>`;
   }).join("");
   document.getElementById("content").innerHTML = `
@@ -362,7 +362,7 @@ function renderOverview(){
     </div>
     <div class="panel">
       <table>
-        <thead><tr><th>Brand</th><th>Priority Tier</th><th>Top Opportunity</th><th>Score</th><th>Pipeline Stage</th></tr></thead>
+        <thead><tr><th>Brand</th><th>Priority Tier</th><th>Top Opportunity</th><th>Score</th><th>Pipeline Stage</th><th>Date Added</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -416,11 +416,9 @@ function renderTab(tab){
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   if (!workbookData["Brands Master"]) return;
   if (tab === "overview") return renderOverview();
-  if (tab === "brands") return genericTable("Brands Master");
   if (tab === "news") return genericTable("News feed");
   if (tab === "opportunities") return renderOpportunities();
   if (tab === "contacts") return genericTable("Contacts");
-  if (tab === "pipeline") return genericTable("Pipeline");
   if (tab === "emails") return genericTable("Email Drafts");
 }
 
@@ -520,12 +518,12 @@ function renderBrandDetail(brandName){
           <div class="exec-summary">${execSummary}</div>
         </div>
         <div class="section">
-          <h3>Detailed News Analysis (most recent first)</h3>
-          ${newsHtml}
-        </div>
-        <div class="section">
           <h3>Opportunity Breakdown</h3>
           ${oppsHtml}
+        </div>
+        <div class="section">
+          <h3>Detailed News Analysis (most recent first)</h3>
+          ${newsHtml}
         </div>
         <div class="section">
           <h3>Drafted Outreach Email</h3>
@@ -541,16 +539,22 @@ function renderBrandDetail(brandName){
       </div>
 
       <div>
-        <div class="section">
-          <h3>Opportunity Score</h3>
-          ${topOpp ? `
-            ${starRow(topOpp["Priority Score (1-5)"])}
-            <div class="score-value">Priority ${escapeHtml(topOpp["Priority Score (1-5)"])}/5 &nbsp;·&nbsp; Confidence ${escapeHtml(topOpp["Confidence Score (1-5)"])}/5</div>
-          ` : `<div class="empty" style="padding:10px 0;">Not yet scored</div>`}
-        </div>
         <div class="section contact-card">
           <h3>Key Contact</h3>
           ${contactHtml}
+        </div>
+        <div class="section">
+          <h3>Opportunity Score</h3>
+          ${topOpp ? `
+            <div class="score-line">
+              <div class="score-line-label">Priority Score — ${escapeHtml(topOpp["Priority Score (1-5)"])}/5</div>
+              ${starRow(topOpp["Priority Score (1-5)"])}
+            </div>
+            <div class="score-line" style="margin-top:14px;">
+              <div class="score-line-label">Confidence Score — ${escapeHtml(topOpp["Confidence Score (1-5)"])}/5</div>
+              ${starRow(topOpp["Confidence Score (1-5)"])}
+            </div>
+          ` : `<div class="empty" style="padding:10px 0;">Not yet scored</div>`}
         </div>
       </div>
     </div>
