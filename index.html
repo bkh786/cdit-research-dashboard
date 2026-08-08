@@ -44,8 +44,9 @@
   .pill.High{background:rgba(239,68,68,.15);color:var(--high);}
   .pill.Medium{background:rgba(245,158,11,.15);color:var(--med);}
   .pill.Low{background:rgba(34,197,94,.15);color:var(--low);}
-  .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+  .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
   input[type=text],input[type=password]{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;min-width:220px;}
+  select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;}
   .empty{padding:60px 20px;text-align:center;color:var(--muted);}
   .gate{display:flex;align-items:center;justify-content:center;height:80vh;flex-direction:column;gap:14px;}
   .gate .box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:28px;width:320px;text-align:center;}
@@ -105,6 +106,8 @@
   .email-box p{margin:0 0 12px;}
   .email-subject{font-weight:700;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
   .draft-note{font-size:11px;color:var(--muted);margin-top:10px;}
+  .pipeline-editor{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .save-note{font-size:11px;color:var(--low);margin-top:6px;display:none;}
 </style>
 </head>
 <body>
@@ -142,6 +145,7 @@
   <button data-tab="news">News Feed</button>
   <button data-tab="opportunities">Opportunities</button>
   <button data-tab="contacts">Contacts</button>
+  <button data-tab="competitors">Competitor Watch</button>
   <button data-tab="emails">Email Drafts</button>
 </nav>
 
@@ -303,6 +307,39 @@ async function submitAddBrand(){
   }
 }
 
+/* ---------------- Pipeline stage update ---------------- */
+async function updatePipelineStage(brandName, newStage, btnEl, noteEl){
+  btnEl.disabled = true;
+  const oldText = btnEl.textContent;
+  btnEl.textContent = "Saving...";
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const resp = await fetch("/api/sheet-write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
+      body: JSON.stringify({
+        action: "updateRow",
+        sheet: "Pipeline",
+        matchColumn: "Brand",
+        matchValue: brandName,
+        updates: { "Stage": newStage, "Last Update": today }
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || "Failed to update stage");
+    noteEl.textContent = "Saved.";
+    noteEl.style.display = "block";
+    await refresh();
+  } catch (e) {
+    noteEl.textContent = "Failed: " + e.message;
+    noteEl.style.display = "block";
+    noteEl.style.color = "var(--high)";
+  } finally {
+    btnEl.disabled = false;
+    btnEl.textContent = oldText;
+  }
+}
+
 /* ---------------- Shared helpers ---------------- */
 function priorityLabel(score){
   score = Number(score) || 0;
@@ -324,6 +361,9 @@ function starRow(score, max){
 function brandLink(name){
   if (!name) return "";
   return `<a class="brand-link" href="#" onclick="showBrandDetail('${escapeAttr(name).replace(/'/g,"&#39;")}');return false;">${escapeHtml(name)}</a>`;
+}
+function sortByDateDesc(rows, field){
+  return rows.slice().sort((a, b) => String(b[field] || "").localeCompare(String(a[field] || "")));
 }
 
 /* ---------------- Overview / generic tabs ---------------- */
@@ -367,9 +407,11 @@ function renderOverview(){
       </table>
     </div>`;
 }
-function genericTable(sheetName){
+function genericTable(sheetName, opts){
   window.__viewingBrand = null;
-  const rows = workbookData[sheetName] || [];
+  opts = opts || {};
+  let rows = workbookData[sheetName] || [];
+  if (opts.sortDateField) rows = sortByDateDesc(rows, opts.sortDateField);
   const cols = rows[0] ? Object.keys(rows[0]) : [];
   const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
   const tbody = rows.map(r => `<tr>${cols.map(c =>
@@ -400,12 +442,43 @@ function renderOpportunities(){
     <div class="panel"><table id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
   wireSearch();
 }
+
+/* ---------------- Competitor Watch ---------------- */
+function renderCompetitors(){
+  window.__viewingBrand = null;
+  const rows = workbookData["Competitor Watch"] || [];
+  if (!rows.length) {
+    document.getElementById("content").innerHTML = `<div class="empty">No competitor/adjacent-player entries yet.</div>`;
+    return;
+  }
+  const sorted = sortByDateDesc(rows, "Date");
+  const list = sorted.map((r, i) => `
+    <div class="news-item" style="cursor:pointer;" onclick="toggleCompetitorItem(${i})">
+      <div class="meta"><span class="cat-tag">${escapeHtml(r["Category"] || r["Related Tracked Brand"] || "")}</span><span>${escapeHtml(r["Date"])}</span><span>· ${escapeHtml(r["Source"])}</span></div>
+      <h4>${escapeHtml(r["Headline"])}</h4>
+      <p>${escapeHtml(r["Summary"])}</p>
+      <div id="competitor-expand-${i}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <p><strong>Competitor:</strong> ${escapeHtml(r["Competitor"])} &nbsp;·&nbsp; <strong>Related to your brand:</strong> ${escapeHtml(r["Related Tracked Brand"])}</p>
+        <p>${escapeHtml(r["Full Analysis"] || r["Summary"])}</p>
+        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View source &#8594;</a>` : ""}
+      </div>
+    </div>`).join("");
+  document.getElementById("content").innerHTML = `
+    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search competitor watch..."></div>
+    <div class="panel" style="max-height:none;">${list}</div>`;
+  wireSearch();
+}
+function toggleCompetitorItem(i){
+  const el = document.getElementById(`competitor-expand-${i}`);
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
 function wireSearch(){
   const box = document.getElementById("searchBox");
   if (!box) return;
   box.addEventListener("input", (e) => {
     const q = e.target.value.toLowerCase();
-    document.querySelectorAll("#dataTable tbody tr").forEach(tr => {
+    document.querySelectorAll("#dataTable tbody tr, .news-item").forEach(tr => {
       tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none";
     });
   });
@@ -416,9 +489,10 @@ function renderTab(tab){
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   if (!workbookData["Brands Master"]) return;
   if (tab === "overview") return renderOverview();
-  if (tab === "news") return genericTable("News feed");
+  if (tab === "news") return genericTable("News feed", { sortDateField: "Date" });
   if (tab === "opportunities") return renderOpportunities();
   if (tab === "contacts") return genericTable("Contacts");
+  if (tab === "competitors") return renderCompetitors();
   if (tab === "emails") return genericTable("Email Drafts");
 }
 
@@ -467,8 +541,7 @@ function renderBrandDetail(brandName){
   const allDrafts = workbookData["Email Drafts"] || [];
 
   const brand = brands.find(b => b["Brand"] === brandName) || { "Brand": brandName };
-  const news = allNews.filter(n => n["Brand"] === brandName)
-    .slice().sort((a, b) => String(b["Date"]).localeCompare(String(a["Date"])));
+  const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandName), "Date");
   const opps = allOpps.filter(o => o["Brand"] === brandName)
     .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
   const contact = allContacts.find(c => c["Brand"] === brandName);
@@ -496,8 +569,10 @@ function renderBrandDetail(brandName){
     </div>`).join("") : `<div class="empty">No scored opportunities yet.</div>`;
 
   const { subject, bodyHtml, isTemplate } = buildEmailDraft(brand, topOpp, news, sheetDraft);
-
   const contactHtml = renderContactCard(contact);
+  const stages = ["Prospect","Researching","Connected","Meeting Scheduled","Proposal Shared","Negotiation","Won","Lost","Dormant"];
+  const currentStage = pipelineRow ? pipelineRow["Stage"] : "Prospect";
+  const stageOptions = stages.map(s => `<option value="${s}" ${s === currentStage ? "selected" : ""}>${s}</option>`).join("");
 
   document.getElementById("content").innerHTML = `
     <div class="back-link" onclick="renderTab('overview')">&#8592; Back to Overview</div>
@@ -556,6 +631,14 @@ function renderBrandDetail(brandName){
             </div>
           ` : `<div class="empty" style="padding:10px 0;">Not yet scored</div>`}
         </div>
+        <div class="section">
+          <h3>Pipeline Stage</h3>
+          <div class="pipeline-editor">
+            <select id="stageSelect">${stageOptions}</select>
+            <button class="btn tiny" id="saveStageBtn">Save</button>
+          </div>
+          <div class="save-note" id="stageSaveNote"></div>
+        </div>
       </div>
     </div>
   `;
@@ -565,6 +648,10 @@ function renderBrandDetail(brandName){
   });
   document.querySelectorAll("[data-copy]").forEach(el => {
     el.addEventListener("click", () => copyToClipboard(el.dataset.copy, el));
+  });
+  document.getElementById("saveStageBtn").addEventListener("click", (e) => {
+    const newStage = document.getElementById("stageSelect").value;
+    updatePipelineStage(brandName, newStage, e.target, document.getElementById("stageSaveNote"));
   });
 }
 
