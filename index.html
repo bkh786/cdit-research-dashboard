@@ -7,1133 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg-base: #090d16;
-    --bg-surface: #0f172a;
-    --bg-card: #141e33;
-    --bg-card-hover: #1b2742;
-    --bg-elevated: #1e293b;
-    --border: #23314e;
-    --border-light: rgba(255, 255, 255, 0.08);
-    --border-focus: #6366f1;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --accent: #6366f1;
-    --accent-hover: #4f46e5;
-    --accent-soft: rgba(99, 102, 241, 0.14);
-    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    --high: #f43f5e;
-    --high-soft: rgba(244, 63, 94, 0.14);
-    --med: #f59e0b;
-    --med-soft: rgba(245, 158, 11, 0.14);
-    --low: #10b981;
-    --low-soft: rgba(16, 185, 129, 0.14);
-    --info: #0ea5e9;
-    --info-soft: rgba(14, 165, 233, 0.14);
-    --star: #fbbf24;
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45);
-    --sidebar-w: 250px;
-    --sidebar-w-collapsed: 72px;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  html[data-theme="light"] {
-    --bg-base: #f8fafc;
-    --bg-surface: #ffffff;
-    --bg-card: #ffffff;
-    --bg-card-hover: #f1f5f9;
-    --bg-elevated: #e2e8f0;
-    --border: #e2e8f0;
-    --border-light: rgba(0, 0, 0, 0.06);
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --high-soft: rgba(244, 63, 94, 0.12);
-    --med-soft: rgba(245, 158, 11, 0.12);
-    --low-soft: rgba(16, 185, 129, 0.12);
-    --info-soft: rgba(14, 165, 233, 0.12);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.12);
-  }
-
-  html[data-accent="teal"] {
-    --accent: #0d9488; --accent-hover: #0f766e;
-    --accent-soft: rgba(13, 148, 136, 0.14);
-    --accent-gradient: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
-    --border-focus: #0d9488;
-  }
-  html[data-accent="rose"] {
-    --accent: #e11d48; --accent-hover: #be123c;
-    --accent-soft: rgba(225, 29, 72, 0.14);
-    --accent-gradient: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);
-    --border-focus: #e11d48;
-  }
-  html[data-accent="amber"] {
-    --accent: #d97706; --accent-hover: #b45309;
-    --accent-soft: rgba(217, 119, 6, 0.14);
-    --accent-gradient: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
-    --border-focus: #d97706;
-  }
-  html[data-accent="indigo"] {
-    --accent: #6366f1; --accent-hover: #4f46e5;
-    --accent-soft: rgba(99, 102, 241, 0.14);
-    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    --border-focus: #6366f1;
-  }
-  html[data-accent="emerald"] {
-    --accent: #059669; --accent-hover: #047857;
-    --accent-soft: rgba(5, 150, 105, 0.14);
-    --accent-gradient: linear-gradient(135deg, #059669 0%, #10b981 100%);
-    --border-focus: #059669;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg-base);
-    color: var(--text-primary);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 13.5px;
-    line-height: 1.5;
-    overflow-x: hidden;
-    min-height: 100vh;
-  }
-
-  /* App Layout */
-  .app-container {
-    display: flex;
-    min-height: 100vh;
-    width: 100%;
-  }
-
-  /* Sidebar */
-  aside.sidebar {
-    width: var(--sidebar-w);
-    background: var(--bg-surface);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    z-index: 40;
-    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-    flex-shrink: 0;
-    box-shadow: var(--shadow-sm);
-  }
-  aside.sidebar.collapsed {
-    width: var(--sidebar-w-collapsed);
-  }
-
-  .sidebar-header {
-    height: 68px;
-    padding: 0 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    position: relative;
-  }
-  .brand-logo-wrap {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-decoration: none;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  .brand-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--accent-gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
-    font-weight: 800;
-    font-size: 16px;
-    flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-  }
-  .brand-title-group {
-    display: flex;
-    flex-direction: column;
-    transition: opacity 0.2s, width 0.2s;
-  }
-  .sidebar.collapsed .brand-title-group {
-    display: none;
-  }
-  .brand-main-title {
-    font-size: 13.5px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.01em;
-    line-height: 1.2;
-  }
-  .brand-sub-title {
-    font-size: 10.5px;
-    color: var(--text-muted);
-    font-weight: 500;
-  }
-
-  .collapse-toggle-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--transition);
-    flex-shrink: 0;
-  }
-  .collapse-toggle-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .sidebar.collapsed .collapse-toggle-btn svg {
-    transform: rotate(180deg);
-  }
-  .sidebar.collapsed .sidebar-header {
-    justify-content: center;
-    padding: 0;
-  }
-  .sidebar.collapsed .sidebar-header .brand-logo-wrap {
-    display: none;
-  }
-
-  .sidebar-nav {
-    padding: 16px 10px;
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .nav-section-label {
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    padding: 8px 10px 4px;
-    transition: opacity 0.2s;
-  }
-  .sidebar.collapsed .nav-section-label {
-    display: none;
-  }
-
-  .nav-item-btn {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    border: 1px solid transparent;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    text-align: left;
-    transition: var(--transition);
-    position: relative;
-    white-space: nowrap;
-  }
-  .nav-item-btn:hover {
-    color: var(--text-primary);
-    background: var(--bg-card-hover);
-  }
-  .nav-item-btn.active {
-    color: #ffffff;
-    background: var(--accent);
-    font-weight: 600;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
-  }
-  .nav-item-btn svg {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-  }
-  .nav-item-label {
-    flex: 1;
-    transition: opacity 0.2s;
-  }
-  .sidebar.collapsed .nav-item-label {
-    display: none;
-  }
-  .nav-badge {
-    font-size: 11px;
-    font-weight: 700;
-    padding: 2px 7px;
-    border-radius: 999px;
-    background: var(--bg-elevated);
-    color: var(--text-secondary);
-  }
-  .nav-item-btn.active .nav-badge {
-    background: rgba(255, 255, 255, 0.22);
-    color: #ffffff;
-  }
-  .sidebar.collapsed .nav-badge {
-    display: none;
-  }
-  .sidebar.collapsed .nav-item-btn {
-    justify-content: center;
-    padding: 10px 0;
-  }
-
-  /* Tooltip for collapsed sidebar */
-  .sidebar.collapsed .nav-item-btn[data-title]:hover::after {
-    content: attr(data-title);
-    position: absolute;
-    left: calc(100% + 12px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--bg-surface);
-    color: var(--text-primary);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-md);
-    z-index: 100;
-    pointer-events: none;
-  }
-
-  .sidebar-footer {
-    padding: 14px 12px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .sidebar.collapsed .sidebar-footer {
-    padding: 12px 6px;
-  }
-
-  /* Main Wrapper */
-  .main-wrapper {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  /* Top Header */
-  header.top-header {
-    height: 68px;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 28px;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    backdrop-filter: blur(12px);
-  }
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .page-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .sync-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 9px;
-    border-radius: 999px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-  .status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--low);
-    box-shadow: 0 0 8px var(--low);
-    animation: pulse 2s infinite;
-  }
-  .status-dot.locked {
-    background: var(--high);
-    box-shadow: 0 0 8px var(--high);
-    animation: none;
-  }
-  .status-dot.loading {
-    background: var(--med);
-    box-shadow: 0 0 8px var(--med);
-  }
-  @keyframes pulse {
-    0% { transform: scale(0.95); opacity: 0.8; }
-    50% { transform: scale(1.15); opacity: 1; }
-    100% { transform: scale(0.95); opacity: 0.8; }
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  /* Buttons */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
-    background: var(--accent);
-    color: #ffffff;
-    border: none;
-    padding: 8px 15px;
-    border-radius: var(--radius-sm);
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    text-decoration: none;
-  }
-  .btn:hover {
-    background: var(--accent-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-  }
-  .btn:active {
-    transform: translateY(0);
-  }
-  .btn.secondary {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-  }
-  .btn.secondary:hover {
-    background: var(--bg-card-hover);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-  .btn.tiny {
-    padding: 5px 10px;
-    font-size: 11px;
-    border-radius: 6px;
-  }
-  .btn:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Theme Switcher */
-  .theme-switcher { position: relative; }
-  .icon-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-  .icon-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--accent);
-  }
-  .theme-menu {
-    position: absolute;
-    right: 0;
-    top: 46px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 16px;
-    width: 220px;
-    box-shadow: var(--shadow-lg);
-    display: none;
-    z-index: 100;
-  }
-  .theme-menu.open { display: block; }
-  .theme-menu .row-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
-  }
-  .mode-toggle {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
-  .mode-toggle button {
-    flex: 1;
-    padding: 6px 0;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-  .mode-toggle button.active {
-    background: var(--accent);
-    color: #ffffff;
-    border-color: var(--accent);
-  }
-  .accent-dots { display: flex; gap: 8px; }
-  .accent-dot {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: transform 0.15s;
-  }
-  .accent-dot:hover { transform: scale(1.15); }
-  .accent-dot.active { border-color: var(--text-primary); transform: scale(1.1); }
-
-  /* Content area */
-  main.main-content {
-    flex: 1;
-    padding: 28px;
-    max-width: 1560px;
-    width: 100%;
-    margin: 0 auto;
-  }
-
-  /* Password Gate View */
-  .gate {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 75vh;
-    flex-direction: column;
-    padding: 20px;
-  }
-  .gate-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 36px 32px;
-    width: 100%;
-    max-width: 390px;
-    text-align: center;
-    box-shadow: var(--shadow-lg);
-    position: relative;
-    overflow: hidden;
-  }
-  .gate-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--accent-gradient);
-  }
-  .gate-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 18px;
-  }
-  .gate-card h2 {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-  .gate-card p {
-    color: var(--text-secondary);
-    font-size: 12.5px;
-    margin-bottom: 22px;
-  }
-
-  /* KPI Cards Grid */
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  .kpi-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 18px 20px;
-    cursor: pointer;
-    transition: var(--transition);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-  .kpi-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-  }
-  .kpi-card.active-filter {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    box-shadow: 0 0 0 1px var(--accent), var(--shadow-md);
-  }
-  .kpi-card-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .kpi-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-  .kpi-icon-wrap {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .kpi-value {
-    font-size: 30px;
-    font-weight: 800;
-    color: var(--text-primary);
-    line-height: 1.1;
-  }
-  .kpi-hint {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 10px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-light);
-  }
-  .kpi-filter-tag {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: var(--accent);
-    color: #ffffff;
-    display: none;
-  }
-  .kpi-card.active-filter .kpi-filter-tag {
-    display: inline-block;
-  }
-
-  /* Table Controls & Filter Bar */
-  .table-controls-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .search-input-wrap {
-    position: relative;
-    flex: 1;
-    min-width: 280px;
-    max-width: 500px;
-  }
-  .search-input-wrap svg {
-    position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-    width: 16px;
-    height: 16px;
-    pointer-events: none;
-  }
-  .search-input {
-    width: 100%;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 10px 14px 10px 38px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    outline: none;
-    transition: var(--transition);
-  }
-  .search-input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-  .active-filter-banner {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    background: var(--accent-soft);
-    border: 1px solid var(--accent);
-    font-size: 12px;
-    color: var(--text-primary);
-    font-weight: 500;
-  }
-  .filter-clear-btn {
-    background: transparent;
-    border: none;
-    color: var(--accent);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 700;
-    text-decoration: underline;
-  }
-
-  /* CRM Panel & Table */
-  .crm-panel {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-  .table-responsive {
-    overflow-x: auto;
-    max-height: 70vh;
-  }
-  table.crm-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    text-align: left;
-  }
-  table.crm-table thead th {
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    font-weight: 600;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    white-space: nowrap;
-    user-select: none;
-  }
-  table.crm-table thead th.sortable {
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  table.crm-table thead th.sortable:hover {
-    background: var(--bg-card-hover);
-    color: var(--text-primary);
-  }
-  .th-content {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .sort-icon {
-    display: inline-flex;
-    color: var(--text-muted);
-    font-size: 10px;
-  }
-  th.sorted-asc .sort-icon, th.sorted-desc .sort-icon {
-    color: var(--accent);
-  }
-
-  table.crm-table tbody td {
-    padding: 13px 14px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-    color: var(--text-primary);
-  }
-  table.crm-table tbody tr {
-    transition: background 0.15s;
-  }
-  table.crm-table tbody tr:hover td {
-    background: var(--bg-card-hover);
-  }
-  table.crm-table tbody tr:last-child td {
-    border-bottom: none;
-  }
-
-  /* Badges & Pills */
-  .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 9px;
-    border-radius: 999px;
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-  }
-  .pill.High { background: var(--high-soft); color: var(--high); border: 1px solid rgba(244, 63, 94, 0.25); }
-  .pill.Medium { background: var(--med-soft); color: var(--med); border: 1px solid rgba(245, 158, 11, 0.25); }
-  .pill.Low { background: var(--low-soft); color: var(--low); border: 1px solid rgba(16, 185, 129, 0.25); }
-  .pill.Neutral { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
-  .pill.Stage { background: var(--info-soft); color: var(--info); border: 1px solid rgba(14, 165, 233, 0.25); }
-
-  .brand-cell {
-    display: flex;
-    flex-direction: column;
-  }
-  .brand-title-link {
-    font-weight: 700;
-    color: var(--text-primary);
-    text-decoration: none;
-    font-size: 13.5px;
-    transition: color 0.15s;
-  }
-  .brand-title-link:hover {
-    color: var(--accent);
-  }
-  .brand-subtitle {
-    font-size: 11px;
-    color: var(--text-muted);
-  }
-
-  .date-cell {
-    display: flex;
-    flex-direction: column;
-  }
-  .date-primary {
-    font-weight: 600;
-    font-size: 12.5px;
-  }
-  .date-relative {
-    font-size: 10.5px;
-    color: var(--text-muted);
-  }
-
-  /* Inputs, Selects & Modals */
-  input[type=text], input[type=password], select {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 8px 12px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    outline: none;
-    transition: var(--transition);
-    font-family: inherit;
-  }
-  input[type=text]:focus, input[type=password]:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-  .error-text { color: var(--high); font-size: 12px; margin-top: 6px; }
-
-  /* Modal */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  .modal {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 28px;
-    width: 440px;
-    max-width: 90vw;
-    box-shadow: var(--shadow-lg);
-  }
-  .modal h3 { margin-bottom: 18px; font-size: 17px; font-weight: 700; }
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
-  .field input, .field select { width: 100%; }
-  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
-
-  /* Empty state */
-  .empty { padding: 60px 20px; text-align: center; color: var(--text-muted); font-size: 13.5px; }
-
-  /* Brand Detail Page */
-  .back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 20px;
-    cursor: pointer;
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    transition: var(--transition);
-  }
-  .back-btn:hover {
-    color: var(--text-primary);
-    border-color: var(--accent);
-    background: var(--bg-card-hover);
-  }
-  .detail-hero {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 24px;
-    margin-bottom: 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-  .detail-hero-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-  .detail-hero-icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    background: var(--accent-gradient);
-    color: #ffffff;
-    font-weight: 800;
-    font-size: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .detail-hero h2 {
-    font-size: 24px;
-    font-weight: 800;
-    line-height: 1.2;
-  }
-  .detail-grid {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 20px;
-    align-items: start;
-  }
-  @media (max-width: 1024px) {
-    .detail-grid { grid-template-columns: 1fr; }
-  }
-  .section-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 22px;
-    margin-bottom: 20px;
-  }
-  .section-card h3 {
-    font-size: 13px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .exec-summary {
-    font-size: 14px;
-    line-height: 1.75;
-    color: var(--text-primary);
-  }
-  .stars { color: var(--star); font-size: 18px; letter-spacing: 2px; }
-  .stars .empty-star { color: var(--border); }
-  .score-line-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
-
-  .news-item {
-    border-bottom: 1px solid var(--border);
-    padding: 16px 0;
-  }
-  .news-item:first-child { padding-top: 0; }
-  .news-item:last-child { border-bottom: none; padding-bottom: 0; }
-  .news-item .meta {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
-    font-size: 11.5px;
-    color: var(--text-muted);
-  }
-  .news-item h4 { font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
-  .news-item p { font-size: 13px; line-height: 1.65; color: var(--text-secondary); margin-bottom: 8px; }
-  .cat-tag {
-    background: var(--accent-soft);
-    color: var(--accent);
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 11px;
-  }
-
-  /* Email Box */
-  .ai-draft-bar {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .email-box {
-    background: var(--bg-surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 20px;
-    font-size: 13px;
-    line-height: 1.75;
-  }
-  .email-subject {
-    font-weight: 700;
-    font-size: 14px;
-    margin-bottom: 14px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-primary);
-  }
-  .draft-note { font-size: 11.5px; color: var(--text-muted); }
-
-  /* Contact Card */
-  .contact-card .cf {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-    gap: 10px;
-  }
-  .contact-card .cf:last-child { border-bottom: none; }
-  .contact-card .cf-label { color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
-  .contact-card .cf-value { text-align: right; word-break: break-word; font-weight: 500; }
-  .copy-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    border-radius: 6px;
-    padding: 3px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
-
-  .pipeline-editor { display: flex; gap: 8px; align-items: center; }
-  .save-note { font-size: 11.5px; color: var(--low); margin-top: 8px; display: none; }
-
-  /* Competitor Watch Cards */
-  .competitor-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 18px;
-  }
-  .competitor-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 20px;
-    cursor: pointer;
-    transition: var(--transition);
-  }
-  .competitor-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-  }
-  .competitor-card .expand {
-    display: none;
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-  }
-  .competitor-card .expand-hint {
-    margin-top: 12px;
-    font-size: 11.5px;
-    color: var(--accent);
-    font-weight: 700;
-  }
-  .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
-  .filter-pill {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 12px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: var(--transition);
-  }
-  .filter-pill.active {
-    background: var(--accent);
-    color: #ffffff;
-    border-color: var(--accent);
-  }
-  .track-brand-btn {
-    margin-top: 14px;
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 11.5px;
-    cursor: pointer;
-    font-weight: 700;
-  }
-  .track-brand-btn:hover { background: var(--accent-soft); }
-
-  @media (max-width: 768px) {
-    header.top-header { padding: 0 16px; }
-    main.main-content { padding: 16px; }
-    .page-title { font-size: 15px; }
-    .kpi-grid { grid-template-columns: 1fr; }
-  }
-</style>
+<link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
@@ -1156,7 +30,7 @@
     </div>
 
     <div class="sidebar-nav">
-      <div class="nav-section-label">Navigation</div>
+      <div class="nav-section-label">Intelligence Hub</div>
       
       <button class="nav-item-btn active" data-tab="overview" data-title="Overview">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1303,10 +177,16 @@
 <script>
 let workbookData = {};
 let currentTab = "overview";
-let activeKpiFilter = null; // 'all', 'opps', 'high', 'dormant'
-let overviewSortCol = "latestResearch"; // default sort by latest research date
-let overviewSortDir = "desc"; // latest first
-let overviewColumnFilters = {}; // { colKey: filterValue }
+
+// State filters and sorting per tab
+let tabState = {
+  overview: { kpiFilter: null, sortCol: "latestResearch", sortDir: "desc", filters: {}, query: "" },
+  news: { kpiFilter: null, sortCol: "Date", sortDir: "desc", filters: {}, query: "" },
+  opportunities: { kpiFilter: null, sortCol: "Priority Score (1-5)", sortDir: "desc", filters: {}, query: "" },
+  contacts: { kpiFilter: null, sortCol: "Brand", sortDir: "asc", filters: {}, query: "" },
+  competitors: { kpiFilter: null, filterCategory: "All", query: "" },
+  emails: { kpiFilter: null, filters: {}, query: "" }
+};
 
 function saveSessionPassword(pw){ sessionStorage.setItem("cdit_pw", pw); }
 function getSessionPassword(){ return sessionStorage.getItem("cdit_pw") || ""; }
@@ -1566,19 +446,16 @@ function sortByDateDesc(rows, field){
   return rows.slice().sort((a, b) => String(b[field] || "").localeCompare(String(a[field] || "")));
 }
 
-/* ---------------- Overview Page with Interactive Filters & Sorting ---------------- */
 function getBrandLatestResearchMap(){
   const news = workbookData["News feed"] || [];
   const pipeline = workbookData["Pipeline"] || [];
   const brands = workbookData["Brands Master"] || [];
   const map = {};
 
-  // Initialize from Brands Master Date Added
   brands.forEach(b => {
     map[b["Brand"]] = { date: b["Date Added"] || "2000-01-01", snippet: "Brand record added" };
   });
 
-  // Check Pipeline updates
   pipeline.forEach(p => {
     const b = p["Brand"];
     const d = p["Last Update"];
@@ -1587,7 +464,6 @@ function getBrandLatestResearchMap(){
     }
   });
 
-  // Check News dates (the most active research signal)
   news.forEach(n => {
     const b = n["Brand"];
     const d = n["Date"];
@@ -1599,41 +475,62 @@ function getBrandLatestResearchMap(){
   return map;
 }
 
-function handleKpiClick(filterKey){
-  if (activeKpiFilter === filterKey) {
-    activeKpiFilter = null; // toggle off to clear
+function sortIndicator(tabName, col){
+  const st = tabState[tabName];
+  if (st.sortCol !== col) return `<span class="sort-icon">⇅</span>`;
+  return st.sortDir === "asc" ? `<span class="sort-icon">▲</span>` : `<span class="sort-icon">▼</span>`;
+}
+
+function handleTabSort(tabName, colKey, defaultDesc = false){
+  const st = tabState[tabName];
+  if (st.sortCol === colKey) {
+    st.sortDir = st.sortDir === "asc" ? "desc" : "asc";
   } else {
-    activeKpiFilter = filterKey;
+    st.sortCol = colKey;
+    st.sortDir = defaultDesc ? "desc" : "asc";
   }
-  renderOverview();
+  renderTab(tabName);
 }
 
-function handleOverviewSort(colKey){
-  if (overviewSortCol === colKey) {
-    overviewSortDir = overviewSortDir === "asc" ? "desc" : "asc";
-  } else {
-    overviewSortCol = colKey;
-    overviewSortDir = (colKey === "latestResearch" || colKey === "dateAdded" || colKey === "score") ? "desc" : "asc";
-  }
-  renderOverview();
+function handleTabKpiFilter(tabName, filterKey){
+  const st = tabState[tabName];
+  st.kpiFilter = (st.kpiFilter === filterKey) ? null : filterKey;
+  renderTab(tabName);
 }
 
-function setColumnFilter(colKey, value){
-  if (!value) delete overviewColumnFilters[colKey];
-  else overviewColumnFilters[colKey] = value;
-  renderOverview();
+function setTabFilter(tabName, key, value){
+  const st = tabState[tabName];
+  if (!value) delete st.filters[key];
+  else st.filters[key] = value;
+  renderTab(tabName);
 }
 
-function clearAllFilters(){
-  activeKpiFilter = null;
-  overviewColumnFilters = {};
-  const searchBox = document.getElementById("searchBox");
-  if (searchBox) searchBox.value = "";
-  renderOverview();
+function clearTabFilters(tabName){
+  tabState[tabName].kpiFilter = null;
+  tabState[tabName].filters = {};
+  tabState[tabName].query = "";
+  renderTab(tabName);
 }
 
+function wireSearchForTab(tabName){
+  const box = document.getElementById("searchBox");
+  if (!box) return;
+  box.value = tabState[tabName].query || "";
+  box.addEventListener("input", (e) => {
+    tabState[tabName].query = e.target.value;
+    const q = e.target.value.toLowerCase().trim();
+    document.querySelectorAll("#dataTable tbody tr, .news-item, .competitor-card").forEach(tr => {
+      tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
+    });
+  });
+}
+
+/* ==========================================================================
+   TAB 1: OVERVIEW
+   ========================================================================== */
 function renderOverview(){
   window.__viewingBrand = null;
+  const st = tabState.overview;
   const brands = workbookData["Brands Master"] || [];
   const opps = workbookData["Opportunities"] || [];
   const pipeline = workbookData["Pipeline"] || [];
@@ -1653,7 +550,6 @@ function renderOverview(){
     }
   });
 
-  // Prepare enriched brand rows
   let rowsData = brands.map(b => {
     const top = topOppByBrand[b["Brand"]];
     const latest = latestResearchMap[b["Brand"]] || { date: b["Date Added"] || "-", snippet: "" };
@@ -1673,44 +569,35 @@ function renderOverview(){
     };
   });
 
-  // Apply KPI Tile Filter
-  if (activeKpiFilter === "opps") {
-    rowsData = rowsData.filter(r => r.hasOpp);
-  } else if (activeKpiFilter === "high") {
-    rowsData = rowsData.filter(r => r.priorityTier === "High" || r.score >= 4);
-  } else if (activeKpiFilter === "dormant") {
-    rowsData = rowsData.filter(r => r.priorityTier === "Low" || r.pipelineStage === "Dormant" || r.score <= 2);
-  }
+  // KPI Filter
+  if (st.kpiFilter === "opps") rowsData = rowsData.filter(r => r.hasOpp);
+  else if (st.kpiFilter === "high") rowsData = rowsData.filter(r => r.priorityTier === "High" || r.score >= 4);
+  else if (st.kpiFilter === "dormant") rowsData = rowsData.filter(r => r.priorityTier === "Low" || r.pipelineStage === "Dormant" || r.score <= 2);
 
-  // Apply Column Filters
-  Object.keys(overviewColumnFilters).forEach(col => {
-    const val = overviewColumnFilters[col];
-    if (val) {
-      rowsData = rowsData.filter(r => String(r[col] || "").toLowerCase() === String(val).toLowerCase());
-    }
+  // Column Filters
+  Object.keys(st.filters).forEach(k => {
+    if (st.filters[k]) rowsData = rowsData.filter(r => String(r[k] || "").toLowerCase() === String(st.filters[k]).toLowerCase());
   });
 
   // Sorting
   rowsData.sort((a, b) => {
-    let vA = a[overviewSortCol];
-    let vB = b[overviewSortCol];
-    if (overviewSortCol === "score") {
+    let vA = a[st.sortCol];
+    let vB = b[st.sortCol];
+    if (st.sortCol === "score") {
       vA = Number(vA) || 0;
       vB = Number(vB) || 0;
     } else {
       vA = String(vA || "").toLowerCase();
       vB = String(vB || "").toLowerCase();
     }
-    if (vA < vB) return overviewSortDir === "asc" ? -1 : 1;
-    if (vA > vB) return overviewSortDir === "asc" ? 1 : -1;
+    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
+    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
     return 0;
   });
 
-  // Distinct values for column filter dropdowns
   const distinctTiers = [...new Set(brands.map(b => b["Priority Tier"]).filter(Boolean))];
   const distinctStages = [...new Set(pipeline.map(p => p["Stage"]).filter(Boolean))];
 
-  // Render Table Rows
   const tableRows = rowsData.length ? rowsData.map(r => `
     <tr>
       <td>${brandLink(r.brand, r.segment ? `${r.sector} · ${r.segment}` : r.sector)}</td>
@@ -1737,24 +624,13 @@ function renderOverview(){
     </tr>
   `).join("") : `<tr><td colspan="8" class="empty">No brands matching the selected criteria.</td></tr>`;
 
-  // Sort indicator helper
-  function sortIndicator(col){
-    if (overviewSortCol !== col) return `<span class="sort-icon">⇅</span>`;
-    return overviewSortDir === "asc" ? `<span class="sort-icon">▲</span>` : `<span class="sort-icon">▼</span>`;
-  }
-
-  // Active filter banner
-  const hasActiveFilters = activeKpiFilter || Object.keys(overviewColumnFilters).length > 0;
-  let activeFilterLabel = "";
-  if (activeKpiFilter === "opps") activeFilterLabel = "Filter: Brands with Open Opportunities";
-  else if (activeKpiFilter === "high") activeFilterLabel = "Filter: High Priority (Tier High or Score 4-5)";
-  else if (activeKpiFilter === "dormant") activeFilterLabel = "Filter: Dormant / Low Priority";
-  else if (activeKpiFilter === "all") activeFilterLabel = "Filter: All Brands Tracked";
+  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
+  let activeFilterLabel = st.kpiFilter ? `Filter Active (${st.kpiFilter})` : "Active Filters";
 
   document.getElementById("content").innerHTML = `
-    <!-- KPI Tiles Grid with Interactive Filter Clicks -->
+    <!-- KPI Grid -->
     <div class="kpi-grid">
-      <div class="kpi-card ${activeKpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleKpiClick('all')" title="Click to view all brands">
+      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'all')" title="Click to view all brands">
         <div class="kpi-card-top">
           <span class="kpi-label">Brands Tracked</span>
           <div class="kpi-icon-wrap">
@@ -1762,13 +638,10 @@ function renderOverview(){
           </div>
         </div>
         <div class="kpi-value">${brands.length}</div>
-        <div class="kpi-hint">
-          <span>Active accounts</span>
-          <span class="kpi-filter-tag">Filter Active</span>
-        </div>
+        <div class="kpi-hint"><span>Active accounts</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
 
-      <div class="kpi-card ${activeKpiFilter === 'opps' ? 'active-filter' : ''}" onclick="handleKpiClick('opps')" title="Click to filter brands with open opportunities">
+      <div class="kpi-card ${st.kpiFilter === 'opps' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'opps')" title="Click to filter brands with open opportunities">
         <div class="kpi-card-top">
           <span class="kpi-label">Open Opportunities</span>
           <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
@@ -1776,13 +649,10 @@ function renderOverview(){
           </div>
         </div>
         <div class="kpi-value" style="color:var(--info)">${opps.length}</div>
-        <div class="kpi-hint">
-          <span>Scored leads</span>
-          <span class="kpi-filter-tag">Filter Active</span>
-        </div>
+        <div class="kpi-hint"><span>Scored leads</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
 
-      <div class="kpi-card ${activeKpiFilter === 'high' ? 'active-filter' : ''}" onclick="handleKpiClick('high')" title="Click to filter high priority accounts">
+      <div class="kpi-card ${st.kpiFilter === 'high' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'high')" title="Click to filter high priority accounts">
         <div class="kpi-card-top">
           <span class="kpi-label">High Priority (4-5)</span>
           <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
@@ -1790,13 +660,10 @@ function renderOverview(){
           </div>
         </div>
         <div class="kpi-value" style="color:var(--high)">${highOpps || highBrands}</div>
-        <div class="kpi-hint">
-          <span>Immediate outreach</span>
-          <span class="kpi-filter-tag">Filter Active</span>
-        </div>
+        <div class="kpi-hint"><span>Immediate outreach</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
 
-      <div class="kpi-card ${activeKpiFilter === 'dormant' ? 'active-filter' : ''}" onclick="handleKpiClick('dormant')" title="Click to filter dormant & low priority accounts">
+      <div class="kpi-card ${st.kpiFilter === 'dormant' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'dormant')" title="Click to filter dormant & low priority accounts">
         <div class="kpi-card-top">
           <span class="kpi-label">Dormant / Low Priority</span>
           <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
@@ -1804,14 +671,11 @@ function renderOverview(){
           </div>
         </div>
         <div class="kpi-value" style="color:var(--low)">${dormantCount}</div>
-        <div class="kpi-hint">
-          <span>Nurturing tier</span>
-          <span class="kpi-filter-tag">Filter Active</span>
-        </div>
+        <div class="kpi-hint"><span>Nurturing tier</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
     </div>
 
-    <!-- Table Toolbar: Search & Column Filters -->
+    <!-- Controls -->
     <div class="table-controls-bar">
       <div class="search-input-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -1821,49 +685,49 @@ function renderOverview(){
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         ${hasActiveFilters ? `
           <div class="active-filter-banner">
-            <span>${escapeHtml(activeFilterLabel || "Active Filters")} (${rowsData.length} brands)</span>
-            <button class="filter-clear-btn" onclick="clearAllFilters()">Clear Filter</button>
+            <span>${escapeHtml(activeFilterLabel)} (${rowsData.length} brands)</span>
+            <button class="filter-clear-btn" onclick="clearTabFilters('overview')">Clear Filter</button>
           </div>
         ` : ""}
 
-        <select id="tierFilterSelect" onchange="setColumnFilter('priorityTier', this.value)" style="padding:8px 12px;">
+        <select id="tierFilterSelect" onchange="setTabFilter('overview', 'priorityTier', this.value)" style="padding:8px 12px;">
           <option value="">All Tiers</option>
-          ${distinctTiers.map(t => `<option value="${escapeAttr(t)}" ${overviewColumnFilters.priorityTier === t ? "selected" : ""}>${escapeHtml(t)} Tier</option>`).join("")}
+          ${distinctTiers.map(t => `<option value="${escapeAttr(t)}" ${st.filters.priorityTier === t ? "selected" : ""}>${escapeHtml(t)} Tier</option>`).join("")}
         </select>
 
-        <select id="stageFilterSelect" onchange="setColumnFilter('pipelineStage', this.value)" style="padding:8px 12px;">
+        <select id="stageFilterSelect" onchange="setTabFilter('overview', 'pipelineStage', this.value)" style="padding:8px 12px;">
           <option value="">All Stages</option>
-          ${distinctStages.map(s => `<option value="${escapeAttr(s)}" ${overviewColumnFilters.pipelineStage === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+          ${distinctStages.map(s => `<option value="${escapeAttr(s)}" ${st.filters.pipelineStage === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
         </select>
       </div>
     </div>
 
-    <!-- CRM Data Table -->
+    <!-- Table -->
     <div class="crm-panel">
       <div class="table-responsive">
         <table class="crm-table" id="dataTable">
           <thead>
             <tr>
-              <th class="sortable ${overviewSortCol === 'brand' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('brand')">
-                <div class="th-content">Brand & Sector ${sortIndicator('brand')}</div>
+              <th class="sortable ${st.sortCol === 'brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'brand')">
+                <div class="th-content">Brand & Sector ${sortIndicator('overview', 'brand')}</div>
               </th>
-              <th class="sortable ${overviewSortCol === 'priorityTier' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('priorityTier')">
-                <div class="th-content">Priority Tier ${sortIndicator('priorityTier')}</div>
+              <th class="sortable ${st.sortCol === 'priorityTier' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'priorityTier')">
+                <div class="th-content">Priority Tier ${sortIndicator('overview', 'priorityTier')}</div>
               </th>
-              <th class="sortable ${overviewSortCol === 'topOpportunity' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('topOpportunity')">
-                <div class="th-content">Top Opportunity ${sortIndicator('topOpportunity')}</div>
+              <th class="sortable ${st.sortCol === 'topOpportunity' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'topOpportunity')">
+                <div class="th-content">Top Opportunity ${sortIndicator('overview', 'topOpportunity')}</div>
               </th>
-              <th class="sortable ${overviewSortCol === 'score' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('score')">
-                <div class="th-content">Score ${sortIndicator('score')}</div>
+              <th class="sortable ${st.sortCol === 'score' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'score', true)">
+                <div class="th-content">Score ${sortIndicator('overview', 'score')}</div>
               </th>
-              <th class="sortable ${overviewSortCol === 'pipelineStage' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('pipelineStage')">
-                <div class="th-content">Pipeline Stage ${sortIndicator('pipelineStage')}</div>
+              <th class="sortable ${st.sortCol === 'pipelineStage' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'pipelineStage')">
+                <div class="th-content">Pipeline Stage ${sortIndicator('overview', 'pipelineStage')}</div>
               </th>
-              <th class="sortable ${overviewSortCol === 'latestResearch' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('latestResearch')" title="Sorted by latest research update">
-                <div class="th-content">Latest Research ${sortIndicator('latestResearch')}</div>
+              <th class="sortable ${st.sortCol === 'latestResearch' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'latestResearch', true)">
+                <div class="th-content">Latest Research ${sortIndicator('overview', 'latestResearch')}</div>
               </th>
-              <th class="sortable ${overviewSortCol === 'dateAdded' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('dateAdded')">
-                <div class="th-content">Date Added ${sortIndicator('dateAdded')}</div>
+              <th class="sortable ${st.sortCol === 'dateAdded' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'dateAdded', true)">
+                <div class="th-content">Date Added ${sortIndicator('overview', 'dateAdded')}</div>
               </th>
               <th>Action</th>
             </tr>
@@ -1874,72 +738,576 @@ function renderOverview(){
     </div>
   `;
 
-  wireSearch();
+  wireSearchForTab("overview");
 }
 
-/* ---------------- Generic Table for News, Contacts, etc. ---------------- */
-function genericTable(sheetName, opts = {}){
+/* ==========================================================================
+   TAB 2: NEWS FEED
+   ========================================================================== */
+function renderNews(){
   window.__viewingBrand = null;
-  let rows = workbookData[sheetName] || [];
-  if (opts.sortDateField) rows = sortByDateDesc(rows, opts.sortDateField);
-  const cols = rows[0] ? Object.keys(rows[0]) : [];
-  const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
-  const tbody = rows.map(r => `<tr>${cols.map(c =>
-    `<td>${c === "Brand" ? brandLink(r[c]) : escapeHtml(r[c])}</td>`
-  ).join("")}</tr>`).join("");
+  const st = tabState.news;
+  let rows = (workbookData["News feed"] || []).slice();
+
+  const totalNews = rows.length;
+  const recent30Days = rows.filter(r => {
+    const d = new Date(r["Date"]);
+    if (isNaN(d.getTime())) return false;
+    const diff = (new Date() - d) / (1000 * 60 * 60 * 24);
+    return diff <= 30;
+  }).length;
+  const expansionNews = rows.filter(r => /retail|store|expansion|launch|market/i.test(r["Headline"] + " " + r["Category"])).length;
+  const leadershipNews = rows.filter(r => /fund|partner|leader|appoint|invest|growth/i.test(r["Headline"] + " " + r["Category"])).length;
+
+  // KPI Filter
+  if (st.kpiFilter === "recent") {
+    rows = rows.filter(r => {
+      const d = new Date(r["Date"]);
+      return !isNaN(d.getTime()) && (new Date() - d) / (1000 * 60 * 60 * 24) <= 30;
+    });
+  } else if (st.kpiFilter === "expansion") {
+    rows = rows.filter(r => /retail|store|expansion|launch|market/i.test(r["Headline"] + " " + r["Category"]));
+  } else if (st.kpiFilter === "leadership") {
+    rows = rows.filter(r => /fund|partner|leader|appoint|invest|growth/i.test(r["Headline"] + " " + r["Category"]));
+  }
+
+  // Dropdown Filters
+  if (st.filters.category) {
+    rows = rows.filter(r => String(r["Category"] || "").toLowerCase() === st.filters.category.toLowerCase());
+  }
+  if (st.filters.brand) {
+    rows = rows.filter(r => String(r["Brand"] || "").toLowerCase() === st.filters.brand.toLowerCase());
+  }
+
+  // Sorting
+  rows.sort((a, b) => {
+    const vA = String(a[st.sortCol] || "").toLowerCase();
+    const vB = String(b[st.sortCol] || "").toLowerCase();
+    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
+    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const distinctCategories = [...new Set((workbookData["News feed"] || []).map(r => r["Category"]).filter(Boolean))].sort();
+  const distinctBrands = [...new Set((workbookData["News feed"] || []).map(r => r["Brand"]).filter(Boolean))].sort();
+
+  const tableRows = rows.length ? rows.map(r => `
+    <tr>
+      <td>
+        <div class="date-cell">
+          <span class="date-primary">${escapeHtml(r["Date"])}</span>
+          <span class="date-relative">${formatRelativeDate(r["Date"])}</span>
+        </div>
+      </td>
+      <td>${brandLink(r["Brand"])}</td>
+      <td><span class="pill Category">${escapeHtml(r["Category"] || "General")}</span></td>
+      <td style="max-width:440px;">
+        <div style="font-weight:700;margin-bottom:4px;color:var(--text-primary);">${escapeHtml(r["Headline"])}</div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">${escapeHtml(r["AI Summary"] || r["Summary"] || "")}</div>
+      </td>
+      <td>
+        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;font-size:12px;">${escapeHtml(r["Source"] || "Source")} &#8599;</a>` : `<span style="color:var(--text-muted);font-size:12px;">${escapeHtml(r["Source"] || "-")}</span>`}
+      </td>
+      <td>
+        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
+          Brand Intel &#8594;
+        </button>
+      </td>
+    </tr>
+  `).join("") : `<tr><td colspan="6" class="empty">No news articles matching the filter criteria.</td></tr>`;
+
+  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
+
   document.getElementById("content").innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'all')" title="Click to show all news articles">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Total Articles</span>
+          <div class="kpi-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
+          </div>
+        </div>
+        <div class="kpi-value">${totalNews}</div>
+        <div class="kpi-hint"><span>Monitored items</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'recent' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'recent')" title="Click to filter articles in the last 30 days">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Last 30 Days</span>
+          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--info)">${recent30Days}</div>
+        <div class="kpi-hint"><span>Fresh signals</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'expansion' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'expansion')" title="Click to filter retail & product launches">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Launches & Retail Expansion</span>
+          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--high)">${expansionNews}</div>
+        <div class="kpi-hint"><span>High intent moves</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'leadership' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'leadership')" title="Click to filter funding & strategic partnerships">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Strategic & Funding</span>
+          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--low)">${leadershipNews}</div>
+        <div class="kpi-hint"><span>Ecosystem shifts</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
     <div class="table-controls-bar">
       <div class="search-input-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search ${escapeHtml(sheetName)}...">
+        <input type="text" id="searchBox" class="search-input" placeholder="Search news headlines, summaries, sources..." />
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        ${hasActiveFilters ? `
+          <div class="active-filter-banner">
+            <span>Active Filters (${rows.length} articles)</span>
+            <button class="filter-clear-btn" onclick="clearTabFilters('news')">Clear Filter</button>
+          </div>
+        ` : ""}
+
+        <select id="newsCatSelect" onchange="setTabFilter('news', 'category', this.value)" style="padding:8px 12px;">
+          <option value="">All Categories</option>
+          ${distinctCategories.map(c => `<option value="${escapeAttr(c)}" ${st.filters.category === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+        </select>
+
+        <select id="newsBrandSelect" onchange="setTabFilter('news', 'brand', this.value)" style="padding:8px 12px;">
+          <option value="">All Brands</option>
+          ${distinctBrands.map(b => `<option value="${escapeAttr(b)}" ${st.filters.brand === b ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
+        </select>
       </div>
     </div>
-    <div class="crm-panel"><div class="table-responsive"><table class="crm-table" id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>`;
-  wireSearch();
+
+    <!-- Table -->
+    <div class="crm-panel">
+      <div class="table-responsive">
+        <table class="crm-table" id="dataTable">
+          <thead>
+            <tr>
+              <th class="sortable ${st.sortCol === 'Date' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Date', true)" style="width:140px;">
+                <div class="th-content">Date ${sortIndicator('news', 'Date')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Brand')">
+                <div class="th-content">Brand ${sortIndicator('news', 'Brand')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Category' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Category')">
+                <div class="th-content">Category ${sortIndicator('news', 'Category')}</div>
+              </th>
+              <th>Headline & AI Summary</th>
+              <th class="sortable ${st.sortCol === 'Source' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Source')">
+                <div class="th-content">Source ${sortIndicator('news', 'Source')}</div>
+              </th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  wireSearchForTab("news");
 }
 
+/* ==========================================================================
+   TAB 3: OPPORTUNITIES
+   ========================================================================== */
 function renderOpportunities(){
   window.__viewingBrand = null;
-  const rows = workbookData["Opportunities"] || [];
-  const cols = rows[0] ? Object.keys(rows[0]) : [];
-  const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
-  const tbody = rows.slice()
-    .sort((a,b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]))
-    .map(r => {
-      const label = priorityLabel(r["Priority Score (1-5)"]);
-      return `<tr>${cols.map(c => {
-        if (c === "Priority Score (1-5)") return `<td><span class="pill ${label}">${escapeHtml(r[c])} · ${label}</span></td>`;
-        if (c === "Brand") return `<td>${brandLink(r[c])}</td>`;
-        return `<td>${escapeHtml(r[c])}</td>`;
-      }).join("")}</tr>`;
-    }).join("");
+  const st = tabState.opportunities;
+  let rows = (workbookData["Opportunities"] || []).slice();
+
+  const totalOpps = rows.length;
+  const highPriority = rows.filter(r => Number(r["Priority Score (1-5)"]) >= 4).length;
+  const medPriority = rows.filter(r => Number(r["Priority Score (1-5)"]) === 3).length;
+  const highConfidence = rows.filter(r => Number(r["Confidence Score (1-5)"]) >= 4).length;
+
+  // KPI Filter
+  if (st.kpiFilter === "high") rows = rows.filter(r => Number(r["Priority Score (1-5)"]) >= 4);
+  else if (st.kpiFilter === "med") rows = rows.filter(r => Number(r["Priority Score (1-5)"]) === 3);
+  else if (st.kpiFilter === "confidence") rows = rows.filter(r => Number(r["Confidence Score (1-5)"]) >= 4);
+
+  // Dropdown Filter
+  if (st.filters.type) {
+    rows = rows.filter(r => String(r["Opportunity Type"] || "").toLowerCase() === st.filters.type.toLowerCase());
+  }
+
+  // Sorting
+  rows.sort((a, b) => {
+    let vA = a[st.sortCol];
+    let vB = b[st.sortCol];
+    if (st.sortCol.includes("Score")) {
+      vA = Number(vA) || 0;
+      vB = Number(vB) || 0;
+    } else {
+      vA = String(vA || "").toLowerCase();
+      vB = String(vB || "").toLowerCase();
+    }
+    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
+    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const distinctTypes = [...new Set((workbookData["Opportunities"] || []).map(r => r["Opportunity Type"]).filter(Boolean))].sort();
+
+  const tableRows = rows.length ? rows.map(r => {
+    const pScore = Number(r["Priority Score (1-5)"]) || 0;
+    const cScore = Number(r["Confidence Score (1-5)"]) || 0;
+    const label = priorityLabel(pScore);
+    return `
+    <tr>
+      <td>${brandLink(r["Brand"])}</td>
+      <td><span class="pill Category">${escapeHtml(r["Opportunity Type"])}</span></td>
+      <td>
+        <span class="pill ${label}" style="margin-bottom:4px;">${pScore}/5 · ${label}</span>
+        <div>${starRow(pScore)}</div>
+      </td>
+      <td>
+        <span class="pill Neutral" style="margin-bottom:4px;">${cScore}/5</span>
+        <div>${starRow(cScore)}</div>
+      </td>
+      <td style="max-width:320px;font-size:12.5px;color:var(--text-secondary);">${escapeHtml(r["Business Impact"] || "-")}</td>
+      <td style="max-width:280px;">
+        <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(r["Recommended Service"] || "-")}</div>
+        <div style="font-size:11px;color:var(--text-muted);">Dept: ${escapeHtml(r["Recommended Contact Department"] || "-")}</div>
+      </td>
+      <td>
+        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
+          View Outreach &#8594;
+        </button>
+      </td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7" class="empty">No opportunities matching the selected criteria.</td></tr>`;
+
+  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
+
   document.getElementById("content").innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'all')" title="Click to view all opportunities">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Total Opportunities</span>
+          <div class="kpi-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+        </div>
+        <div class="kpi-value">${totalOpps}</div>
+        <div class="kpi-hint"><span>Qualified leads</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'high' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'high')" title="Click to filter high priority opportunities (4-5)">
+        <div class="kpi-card-top">
+          <span class="kpi-label">High Priority (4-5)</span>
+          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--high)">${highPriority}</div>
+        <div class="kpi-hint"><span>Immediate action</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'med' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'med')" title="Click to filter medium priority opportunities (3)">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Medium Priority (3)</span>
+          <div class="kpi-icon-wrap" style="color:var(--med);background:var(--med-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--med)">${medPriority}</div>
+        <div class="kpi-hint"><span>Nurture queue</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'confidence' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'confidence')" title="Click to filter high confidence opportunities">
+        <div class="kpi-card-top">
+          <span class="kpi-label">High Confidence</span>
+          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--low)">${highConfidence}</div>
+        <div class="kpi-hint"><span>Strong verified signals</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
     <div class="table-controls-bar">
       <div class="search-input-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search opportunities...">
+        <input type="text" id="searchBox" class="search-input" placeholder="Search opportunity types, impacts, recommended services..." />
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        ${hasActiveFilters ? `
+          <div class="active-filter-banner">
+            <span>Active Filters (${rows.length} opportunities)</span>
+            <button class="filter-clear-btn" onclick="clearTabFilters('opportunities')">Clear Filter</button>
+          </div>
+        ` : ""}
+
+        <select id="oppTypeSelect" onchange="setTabFilter('opportunities', 'type', this.value)" style="padding:8px 12px;">
+          <option value="">All Opportunity Types</option>
+          ${distinctTypes.map(t => `<option value="${escapeAttr(t)}" ${st.filters.type === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
+        </select>
       </div>
     </div>
-    <div class="crm-panel"><div class="table-responsive"><table class="crm-table" id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>`;
-  wireSearch();
+
+    <!-- Table -->
+    <div class="crm-panel">
+      <div class="table-responsive">
+        <table class="crm-table" id="dataTable">
+          <thead>
+            <tr>
+              <th class="sortable ${st.sortCol === 'Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Brand')">
+                <div class="th-content">Brand ${sortIndicator('opportunities', 'Brand')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Opportunity Type' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Opportunity Type')">
+                <div class="th-content">Opportunity Type ${sortIndicator('opportunities', 'Opportunity Type')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Priority Score (1-5)' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Priority Score (1-5)', true)">
+                <div class="th-content">Priority Score ${sortIndicator('opportunities', 'Priority Score (1-5)')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Confidence Score (1-5)' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Confidence Score (1-5)', true)">
+                <div class="th-content">Confidence ${sortIndicator('opportunities', 'Confidence Score (1-5)')}</div>
+              </th>
+              <th>Business Impact</th>
+              <th>Recommended Service & Dept</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  wireSearchForTab("opportunities");
 }
 
-/* ---------------- Competitor Watch ---------------- */
+/* ==========================================================================
+   TAB 4: CONTACTS
+   ========================================================================== */
+function renderContacts(){
+  window.__viewingBrand = null;
+  const st = tabState.contacts;
+  let rows = (workbookData["Contacts"] || []).slice();
+
+  const totalContacts = rows.length;
+  const emailsAvailable = rows.filter(r => r["Official Email (public only)"] && !/not found|pending/i.test(r["Official Email (public only)"])).length;
+  const phonesAvailable = rows.filter(r => r["Official Contact Number (public only)"] && !/not found|pending/i.test(r["Official Contact Number (public only)"])).length;
+  const linkedinAvailable = rows.filter(r => r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"])).length;
+
+  // KPI Filter
+  if (st.kpiFilter === "email") rows = rows.filter(r => r["Official Email (public only)"] && !/not found|pending/i.test(r["Official Email (public only)"]));
+  else if (st.kpiFilter === "phone") rows = rows.filter(r => r["Official Contact Number (public only)"] && !/not found|pending/i.test(r["Official Contact Number (public only)"]));
+  else if (st.kpiFilter === "linkedin") rows = rows.filter(r => r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"]));
+
+  // Dropdown Filter
+  if (st.filters.department) {
+    rows = rows.filter(r => String(r["Department"] || "").toLowerCase() === st.filters.department.toLowerCase());
+  }
+
+  // Sorting
+  rows.sort((a, b) => {
+    const vA = String(a[st.sortCol] || "").toLowerCase();
+    const vB = String(b[st.sortCol] || "").toLowerCase();
+    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
+    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const distinctDepts = [...new Set((workbookData["Contacts"] || []).map(r => r["Department"]).filter(Boolean))].sort();
+
+  const tableRows = rows.length ? rows.map(r => {
+    const email = r["Official Email (public only)"];
+    const phone = r["Official Contact Number (public only)"];
+    const hasLinkedIn = r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"]);
+
+    return `
+    <tr>
+      <td>${brandLink(r["Brand"])}</td>
+      <td>
+        <div style="font-weight:700;color:var(--text-primary);">${escapeHtml(r["Decision Maker Name"] || "Executive Leadership")}</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">${escapeHtml(r["Designation"] || "-")}</div>
+      </td>
+      <td><span class="pill Category">${escapeHtml(r["Department"] || "Leadership")}</span></td>
+      <td>
+        ${email ? `
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;">${escapeHtml(email)}</span>
+            <button class="copy-btn" onclick="copyToClipboard('${escapeAttr(email)}', this)">Copy</button>
+          </div>
+        ` : `<span style="color:var(--text-muted);font-size:12px;">Pending</span>`}
+      </td>
+      <td>
+        ${phone ? `
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;">${escapeHtml(phone)}</span>
+            <button class="copy-btn" onclick="copyToClipboard('${escapeAttr(phone)}', this)">Copy</button>
+          </div>
+        ` : `<span style="color:var(--text-muted);font-size:12px;">-</span>`}
+      </td>
+      <td><span style="font-size:12px;color:var(--text-secondary);">${escapeHtml(r["Office Location"] || "-")}</span></td>
+      <td>
+        ${hasLinkedIn ? `
+          <a href="${escapeAttr(r["LinkedIn Profile"])}" target="_blank" rel="noopener" class="btn secondary tiny" style="color:var(--accent);">
+            LinkedIn &#8599;
+          </a>
+        ` : `<span style="color:var(--text-muted);font-size:11px;">-</span>`}
+      </td>
+      <td>
+        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
+          Profile &#8594;
+        </button>
+      </td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="8" class="empty">No contacts matching the selected criteria.</td></tr>`;
+
+  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
+
+  document.getElementById("content").innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'all')" title="Click to view all contacts">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Decision Makers</span>
+          <div class="kpi-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          </div>
+        </div>
+        <div class="kpi-value">${totalContacts}</div>
+        <div class="kpi-hint"><span>Mapped contacts</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'email' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'email')" title="Click to filter contacts with verified email">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Email Available</span>
+          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--info)">${emailsAvailable}</div>
+        <div class="kpi-hint"><span>Direct outreach ready</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'linkedin' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'linkedin')" title="Click to filter contacts with LinkedIn profile">
+        <div class="kpi-card-top">
+          <span class="kpi-label">LinkedIn Connected</span>
+          <div class="kpi-icon-wrap" style="color:var(--accent);background:var(--accent-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--accent)">${linkedinAvailable}</div>
+        <div class="kpi-hint"><span>Social selling</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'phone' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'phone')" title="Click to filter contacts with phone numbers">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Phone Available</span>
+          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--low)">${phonesAvailable}</div>
+        <div class="kpi-hint"><span>Phone outreach</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="table-controls-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchBox" class="search-input" placeholder="Search contacts by name, role, email, brand, location..." />
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        ${hasActiveFilters ? `
+          <div class="active-filter-banner">
+            <span>Active Filters (${rows.length} contacts)</span>
+            <button class="filter-clear-btn" onclick="clearTabFilters('contacts')">Clear Filter</button>
+          </div>
+        ` : ""}
+
+        <select id="contactDeptSelect" onchange="setTabFilter('contacts', 'department', this.value)" style="padding:8px 12px;">
+          <option value="">All Departments</option>
+          ${distinctDepts.map(d => `<option value="${escapeAttr(d)}" ${st.filters.department === d ? "selected" : ""}>${escapeHtml(d)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="crm-panel">
+      <div class="table-responsive">
+        <table class="crm-table" id="dataTable">
+          <thead>
+            <tr>
+              <th class="sortable ${st.sortCol === 'Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Brand')">
+                <div class="th-content">Brand ${sortIndicator('contacts', 'Brand')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Decision Maker Name' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Decision Maker Name')">
+                <div class="th-content">Decision Maker ${sortIndicator('contacts', 'Decision Maker Name')}</div>
+              </th>
+              <th class="sortable ${st.sortCol === 'Department' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Department')">
+                <div class="th-content">Department ${sortIndicator('contacts', 'Department')}</div>
+              </th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th class="sortable ${st.sortCol === 'Office Location' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Office Location')">
+                <div class="th-content">Location ${sortIndicator('contacts', 'Office Location')}</div>
+              </th>
+              <th>LinkedIn</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  wireSearchForTab("contacts");
+}
+
+/* ==========================================================================
+   TAB 5: COMPETITOR WATCH
+   ========================================================================== */
 function renderCompetitors(){
   window.__viewingBrand = null;
-  const rows = workbookData["Competitor Watch"] || [];
-  if (!rows.length) {
-    document.getElementById("content").innerHTML = `<div class="empty">No competitor/adjacent-player entries yet.</div>`;
-    return;
-  }
+  const st = tabState.competitors;
+  let rows = (workbookData["Competitor Watch"] || []).slice();
+
+  const totalEntries = rows.length;
   const trackedBrands = new Set((workbookData["Brands Master"] || []).map(b => b["Brand"]));
+  const distinctCompetitors = [...new Set(rows.map(r => r["Competitor"]).filter(Boolean))].sort();
+  const untrackedCount = distinctCompetitors.filter(c => !trackedBrands.has(c)).length;
+  const trackedCount = distinctCompetitors.filter(c => trackedBrands.has(c)).length;
+
   const sorted = sortByDateDesc(rows, "Date");
-  const competitorNames = [...new Set(sorted.map(r => r["Competitor"]).filter(Boolean))].sort();
-  const activeFilter = window.__competitorFilter || "All";
-  const filterOptions = ["All", ...competitorNames];
+  const filterOptions = ["All", ...distinctCompetitors];
+  const activeFilter = st.filterCategory || "All";
+
   const pills = filterOptions.map(c => `
     <button class="filter-pill ${c === activeFilter ? "active" : ""}" onclick="setCompetitorFilter('${escapeAttr(c).replace(/'/g, "&#39;")}')">${escapeHtml(c)}</button>`).join("");
-  const visible = activeFilter === "All" ? sorted : sorted.filter(r => r["Competitor"] === activeFilter);
+
+  let visible = activeFilter === "All" ? sorted : sorted.filter(r => r["Competitor"] === activeFilter);
+
+  if (st.kpiFilter === "untracked") {
+    visible = visible.filter(r => r["Competitor"] && !trackedBrands.has(r["Competitor"]));
+  } else if (st.kpiFilter === "tracked") {
+    visible = visible.filter(r => r["Competitor"] && trackedBrands.has(r["Competitor"]));
+  }
+
   const list = visible.map((r, i) => {
     const competitorName = r["Competitor"] || "";
     const isTracked = competitorName && trackedBrands.has(competitorName);
@@ -1959,20 +1327,71 @@ function renderCompetitors(){
       ${trackBtn}
     </div>`;
   }).join("");
+
   document.getElementById("content").innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'all')" title="Click to view all competitor updates">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Market Signals</span>
+          <div class="kpi-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          </div>
+        </div>
+        <div class="kpi-value">${totalEntries}</div>
+        <div class="kpi-hint"><span>Monitored items</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'untracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'untracked')" title="Click to filter new untracked brands">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Adjacent Players</span>
+          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--high)">${untrackedCount}</div>
+        <div class="kpi-hint"><span>New targets to track</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card ${st.kpiFilter === 'tracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'tracked')" title="Click to filter tracked competitors">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Tracked Competitors</span>
+          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--low)">${trackedCount}</div>
+        <div class="kpi-hint"><span>In active CRM pipeline</span><span class="kpi-filter-tag">Filter Active</span></div>
+      </div>
+
+      <div class="kpi-card" style="cursor:default;">
+        <div class="kpi-card-top">
+          <span class="kpi-label">AI Research Engine</span>
+          <div class="kpi-icon-wrap" style="color:var(--accent);background:var(--accent-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--accent)">Gemini</div>
+        <div class="kpi-hint"><span>One-click brand tracking</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
     <div class="table-controls-bar">
       <div class="search-input-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search competitor watch insights...">
+        <input type="text" id="searchBox" class="search-input" placeholder="Search competitor insights, brands, actions..." />
       </div>
     </div>
+
     <div class="filter-pills">${pills}</div>
-    <div class="competitor-grid">${list}</div>`;
-  wireSearch();
+    <div class="competitor-grid">${list || '<div class="empty">No competitor entries matching criteria.</div>'}</div>
+  `;
+
+  wireSearchForTab("competitors");
 }
 
 function setCompetitorFilter(c){
-  window.__competitorFilter = c;
+  tabState.competitors.filterCategory = c;
   renderCompetitors();
 }
 function toggleCompetitorItem(i){
@@ -2003,31 +1422,137 @@ async function addCompetitorAsTrackedBrand(brandName, btnEl){
   }
 }
 
-function wireSearch(){
-  const box = document.getElementById("searchBox");
-  if (!box) return;
-  box.addEventListener("input", (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    document.querySelectorAll("#dataTable tbody tr, .news-item, .competitor-card").forEach(tr => {
-      tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
-    });
-  });
+/* ==========================================================================
+   TAB 6: EMAIL DRAFTS
+   ========================================================================== */
+function renderEmails(){
+  window.__viewingBrand = null;
+  const st = tabState.emails;
+  let rows = (workbookData["Email Drafts"] || []).slice();
+
+  const totalDrafts = rows.length;
+  const brandsCovered = [...new Set(rows.map(r => r["Brand"]).filter(Boolean))].length;
+
+  if (st.filters.brand) {
+    rows = rows.filter(r => String(r["Brand"] || "").toLowerCase() === st.filters.brand.toLowerCase());
+  }
+
+  const distinctBrands = [...new Set((workbookData["Email Drafts"] || []).map(r => r["Brand"]).filter(Boolean))].sort();
+
+  const cards = rows.length ? rows.map(r => {
+    const brand = r["Brand"] || "Brand";
+    const subject = r["Subject"] || "Outreach Proposal";
+    const body = r["Draft Body"] || "";
+    const preview = body.length > 220 ? body.slice(0, 220) + "..." : body;
+
+    return `
+    <div class="section-card" style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            ${brandLink(brand)}
+            <span class="pill Stage">Outreach Ready</span>
+          </div>
+          <h4 style="font-size:14px;color:var(--text-primary);margin-top:4px;">${escapeHtml(subject)}</h4>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn secondary tiny" onclick="copyEmailRich('${escapeAttr(subject)}', '${escapeAttr(body.replace(/\n/g,"<br>"))}', this)">
+            Copy Formatted Email
+          </button>
+          <button class="btn tiny" onclick="showBrandDetail('${escapeAttr(brand).replace(/'/g,"&#39;")}')">
+            View Brand Profile &#8594;
+          </button>
+        </div>
+      </div>
+      <div class="email-box" style="margin-top:10px;font-size:12.5px;line-height:1.7;">
+        ${escapeHtml(preview)}
+      </div>
+    </div>`;
+  }).join("") : `<div class="empty">No email drafts generated yet. Open a brand profile to draft with Gemini.</div>`;
+
+  const hasActiveFilters = Object.keys(st.filters).length > 0;
+
+  document.getElementById("content").innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi-card" style="cursor:default;">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Drafted Outreach</span>
+          <div class="kpi-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value">${totalDrafts}</div>
+        <div class="kpi-hint"><span>Prepared emails</span></div>
+      </div>
+
+      <div class="kpi-card" style="cursor:default;">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Accounts Covered</span>
+          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--info)">${brandsCovered}</div>
+        <div class="kpi-hint"><span>Unique brands</span></div>
+      </div>
+
+      <div class="kpi-card" style="cursor:default;">
+        <div class="kpi-card-top">
+          <span class="kpi-label">AI Integration</span>
+          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--low)">Active</div>
+        <div class="kpi-hint"><span>Gemini grounding enabled</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="table-controls-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchBox" class="search-input" placeholder="Search drafted emails by brand, subject, contents..." />
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        ${hasActiveFilters ? `
+          <div class="active-filter-banner">
+            <span>Filtered (${rows.length} drafts)</span>
+            <button class="filter-clear-btn" onclick="clearTabFilters('emails')">Clear Filter</button>
+          </div>
+        ` : ""}
+
+        <select id="emailBrandSelect" onchange="setTabFilter('emails', 'brand', this.value)" style="padding:8px 12px;">
+          <option value="">All Brands</option>
+          ${distinctBrands.map(b => `<option value="${escapeAttr(b)}" ${st.filters.brand === b ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <div>${cards}</div>
+  `;
+
+  wireSearchForTab("emails");
 }
 
+/* ---------------- Master Tab Router ---------------- */
 function renderTab(tab){
   currentTab = tab;
   window.__viewingBrand = null;
   document.querySelectorAll(".nav-item-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   if (!workbookData["Brands Master"]) return;
   if (tab === "overview") return renderOverview();
-  if (tab === "news") return genericTable("News feed", { sortDateField: "Date" });
+  if (tab === "news") return renderNews();
   if (tab === "opportunities") return renderOpportunities();
-  if (tab === "contacts") return genericTable("Contacts");
+  if (tab === "contacts") return renderContacts();
   if (tab === "competitors") return renderCompetitors();
-  if (tab === "emails") return genericTable("Email Drafts");
+  if (tab === "emails") return renderEmails();
 }
 
-/* ---------------- Brand Detail Page ---------------- */
+/* ==========================================================================
+   BRAND DETAIL VIEW
+   ========================================================================== */
 function copyToClipboard(text, btnEl){
   navigator.clipboard.writeText(text).then(() => {
     if (btnEl) {
@@ -2037,6 +1562,7 @@ function copyToClipboard(text, btnEl){
     }
   });
 }
+
 function copyEmailRich(subject, htmlBody, btnEl){
   const plain = subject + "\n\n" + htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n");
   const richHtml = `<p><strong>Subject: ${subject}</strong></p>${htmlBody}`;
@@ -2050,6 +1576,7 @@ function copyEmailRich(subject, htmlBody, btnEl){
     copyToClipboard(plain, btnEl);
   }
 }
+
 function flashCopied(btnEl){
   if (!btnEl) return;
   const old = btnEl.textContent;
