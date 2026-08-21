@@ -1109,10 +1109,10 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   color: #ffffff;
 }
 
-/* Competitor Watch Section & Cards */
+/* Competitor Watch Section & Clean Cards */
 .competitor-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 20px;
 }
 .competitor-card {
@@ -1126,6 +1126,7 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   justify-content: space-between;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
 }
 .competitor-card:hover {
   border-color: var(--accent);
@@ -1144,22 +1145,42 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   align-items: center;
   gap: 12px;
 }
+.competitor-logo-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  padding: 6px;
+}
+.competitor-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
 .competitor-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text-primary);
   font-weight: 800;
-  font-size: 15px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 .competitor-title {
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.2;
@@ -1169,33 +1190,16 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   font-size: 11.5px;
   color: var(--text-muted);
 }
 .competitor-headline {
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
-  line-height: 1.4;
-}
-.competitor-summary-text {
-  font-size: 12.5px;
-  line-height: 1.65;
-  color: var(--text-secondary);
-  margin-bottom: 14px;
-}
-.competitor-analysis-box {
-  display: none;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px;
-  margin: 12px 0;
-  font-size: 12.5px;
-  line-height: 1.65;
-  color: var(--text-primary);
+  margin-bottom: 16px;
+  line-height: 1.45;
 }
 .competitor-card-footer {
   display: flex;
@@ -1205,44 +1209,96 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   padding-top: 14px;
   border-top: 1px solid var(--border-light);
   margin-top: auto;
-  flex-wrap: wrap;
 }
-.expand-toggle-link {
-  background: transparent;
-  border: none;
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-}
-.expand-toggle-link:hover {
-  text-decoration: underline;
-}
-.track-brand-btn {
+.detail-cta-btn {
   background: var(--accent-soft);
   border: 1px solid var(--accent);
   color: var(--accent);
-  padding: 6px 12px;
+  padding: 7px 14px;
   border-radius: var(--radius-sm);
-  font-size: 11.5px;
-  cursor: pointer;
+  font-size: 12px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
   transition: var(--transition);
 }
-.track-brand-btn:hover {
+.competitor-card:hover .detail-cta-btn {
   background: var(--accent);
   color: #ffffff;
 }
-.track-brand-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-  background: var(--bg-elevated);
-  border-color: var(--border);
-  color: var(--text-muted);
+
+/* Competitor Detail Full-Page View */
+.competitor-detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.competitor-hero-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+.competitor-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.competitor-hero-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 8px;
+  box-shadow: var(--shadow-md);
+}
+.competitor-hero-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.competitor-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.strategic-analysis-content {
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--text-primary);
+  white-space: pre-line;
+}
+.strategic-analysis-content p {
+  margin-bottom: 14px;
+}
+.opportunity-callout-box {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-top: 18px;
+}
+.opportunity-callout-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 768px) {
