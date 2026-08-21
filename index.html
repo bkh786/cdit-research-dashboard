@@ -81,15 +81,6 @@
         <span class="nav-item-label">Competitor Watch</span>
         <span class="nav-badge" id="badgeCompetitors">0</span>
       </button>
-
-      <button class="nav-item-btn" data-tab="emails" data-title="Email Drafts">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-          <polyline points="22,6 12,13 2,6"></polyline>
-        </svg>
-        <span class="nav-item-label">Email Drafts</span>
-        <span class="nav-badge" id="badgeEmails">0</span>
-      </button>
     </div>
 
     <div class="sidebar-footer">
@@ -282,7 +273,7 @@ function updateSidebarBadges(){
   document.getElementById("badgeOpps").textContent = opps.length;
   document.getElementById("badgeContacts").textContent = contacts.length;
   document.getElementById("badgeCompetitors").textContent = competitors.length;
-  document.getElementById("badgeEmails").textContent = emails.length;
+  if (document.getElementById("badgeEmails")) document.getElementById("badgeEmails").textContent = emails.length;
 }
 
 async function loadWorkbook(pw){
@@ -572,6 +563,7 @@ function wireSearchForTab(tabName){
    ========================================================================== */
 function renderOverview(){
   window.__viewingBrand = null;
+  window.__viewingCompetitor = null;
   const st = tabState.overview;
   const brands = workbookData["Brands Master"] || [];
   const opps = workbookData["Opportunities"] || [];
@@ -595,18 +587,24 @@ function renderOverview(){
   let rowsData = brands.map(b => {
     const top = topOppByBrand[b["Brand"]];
     const latest = latestResearchMap[b["Brand"]] || { date: b["Date Added"] || "-", snippet: "" };
+    const summarySnippet = top
+      ? (top["Business Impact"] || top["Opportunity for Channelplay"] || `Tracked in ${b["Sector"] || "Consumer Electronics"} CRM portfolio.`)
+      : (b["Status Notes"] || `Tracked in ${b["Sector"] || "Consumer Electronics"} CRM portfolio · Ready for research and scoring.`);
+
     return {
       brand: b["Brand"],
       sector: b["Sector"] || "",
       segment: b["Segment"] || "",
       priorityTier: b["Priority Tier"] || "Low",
-      topOpportunity: top ? top["Opportunity Type"] : "-",
+      topOpportunity: top ? top["Opportunity Type"] : "Research in Progress",
+      businessImpact: top ? top["Business Impact"] : "",
       score: top ? Number(top["Priority Score (1-5)"]) || 0 : 0,
       scoreText: top ? top["Priority Score (1-5)"] : "-",
       pipelineStage: pipelineByBrand[b["Brand"]] || "Prospect",
       dateAdded: b["Date Added"] || "-",
       latestResearch: latest.date || "-",
       latestResearchSnippet: latest.snippet || "",
+      summarySnippet: summarySnippet,
       hasOpp: !!top
     };
   });
@@ -637,12 +635,67 @@ function renderOverview(){
     return 0;
   });
 
+  const viewMode = st.viewMode || "grid";
   const distinctTiers = [...new Set(brands.map(b => b["Priority Tier"]).filter(Boolean))];
   const distinctStages = [...new Set(pipeline.map(p => p["Stage"]).filter(Boolean))];
 
+  // Card Grid rendering
+  const gridCards = rowsData.length ? rowsData.map(r => {
+    return `
+    <div class="brand-crm-card" onclick="showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')" title="Click to view full brand profile and intelligence">
+      <div>
+        <div class="brand-card-header">
+          <div class="brand-card-identity">
+            ${renderBrandLogoHtml(r.brand, 44)}
+            <div>
+              <div class="brand-card-title">${escapeHtml(r.brand)}</div>
+              <div class="brand-card-subtitle">${escapeHtml(r.sector)}${r.segment ? " · " + escapeHtml(r.segment) : ""}</div>
+            </div>
+          </div>
+          <span class="pill ${escapeHtml(r.priorityTier)}">${escapeHtml(r.priorityTier)} Priority</span>
+        </div>
+
+        <div class="brand-card-badges">
+          <span class="pill ${r.score >= 4 ? "High" : r.score === 3 ? "Medium" : "Low"}">
+            ★ Score: ${r.score ? `${r.score}/5` : "Unrated"}
+          </span>
+          <span class="pill Stage">${escapeHtml(r.pipelineStage)}</span>
+        </div>
+
+        <div class="brand-card-opp-box">
+          <div class="brand-card-opp-header">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <span>Top Opportunity</span>
+          </div>
+          <div class="brand-card-opp-title">${escapeHtml(r.topOpportunity)}</div>
+        </div>
+
+        <div class="brand-card-summary-snippet">
+          ${escapeHtml(r.summarySnippet)}
+        </div>
+      </div>
+
+      <div class="brand-card-footer">
+        <button class="detail-cta-btn" onclick="event.stopPropagation(); showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">
+          <span>View Brand Profile</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join("") : `<div class="empty" style="grid-column:1/-1;">No brands matching the selected criteria.</div>`;
+
+  // Table rows rendering
   const tableRows = rowsData.length ? rowsData.map(r => `
     <tr>
-      <td>${brandLink(r.brand, r.segment ? `${r.sector} · ${r.segment}` : r.sector)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${renderBrandLogoHtml(r.brand, 32)}
+          <div>
+            <div style="font-weight:700;color:var(--text-primary);cursor:pointer;" onclick="showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">${escapeHtml(r.brand)}</div>
+            <div style="font-size:11.5px;color:var(--text-secondary);">${escapeHtml(r.segment ? `${r.sector} · ${r.segment}` : r.sector)}</div>
+          </div>
+        </div>
+      </td>
       <td><span class="pill ${escapeHtml(r.priorityTier)}">${escapeHtml(r.priorityTier)}</span></td>
       <td>${escapeHtml(r.topOpportunity)}</td>
       <td>
@@ -741,46 +794,67 @@ function renderOverview(){
           <option value="">All Stages</option>
           ${distinctStages.map(s => `<option value="${escapeAttr(s)}" ${st.filters.pipelineStage === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
         </select>
+
+        <!-- View Mode Switcher -->
+        <div class="view-switcher">
+          <button class="view-switch-btn ${viewMode === 'grid' ? 'active' : ''}" onclick="setOverviewViewMode('grid')" title="Card View">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Cards</span>
+          </button>
+          <button class="view-switch-btn ${viewMode === 'table' ? 'active' : ''}" onclick="setOverviewViewMode('table')" title="Table View">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <span>Table</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="crm-panel">
-      <div class="table-responsive">
-        <table class="crm-table" id="dataTable">
-          <thead>
-            <tr>
-              <th class="sortable ${st.sortCol === 'brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'brand')">
-                <div class="th-content">Brand & Sector ${sortIndicator('overview', 'brand')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'priorityTier' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'priorityTier')">
-                <div class="th-content">Priority Tier ${sortIndicator('overview', 'priorityTier')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'topOpportunity' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'topOpportunity')">
-                <div class="th-content">Top Opportunity ${sortIndicator('overview', 'topOpportunity')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'score' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'score', true)">
-                <div class="th-content">Score ${sortIndicator('overview', 'score')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'pipelineStage' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'pipelineStage')">
-                <div class="th-content">Pipeline Stage ${sortIndicator('overview', 'pipelineStage')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'latestResearch' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'latestResearch', true)">
-                <div class="th-content">Latest Research ${sortIndicator('overview', 'latestResearch')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'dateAdded' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'dateAdded', true)">
-                <div class="th-content">Date Added ${sortIndicator('overview', 'dateAdded')}</div>
-              </th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
+    <!-- Main View Content (Cards or Table) -->
+    ${viewMode === 'grid' ? `
+      <div class="overview-grid">${gridCards}</div>
+    ` : `
+      <div class="crm-panel">
+        <div class="table-responsive">
+          <table class="crm-table" id="dataTable">
+            <thead>
+              <tr>
+                <th class="sortable ${st.sortCol === 'brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'brand')">
+                  <div class="th-content">Brand & Sector ${sortIndicator('overview', 'brand')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'priorityTier' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'priorityTier')">
+                  <div class="th-content">Priority Tier ${sortIndicator('overview', 'priorityTier')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'topOpportunity' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'topOpportunity')">
+                  <div class="th-content">Top Opportunity ${sortIndicator('overview', 'topOpportunity')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'score' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'score', true)">
+                  <div class="th-content">Score ${sortIndicator('overview', 'score')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'pipelineStage' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'pipelineStage')">
+                  <div class="th-content">Pipeline Stage ${sortIndicator('overview', 'pipelineStage')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'latestResearch' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'latestResearch', true)">
+                  <div class="th-content">Latest Research ${sortIndicator('overview', 'latestResearch')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'dateAdded' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'dateAdded', true)">
+                  <div class="th-content">Date Added ${sortIndicator('overview', 'dateAdded')}</div>
+                </th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    `}
   `;
 
   wireSearchForTab("overview");
+}
+
+function setOverviewViewMode(mode){
+  tabState.overview.viewMode = mode;
+  renderOverview();
 }
 
 /* ==========================================================================
@@ -1870,6 +1944,7 @@ function renderBrandDetail(brandName){
   const allContacts = workbookData["Contacts"] || [];
   const allPipeline = workbookData["Pipeline"] || [];
   const allDrafts = workbookData["Email Drafts"] || [];
+  const latestResearchMap = getBrandLatestResearchMap();
 
   const brand = brands.find(b => b["Brand"] === brandName) || { "Brand": brandName };
   const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandName), "Date");
@@ -1879,13 +1954,14 @@ function renderBrandDetail(brandName){
   const pipelineRow = allPipeline.find(p => p["Brand"] === brandName);
   const sheetDraft = allDrafts.find(d => d["Brand"] === brandName && d["Subject"]);
   const topOpp = opps[0];
+  const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
 
   const execSummary = buildExecSummary(brand, topOpp, news, pipelineRow);
   const newsHtml = news.length ? news.map(n => `
     <div class="news-item">
       <div class="meta"><span class="cat-tag">${escapeHtml(n["Category"])}</span><span>${escapeHtml(n["Date"])}</span><span>· ${escapeHtml(n["Source"])}</span></div>
       <h4>${escapeHtml(n["Headline"])}</h4>
-      <p>${escapeHtml(n["AI Summary"])}</p>
+      <p>${escapeHtml(n["AI Summary"] || n["Summary"] || "")}</p>
       ${n["URL"] ? `<a href="${escapeAttr(n["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">View source &#8594;</a>` : ""}
     </div>`).join("") : `<div class="empty">No news items tracked for this brand yet.</div>`;
 
@@ -1919,15 +1995,18 @@ function renderBrandDetail(brandName){
 
     <div class="detail-hero">
       <div class="detail-hero-left">
-        <div class="detail-hero-icon">${escapeHtml(brand["Brand"].charAt(0))}</div>
+        ${renderBrandLogoHtml(brand["Brand"], 64, "brand-hero-logo")}
         <div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-            <h2>${escapeHtml(brand["Brand"])}</h2>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+            <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;margin:0;">${escapeHtml(brand["Brand"])}</h2>
             <span class="pill ${escapeHtml(brand["Priority Tier"] || "Low")}">${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</span>
+            <span class="pill ${topOpp ? (Number(topOpp["Priority Score (1-5)"]) >= 4 ? "High" : "Medium") : "Low"}">★ Score: ${topOpp ? topOpp["Priority Score (1-5)"] : "-"}/5</span>
             ${pipelineRow ? `<span class="pill Stage">${escapeHtml(pipelineRow["Stage"])}</span>` : ""}
           </div>
-          <div style="color:var(--text-secondary);font-size:13px;">
-            ${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}
+          <div style="color:var(--text-secondary);font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span>${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}</span>
+            <span>· 📅 <strong>Added:</strong> ${escapeHtml(brand["Date Added"] || "-")}</span>
+            <span>· 🔍 <strong>Latest Research:</strong> ${escapeHtml(latestResearch.date || "-")} (${formatRelativeDate(latestResearch.date)})</span>
             ${brand["Website"] ? ` · <a href="https://${escapeAttr(brand["Website"].replace(/^https?:\/\//,""))}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">${escapeHtml(brand["Website"])} &#8599;</a>` : ""}
           </div>
         </div>
@@ -1989,7 +2068,7 @@ function renderBrandDetail(brandName){
         <div class="section-card contact-card">
           <h3>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            Key Contact
+            Key Contact & Decision Maker
           </h3>
           ${contactHtml}
         </div>
@@ -1997,7 +2076,7 @@ function renderBrandDetail(brandName){
         <div class="section-card">
           <h3>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            Opportunity Score
+            Opportunity Score Breakdown
           </h3>
           ${topOpp ? `
             <div class="score-line">
@@ -2028,7 +2107,7 @@ function renderBrandDetail(brandName){
 
   document.getElementById("copyEmailBtn").addEventListener("click", (e) => {
     const state = window.__emailDraftState;
-    copyEmailRich(state.subject, state.bodyHtml, e.target);
+    if (state) copyEmailRich(state.subject, state.bodyHtml, e.target);
   });
   document.getElementById("aiDraftBtn").addEventListener("click", (e) => {
     generateAiEmailDraft(brandName, brand, topOpp, news, contact, e.target);
@@ -2040,6 +2119,50 @@ function renderBrandDetail(brandName){
     const newStage = document.getElementById("stageSelect").value;
     updatePipelineStage(brandName, newStage, e.target, document.getElementById("stageSaveNote"));
   });
+}
+
+function renderContactCard(contact){
+  const name = contact ? contact["Decision Maker Name"] : "";
+  const designation = contact ? contact["Designation"] : "";
+  const dept = contact ? contact["Department"] : "";
+  const email = contact ? contact["Official Email (public only)"] : "";
+  const phone = contact ? contact["Official Contact Number (public only)"] : "";
+  const location = contact ? contact["Office Location"] : "";
+  const linkedin = contact ? contact["LinkedIn Profile"] : "";
+  const status = contact ? contact["Research Status"] : "";
+
+  const hasLinkedIn = linkedin && !/not yet|not researched|search /i.test(linkedin);
+
+  const fields = [
+    { label: "Decision Maker Name", value: name || "Leadership Research Pending", copyable: false },
+    { label: "Designation", value: designation || "Not Specified", copyable: false },
+    { label: "Department", value: dept || "Leadership & Strategy", copyable: false },
+    { label: "Official Email", value: email || "Pending / Not Public", copyable: !!email },
+    { label: "Official Contact Number", value: phone || "Pending / Not Public", copyable: !!phone },
+    { label: "Office Location", value: location || "India Headquarters", copyable: false },
+    { label: "Research Status", value: status || (name ? "Verified Lead" : "In Research Queue"), copyable: false }
+  ];
+
+  let html = fields.map(f => `
+    <div class="cf">
+      <div>
+        <div class="cf-label">${escapeHtml(f.label)}</div>
+        <div class="cf-value">${escapeHtml(f.value)}</div>
+      </div>
+      ${f.copyable ? `<button class="copy-btn" onclick="copyToClipboard('${escapeAttr(f.value)}', this)">Copy</button>` : ""}
+    </div>`).join("");
+
+  html += `
+    <div class="cf">
+      <div>
+        <div class="cf-label">LinkedIn Profile</div>
+        <div class="cf-value">
+          ${hasLinkedIn ? `<a href="${escapeAttr(linkedin)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">View Profile &#8599;</a>` : `<span style="color:var(--text-muted);">Search Pending</span>`}
+        </div>
+      </div>
+    </div>`;
+
+  return html;
 }
 
 async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, btnEl){
@@ -2140,29 +2263,6 @@ function buildEmailDraft(brand, topOpp, news, sheetDraft){
     <p>Best regards,<br>Bikash Roy<br>Group Program Manager, Channelplay</p>
   `;
   return { subject, bodyHtml, isTemplate: true };
-}
-
-function renderContactCard(contact){
-  if (!contact || (!contact["Decision Maker Name"] && !contact["Official Email (public only)"])) {
-    return `<div class="empty" style="padding:10px 0;">Contact research pending${contact && contact["Research Status"] ? " — " + escapeHtml(contact["Research Status"]) : ""}.</div>`;
-  }
-  const rows = [
-    ["Name", contact["Decision Maker Name"]],
-    ["Designation", contact["Designation"]],
-    ["Department", contact["Department"]],
-    ["Email", contact["Official Email (public only)"]],
-    ["Phone", contact["Official Contact Number (public only)"]],
-    ["Location", contact["Office Location"]],
-  ].filter(([, v]) => v);
-  let html = rows.map(([label, val]) => `
-    <div class="cf">
-      <div><div class="cf-label">${label}</div><div class="cf-value">${escapeHtml(val)}</div></div>
-      <button class="copy-btn" data-copy="${escapeAttr(val)}">Copy</button>
-    </div>`).join("");
-  if (contact["LinkedIn Profile"] && !/not yet|not researched|search /i.test(contact["LinkedIn Profile"])) {
-    html += `<div class="cf"><div><div class="cf-label">LinkedIn</div><div class="cf-value"><a href="${escapeAttr(contact["LinkedIn Profile"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">Profile &#8594;</a></div></div></div>`;
-  }
-  return html || `<div class="empty" style="padding:10px 0;">Contact research pending.</div>`;
 }
 
 /* ---------------- Event Listeners & Bootstrapping ---------------- */
