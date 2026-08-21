@@ -427,6 +427,8 @@ async function updatePipelineStage(brandName, newStage, btnEl, noteEl){
     if (!resp.ok || data.error) throw new Error(data.error || "Failed to update stage");
     noteEl.textContent = "Saved.";
     noteEl.style.display = "block";
+    const heroBadge = document.getElementById("heroStageBadge");
+    if (heroBadge) heroBadge.textContent = newStage;
     await refresh();
   } catch (e) {
     noteEl.textContent = "Failed: " + e.message;
@@ -2001,7 +2003,7 @@ function renderBrandDetail(brandName){
             <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;margin:0;">${escapeHtml(brand["Brand"])}</h2>
             <span class="pill ${escapeHtml(brand["Priority Tier"] || "Low")}">${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</span>
             <span class="pill ${topOpp ? (Number(topOpp["Priority Score (1-5)"]) >= 4 ? "High" : "Medium") : "Low"}">★ Score: ${topOpp ? topOpp["Priority Score (1-5)"] : "-"}/5</span>
-            ${pipelineRow ? `<span class="pill Stage">${escapeHtml(pipelineRow["Stage"])}</span>` : ""}
+            <span class="pill Stage" id="heroStageBadge">${escapeHtml(currentStage)}</span>
           </div>
           <div style="color:var(--text-secondary);font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span>${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}</span>
@@ -2010,6 +2012,18 @@ function renderBrandDetail(brandName){
             ${brand["Website"] ? ` · <a href="https://${escapeAttr(brand["Website"].replace(/^https?:\/\//,""))}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">${escapeHtml(brand["Website"])} &#8599;</a>` : ""}
           </div>
         </div>
+      </div>
+
+      <div class="detail-hero-pipeline">
+        <div class="pipeline-hero-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+          <span>Pipeline Stage</span>
+        </div>
+        <div class="pipeline-hero-controls">
+          <select id="stageSelect" class="pipeline-hero-select">${stageOptions}</select>
+          <button class="btn tiny" id="saveStageBtn">Save</button>
+        </div>
+        <div class="save-note" id="stageSaveNote" style="margin-top:2px;"></div>
       </div>
     </div>
 
@@ -2085,18 +2099,6 @@ function renderBrandDetail(brandName){
               ${starRow(topOpp["Confidence Score (1-5)"])}
             </div>
           ` : `<div class="empty" style="padding:10px 0;">Not yet scored</div>`}
-        </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-            Pipeline Stage
-          </h3>
-          <div class="pipeline-editor">
-            <select id="stageSelect">${stageOptions}</select>
-            <button class="btn tiny" id="saveStageBtn">Save</button>
-          </div>
-          <div class="save-note" id="stageSaveNote"></div>
         </div>
       </div>
     </div>
