@@ -198,7 +198,7 @@ let tabState = {
   news: { kpiFilter: null, sortCol: "Date", sortDir: "desc", filters: {}, query: "" },
   opportunities: { kpiFilter: null, sortCol: "Priority Score (1-5)", sortDir: "desc", filters: {}, query: "" },
   contacts: { kpiFilter: null, sortCol: "Brand", sortDir: "asc", filters: {}, query: "" },
-  competitors: { kpiFilter: null, filterCategory: "All", query: "" },
+  competitors: { kpiFilter: null, sortCol: "Date", sortDir: "desc", filterCompetitor: "", filterCategory: "", viewMode: "table", query: "" },
   emails: { kpiFilter: null, filters: {}, query: "" }
 };
 
@@ -1331,47 +1331,151 @@ function renderCompetitors(){
   const totalEntries = rows.length;
   const trackedBrands = new Set((workbookData["Brands Master"] || []).map(b => b["Brand"]));
   const distinctCompetitors = [...new Set(rows.map(r => r["Competitor"]).filter(Boolean))].sort();
+  const distinctCategories = [...new Set(rows.map(r => r["Category"]).filter(Boolean))].sort();
   const untrackedCount = distinctCompetitors.filter(c => !trackedBrands.has(c)).length;
   const trackedCount = distinctCompetitors.filter(c => trackedBrands.has(c)).length;
+  const expansionCount = rows.filter(r => /retail|store|expansion|launch|flagship|market|fund/i.test(r["Headline"] + " " + r["Category"])).length;
 
-  const sorted = sortByDateDesc(rows, "Date");
-  const filterOptions = ["All", ...distinctCompetitors];
-  const activeFilter = st.filterCategory || "All";
-
-  const pills = filterOptions.map(c => `
-    <button class="filter-pill ${c === activeFilter ? "active" : ""}" onclick="setCompetitorFilter('${escapeAttr(c).replace(/'/g, "&#39;")}')">${escapeHtml(c)}</button>`).join("");
-
-  let visible = activeFilter === "All" ? sorted : sorted.filter(r => r["Competitor"] === activeFilter);
-
+  // KPI Filter
   if (st.kpiFilter === "untracked") {
-    visible = visible.filter(r => r["Competitor"] && !trackedBrands.has(r["Competitor"]));
+    rows = rows.filter(r => r["Competitor"] && !trackedBrands.has(r["Competitor"]));
   } else if (st.kpiFilter === "tracked") {
-    visible = visible.filter(r => r["Competitor"] && trackedBrands.has(r["Competitor"]));
+    rows = rows.filter(r => r["Competitor"] && trackedBrands.has(r["Competitor"]));
+  } else if (st.kpiFilter === "expansion") {
+    rows = rows.filter(r => /retail|store|expansion|launch|flagship|market|fund/i.test(r["Headline"] + " " + r["Category"]));
   }
 
-  const list = visible.map((r, i) => {
-    const competitorName = r["Competitor"] || "";
-    const isTracked = competitorName && trackedBrands.has(competitorName);
-    const trackBtn = competitorName ? `
-      <div><button class="track-brand-btn" ${isTracked ? "disabled" : ""} onclick="event.stopPropagation(); addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">${isTracked ? "Already tracked ✓" : "+ Track with AI Research"}</button></div>` : "";
+  // Dropdown Filter
+  if (st.filterCompetitor) {
+    rows = rows.filter(r => String(r["Competitor"] || "").toLowerCase() === st.filterCompetitor.toLowerCase());
+  }
+  if (st.filterCategory && st.filterCategory !== "All") {
+    rows = rows.filter(r => String(r["Category"] || "").toLowerCase() === st.filterCategory.toLowerCase());
+  }
+
+  // Sorting
+  rows.sort((a, b) => {
+    const vA = String(a[st.sortCol] || "").toLowerCase();
+    const vB = String(b[st.sortCol] || "").toLowerCase();
+    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
+    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const viewMode = st.viewMode || "table";
+
+  // Table View rendering
+  const tableRows = rows.length ? rows.map((r, i) => {
+    const competitorName = r["Competitor"] || "Competitor";
+    const isTracked = trackedBrands.has(competitorName);
+    const related = r["Related Tracked Brand"] || "-";
+    const fullAnalysis = r["Full Analysis"] || r["Summary"] || "";
+
+    const trackBtn = isTracked
+      ? `<button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(competitorName).replace(/'/g,"&#39;")}')">View Profile &#8594;</button>`
+      : `<button class="track-brand-btn tiny" onclick="addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">+ Track (Gemini)</button>`;
+
     return `
-    <div class="competitor-card" onclick="toggleCompetitorItem(${i})">
-      <div class="meta"><span class="cat-tag">${escapeHtml(r["Category"] || r["Related Tracked Brand"] || "")}</span><span>${escapeHtml(r["Date"])}</span><span>· ${escapeHtml(r["Source"])}</span></div>
-      <h4>${escapeHtml(r["Headline"])}</h4>
-      <p>${escapeHtml(r["Summary"])}</p>
-      <div id="competitor-expand-${i}" class="expand">
-        <p><strong>Competitor:</strong> ${escapeHtml(r["Competitor"])} &nbsp;·&nbsp; <strong>Related to:</strong> ${escapeHtml(r["Related Tracked Brand"])}</p>
-        <p>${escapeHtml(r["Full Analysis"] || r["Summary"])}</p>
-        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:600;">View source article &#8594;</a>` : ""}
+    <tr>
+      <td style="width:130px;">
+        <div class="date-cell">
+          <span class="date-primary">${escapeHtml(r["Date"] || "-")}</span>
+          <span class="date-relative">${formatRelativeDate(r["Date"])}</span>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="competitor-avatar" style="width:32px;height:32px;font-size:12px;border-radius:8px;">
+            ${escapeHtml(competitorName.charAt(0))}
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--text-primary);">${escapeHtml(competitorName)}</div>
+            <div><span class="pill ${isTracked ? "Low" : "High"}" style="font-size:10px;padding:1px 6px;">${isTracked ? "In CRM" : "New Target"}</span></div>
+          </div>
+        </div>
+      </td>
+      <td>
+        ${related !== "-" ? brandLink(related) : `<span style="color:var(--text-muted);">-</span>`}
+      </td>
+      <td><span class="pill Category">${escapeHtml(r["Category"] || "Market Signal")}</span></td>
+      <td style="max-width:460px;">
+        <div style="font-weight:700;color:var(--text-primary);margin-bottom:4px;line-height:1.4;">${escapeHtml(r["Headline"] || "-")}</div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">${escapeHtml(r["Summary"] || "")}</div>
+        <div id="competitor-expand-${i}" class="competitor-analysis-box">
+          <div style="font-weight:700;margin-bottom:6px;font-size:12px;color:var(--accent);">Deep Strategic Intelligence:</div>
+          <div>${escapeHtml(fullAnalysis)}</div>
+        </div>
+        <div style="margin-top:6px;">
+          <button class="expand-toggle-link" onclick="toggleCompetitorItem(${i})">
+            <span id="competitor-hint-${i}">View Full Strategic Analysis &#8595;</span>
+          </button>
+        </div>
+      </td>
+      <td>
+        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;font-size:12px;">${escapeHtml(r["Source"] || "Source")} &#8599;</a>` : `<span style="color:var(--text-muted);font-size:12px;">${escapeHtml(r["Source"] || "-")}</span>`}
+      </td>
+      <td>${trackBtn}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="7" class="empty">No competitor intelligence matching the selected filter.</td></tr>`;
+
+  // Grid View rendering
+  const gridCards = rows.length ? rows.map((r, i) => {
+    const competitorName = r["Competitor"] || "Competitor";
+    const isTracked = trackedBrands.has(competitorName);
+    const related = r["Related Tracked Brand"] || "-";
+    const fullAnalysis = r["Full Analysis"] || r["Summary"] || "";
+
+    const trackBtn = isTracked
+      ? `<button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(competitorName).replace(/'/g,"&#39;")}')">View Profile &#8594;</button>`
+      : `<button class="track-brand-btn" onclick="addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">+ Track Brand with Gemini</button>`;
+
+    return `
+    <div class="competitor-card">
+      <div>
+        <div class="competitor-card-header">
+          <div class="competitor-identity">
+            <div class="competitor-avatar">${escapeHtml(competitorName.charAt(0))}</div>
+            <div>
+              <div class="competitor-title">${escapeHtml(competitorName)}</div>
+              <span class="pill ${isTracked ? "Low" : "High"}" style="font-size:10.5px;margin-top:2px;">${isTracked ? "Tracked in CRM" : "New Adjacent Target"}</span>
+            </div>
+          </div>
+          <span class="pill Category">${escapeHtml(r["Category"] || "Market Move")}</span>
+        </div>
+
+        <div class="competitor-meta-row">
+          <span>📅 ${escapeHtml(r["Date"])} (${formatRelativeDate(r["Date"])})</span>
+          ${r["Source"] ? `<span>· 📰 ${escapeHtml(r["Source"])}</span>` : ""}
+          ${related !== "-" ? `<span>· 🎯 Related to <strong>${escapeHtml(related)}</strong></span>` : ""}
+        </div>
+
+        <div class="competitor-headline">${escapeHtml(r["Headline"] || "-")}</div>
+        <div class="competitor-summary-text">${escapeHtml(r["Summary"] || "")}</div>
+
+        <div id="competitor-grid-expand-${i}" class="competitor-analysis-box">
+          <div style="font-weight:700;margin-bottom:6px;font-size:12px;color:var(--accent);">Deep Strategic Intelligence:</div>
+          <div>${escapeHtml(fullAnalysis)}</div>
+        </div>
       </div>
-      <div class="expand-hint" id="competitor-hint-${i}">Click to expand analysis &#8595;</div>
-      ${trackBtn}
+
+      <div class="competitor-card-footer">
+        <button class="expand-toggle-link" onclick="toggleCompetitorGridItem(${i})">
+          <span id="competitor-grid-hint-${i}">Expand Analysis &#8595;</span>
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;font-size:12px;">Article &#8599;</a>` : ""}
+          ${trackBtn}
+        </div>
+      </div>
     </div>`;
-  }).join("");
+  }).join("") : `<div class="empty" style="grid-column:1/-1;">No competitor intelligence matching the selected filter.</div>`;
+
+  const hasActiveFilters = st.kpiFilter || st.filterCompetitor || (st.filterCategory && st.filterCategory !== "All");
 
   document.getElementById("content").innerHTML = `
+    <!-- KPI Grid -->
     <div class="kpi-grid">
-      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'all')" title="Click to view all competitor updates">
+      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'all')" title="Click to view all competitor market signals">
         <div class="kpi-card-top">
           <span class="kpi-label">Market Signals</span>
           <div class="kpi-icon-wrap">
@@ -1379,21 +1483,21 @@ function renderCompetitors(){
           </div>
         </div>
         <div class="kpi-value">${totalEntries}</div>
-        <div class="kpi-hint"><span>Monitored items</span><span class="kpi-filter-tag">Filter Active</span></div>
+        <div class="kpi-hint"><span>All recorded signals</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
 
-      <div class="kpi-card ${st.kpiFilter === 'untracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'untracked')" title="Click to filter new untracked brands">
+      <div class="kpi-card ${st.kpiFilter === 'untracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'untracked')" title="Click to filter new untracked targets">
         <div class="kpi-card-top">
-          <span class="kpi-label">Adjacent Players</span>
+          <span class="kpi-label">Adjacent Players (Untracked)</span>
           <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           </div>
         </div>
         <div class="kpi-value" style="color:var(--high)">${untrackedCount}</div>
-        <div class="kpi-hint"><span>New targets to track</span><span class="kpi-filter-tag">Filter Active</span></div>
+        <div class="kpi-hint"><span>New accounts to track</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
 
-      <div class="kpi-card ${st.kpiFilter === 'tracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'tracked')" title="Click to filter tracked competitors">
+      <div class="kpi-card ${st.kpiFilter === 'tracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'tracked')" title="Click to filter tracked competitors in CRM">
         <div class="kpi-card-top">
           <span class="kpi-label">Tracked Competitors</span>
           <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
@@ -1401,18 +1505,18 @@ function renderCompetitors(){
           </div>
         </div>
         <div class="kpi-value" style="color:var(--low)">${trackedCount}</div>
-        <div class="kpi-hint"><span>In active CRM pipeline</span><span class="kpi-filter-tag">Filter Active</span></div>
+        <div class="kpi-hint"><span>In active CRM tracking</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
 
-      <div class="kpi-card" style="cursor:default;">
+      <div class="kpi-card ${st.kpiFilter === 'expansion' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'expansion')" title="Click to filter retail expansion and product launches">
         <div class="kpi-card-top">
-          <span class="kpi-label">AI Research Engine</span>
-          <div class="kpi-icon-wrap" style="color:var(--accent);background:var(--accent-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="kpi-label">Expansions & Launches</span>
+          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
           </div>
         </div>
-        <div class="kpi-value" style="color:var(--accent)">Gemini</div>
-        <div class="kpi-hint"><span>One-click brand tracking</span></div>
+        <div class="kpi-value" style="color:var(--info)">${expansionCount}</div>
+        <div class="kpi-hint"><span>High impact moves</span><span class="kpi-filter-tag">Filter Active</span></div>
       </div>
     </div>
 
@@ -1420,27 +1524,110 @@ function renderCompetitors(){
     <div class="table-controls-bar">
       <div class="search-input-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search competitor insights, brands, actions..." />
+        <input type="text" id="searchBox" class="search-input" placeholder="Search competitor intel, players, headlines, categories..." />
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        ${hasActiveFilters ? `
+          <div class="active-filter-banner">
+            <span>Active Filters (${rows.length} signals)</span>
+            <button class="filter-clear-btn" onclick="clearTabFilters('competitors')">Clear Filter</button>
+          </div>
+        ` : ""}
+
+        <select id="competitorSelect" onchange="setCompetitorNameFilter(this.value)" style="padding:8px 12px;">
+          <option value="">All Competitors / Players</option>
+          ${distinctCompetitors.map(c => `<option value="${escapeAttr(c)}" ${st.filterCompetitor === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+        </select>
+
+        <select id="competitorCategorySelect" onchange="setCompetitorCategoryFilter(this.value)" style="padding:8px 12px;">
+          <option value="">All Categories</option>
+          ${distinctCategories.map(c => `<option value="${escapeAttr(c)}" ${st.filterCategory === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
+        </select>
+
+        <!-- View Mode Switcher -->
+        <div class="view-switcher">
+          <button class="view-switch-btn ${viewMode === 'table' ? 'active' : ''}" onclick="setCompetitorViewMode('table')" title="Tabular CRM Intelligence View">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            <span>Table</span>
+          </button>
+          <button class="view-switch-btn ${viewMode === 'grid' ? 'active' : ''}" onclick="setCompetitorViewMode('grid')" title="Card Matrix Intelligence View">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Cards</span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <div class="filter-pills">${pills}</div>
-    <div class="competitor-grid">${list || '<div class="empty">No competitor entries matching criteria.</div>'}</div>
+    <!-- Main View Content -->
+    ${viewMode === 'table' ? `
+      <div class="crm-panel">
+        <div class="table-responsive">
+          <table class="crm-table" id="dataTable">
+            <thead>
+              <tr>
+                <th class="sortable ${st.sortCol === 'Date' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('competitors', 'Date', true)">
+                  <div class="th-content">Date ${sortIndicator('competitors', 'Date')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'Competitor' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('competitors', 'Competitor')">
+                  <div class="th-content">Competitor / Player ${sortIndicator('competitors', 'Competitor')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'Related Tracked Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('competitors', 'Related Tracked Brand')">
+                  <div class="th-content">Related Brand ${sortIndicator('competitors', 'Related Tracked Brand')}</div>
+                </th>
+                <th class="sortable ${st.sortCol === 'Category' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('competitors', 'Category')">
+                  <div class="th-content">Category ${sortIndicator('competitors', 'Category')}</div>
+                </th>
+                <th>Strategic Signal & Key Takeaway</th>
+                <th class="sortable ${st.sortCol === 'Source' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('competitors', 'Source')">
+                  <div class="th-content">Source ${sortIndicator('competitors', 'Source')}</div>
+                </th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>
+    ` : `
+      <div class="competitor-grid">${gridCards}</div>
+    `}
   `;
 
   wireSearchForTab("competitors");
 }
 
-function setCompetitorFilter(c){
+function setCompetitorViewMode(mode){
+  tabState.competitors.viewMode = mode;
+  renderCompetitors();
+}
+
+function setCompetitorNameFilter(c){
+  tabState.competitors.filterCompetitor = c;
+  renderCompetitors();
+}
+
+function setCompetitorCategoryFilter(c){
   tabState.competitors.filterCategory = c;
   renderCompetitors();
 }
+
 function toggleCompetitorItem(i){
   const el = document.getElementById(`competitor-expand-${i}`);
   const hint = document.getElementById(`competitor-hint-${i}`);
+  if (!el) return;
   const open = el.style.display === "block";
   el.style.display = open ? "none" : "block";
-  hint.innerHTML = open ? "Click to expand analysis &#8595;" : "Click to collapse &#8593;";
+  if (hint) hint.innerHTML = open ? "View Full Strategic Analysis &#8595;" : "Collapse Analysis &#8593;";
+}
+
+function toggleCompetitorGridItem(i){
+  const el = document.getElementById(`competitor-grid-expand-${i}`);
+  const hint = document.getElementById(`competitor-grid-hint-${i}`);
+  if (!el) return;
+  const open = el.style.display === "block";
+  el.style.display = open ? "none" : "block";
+  if (hint) hint.innerHTML = open ? "Expand Analysis &#8595;" : "Collapse Analysis &#8593;";
 }
 
 async function addCompetitorAsTrackedBrand(brandName, btnEl){
