@@ -245,7 +245,8 @@ async function unlock(){
   if (ok) {
     saveSessionPassword(pw);
     revealChrome();
-    renderTab(currentTab);
+    const routed = checkUrlHashRoute();
+    if (!routed) renderTab(currentTab);
   } else {
     document.getElementById("pwError").textContent = "Incorrect password or sync failed.";
   }
@@ -340,6 +341,360 @@ async function refresh(){
     else if (window.__viewingCompetitor !== null && window.__viewingCompetitor !== undefined) showCompetitorDetail(window.__viewingCompetitor);
     else renderTab(currentTab);
   }
+}
+
+/* ---------------- Strategic Briefing Sharing ---------------- */
+function buildShareData(type, target){
+  if (type === "brand") {
+    const brandName = typeof target === "string" ? target : target["Brand"];
+    const brands = workbookData["Brands Master"] || [];
+    const allNews = workbookData["News feed"] || [];
+    const allOpps = workbookData["Opportunities"] || [];
+    const allContacts = workbookData["Contacts"] || [];
+    const allPipeline = workbookData["Pipeline"] || [];
+    const latestResearchMap = getBrandLatestResearchMap();
+
+    const brand = brands.find(b => b["Brand"] === brandName) || { "Brand": brandName };
+    const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandName), "Date");
+    const opps = allOpps.filter(o => o["Brand"] === brandName)
+      .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
+    const contact = allContacts.find(c => c["Brand"] === brandName);
+    const pipelineRow = allPipeline.find(p => p["Brand"] === brandName);
+    const topOpp = opps[0];
+    const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
+
+    const plainExecSummary = (buildExecSummary(brand, topOpp, news, pipelineRow) || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    const directLink = `${window.location.origin}${window.location.pathname}#brand=${encodeURIComponent(brandName)}`;
+
+    let plain = `====================================================\n`;
+    plain += `STRATEGIC RESEARCH BRIEFING: ${brandName.toUpperCase()}\n`;
+    plain += `====================================================\n\n`;
+
+    plain += `📌 STRATEGIC OVERVIEW & PROFILE:\n`;
+    plain += `• Sector / Segment: ${brand["Sector"] || "Consumer Electronics"}${brand["Segment"] ? ` · ${brand["Segment"]}` : ""}\n`;
+    plain += `• Priority Rating: ${brand["Priority Tier"] || "Unrated"} Priority (Score: ${topOpp ? `${topOpp["Priority Score (1-5)"]}/5` : "Unrated"})\n`;
+    plain += `• Pipeline Stage: ${pipelineRow ? pipelineRow["Stage"] : "Prospect"}\n`;
+    plain += `• Latest Research Date: ${latestResearch.date || "-"}\n`;
+    if (brand["Website"]) plain += `• Website: ${brand["Website"]}\n`;
+    plain += `• Direct Dashboard Link: ${directLink}\n\n`;
+
+    plain += `📝 EXECUTIVE SUMMARY:\n`;
+    plain += `${plainExecSummary}\n\n`;
+
+    if (opps.length) {
+      plain += `🎯 CHANNELPLAY OPPORTUNITY BREAKDOWN & PITCH ANGLE:\n`;
+      opps.forEach((o, i) => {
+        plain += `[${i+1}] ${o["Opportunity Type"]} (Score: ${o["Priority Score (1-5)"]}/5)\n`;
+        plain += `  • Business Impact: ${o["Business Impact"]}\n`;
+        plain += `  • Channelplay Pitch: ${o["Opportunity for Channelplay"]}\n`;
+        plain += `  • Recommended Service: ${o["Recommended Service"]}\n`;
+        plain += `  • Target Department: ${o["Recommended Contact Department"]}\n`;
+        plain += `  • Suggested Next Action: ${o["Suggested Next Action"]}\n\n`;
+      });
+    }
+
+    if (news.length) {
+      plain += `📰 RECENT STRATEGIC SIGNALS & LIVE NEWS:\n`;
+      news.slice(0, 5).forEach((n, i) => {
+        plain += `[${i+1}] ${n["Headline"]} (${n["Date"]} · ${n["Source"] || "News"})\n`;
+        if (n["AI Summary"] || n["Summary"]) plain += `  • Summary: ${n["AI Summary"] || n["Summary"]}\n`;
+        if (n["URL"]) plain += `  • Live News Link: ${n["URL"]}\n`;
+        plain += `\n`;
+      });
+    }
+
+    if (contact) {
+      plain += `👤 KEY DECISION MAKER & CONTACT:\n`;
+      plain += `• Name: ${contact["Decision Maker Name"] || "Research Pending"}\n`;
+      plain += `• Designation: ${contact["Designation"] || "-"}\n`;
+      plain += `• Department: ${contact["Department"] || "Strategy / Sales"}\n`;
+      if (contact["Official Email (public only)"]) plain += `• Email: ${contact["Official Email (public only)"]}\n`;
+      if (contact["Official Contact Number (public only)"]) plain += `• Phone: ${contact["Official Contact Number (public only)"]}\n`;
+      if (contact["LinkedIn Profile"]) plain += `• LinkedIn: ${contact["LinkedIn Profile"]}\n`;
+      if (contact["Office Location"]) plain += `• Office: ${contact["Office Location"]}\n`;
+    }
+
+    let richHtml = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#1e293b;max-width:680px;">
+        <h2 style="color:#0f172a;margin-bottom:4px;">Strategic Research Briefing: ${escapeHtml(brandName)}</h2>
+        <div style="color:#64748b;font-size:13px;margin-bottom:16px;">
+          ${escapeHtml(brand["Sector"] || "Consumer Electronics")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""} &nbsp;|&nbsp;
+          <strong>${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</strong> &nbsp;|&nbsp;
+          Stage: <strong>${escapeHtml(pipelineRow ? pipelineRow["Stage"] : "Prospect")}</strong>
+        </div>
+
+        <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Executive Summary</h3>
+        <p style="background:#f8fafc;padding:12px;border-left:4px solid #4f46e5;border-radius:4px;">${escapeHtml(plainExecSummary)}</p>
+
+        ${opps.length ? `
+          <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Channelplay Opportunity Breakdown & Pitch Angle</h3>
+          ${opps.map(o => `
+            <div style="margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;">
+              <div style="font-weight:bold;color:#0f172a;">${escapeHtml(o["Opportunity Type"])} (Score: ${escapeHtml(o["Priority Score (1-5)"])}/5)</div>
+              <div style="margin-top:4px;"><strong>Business Impact:</strong> ${escapeHtml(o["Business Impact"])}</div>
+              <div style="margin-top:4px;"><strong>Channelplay Pitch:</strong> ${escapeHtml(o["Opportunity for Channelplay"])}</div>
+              <div style="margin-top:4px;font-size:12px;color:#64748b;"><strong>Recommended Service:</strong> ${escapeHtml(o["Recommended Service"])} · <strong>Department:</strong> ${escapeHtml(o["Recommended Contact Department"])}</div>
+              <div style="margin-top:4px;font-size:12px;color:#059669;"><strong>Next Action:</strong> ${escapeHtml(o["Suggested Next Action"])}</div>
+            </div>
+          `).join("")}
+        ` : ""}
+
+        ${news.length ? `
+          <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Recent Signals & Live News</h3>
+          ${news.slice(0, 5).map(n => `
+            <div style="margin-bottom:10px;">
+              <div style="font-weight:bold;color:#0f172a;">${escapeHtml(n["Headline"])} <span style="font-size:12px;color:#64748b;font-weight:normal;">(${escapeHtml(n["Date"])} · ${escapeHtml(n["Source"] || "Source")})</span></div>
+              <div style="font-size:13px;color:#475569;">${escapeHtml(n["AI Summary"] || n["Summary"] || "")}</div>
+              ${n["URL"] ? `<div><a href="${escapeAttr(n["URL"])}" target="_blank" style="color:#4f46e5;font-size:12px;">Live Article Link &#8599;</a></div>` : ""}
+            </div>
+          `).join("")}
+        ` : ""}
+
+        <div style="margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">
+          Shared via Consumer Electronics Brand Research Dashboard · <a href="${escapeAttr(directLink)}" style="color:#4f46e5;">Open in Dashboard</a>
+        </div>
+      </div>
+    `;
+
+    return {
+      title: `${brandName} — Strategic Research Briefing & Opportunities`,
+      brandName: brandName,
+      type: "brand",
+      directLink,
+      plainText: plain,
+      richHtml: richHtml,
+      subject: `Strategic Briefing & Channelplay Pitch: ${brandName}`,
+    };
+  } else if (type === "competitor") {
+    let r = target;
+    if (typeof target === "string") {
+      const compList = workbookData["Competitor Watch"] || [];
+      r = compList.find(c => c["Competitor"] === target) || { "Competitor": target };
+    }
+    const competitorName = r["Competitor"] || "Competitor";
+    const related = r["Related Tracked Brand"] || "-";
+    const headline = r["Headline"] || "Competitor Market Move";
+    const summary = r["Summary"] || "";
+    const fullAnalysis = r["Full Analysis"] || r["Summary"] || "";
+    const directLink = `${window.location.origin}${window.location.pathname}#competitor=${encodeURIComponent(competitorName)}`;
+
+    let plain = `====================================================\n`;
+    plain += `COMPETITOR INTELLIGENCE BRIEFING: ${competitorName.toUpperCase()}\n`;
+    plain += `====================================================\n\n`;
+
+    plain += `⚡ STRATEGIC HEADLINE:\n"${headline}"\n\n`;
+
+    plain += `📌 SIGNAL DETAILS:\n`;
+    plain += `• Competitor: ${competitorName}\n`;
+    plain += `• Category: ${r["Category"] || "Market Move"}\n`;
+    plain += `• Date: ${r["Date"] || "-"}\n`;
+    if (r["Source"]) plain += `• Source: ${r["Source"]}\n`;
+    if (related !== "-") plain += `• Related Tracked Account: ${related}\n`;
+    if (r["URL"]) plain += `• Live News Link: ${r["URL"]}\n`;
+    plain += `• Direct Dashboard Link: ${directLink}\n\n`;
+
+    plain += `📝 EXECUTIVE BRIEFING & SUMMARY:\n`;
+    plain += `${summary || "No executive summary provided."}\n\n`;
+
+    if (fullAnalysis && fullAnalysis !== summary) {
+      plain += `🔍 FULL STRATEGIC ANALYSIS:\n`;
+      plain += `${fullAnalysis}\n\n`;
+    }
+
+    plain += `🎯 CHANNELPLAY MARKET OPPORTUNITY & PITCH ANGLE:\n`;
+    plain += `This market movement by ${competitorName} creates a direct conversational hook for Channelplay to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.\n\n`;
+
+    if (r["URL"]) {
+      plain += `🔗 LIVE SOURCE ARTICLE:\n${r["URL"]}\n`;
+    }
+
+    let richHtml = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#1e293b;max-width:680px;">
+        <h2 style="color:#0f172a;margin-bottom:4px;">Competitor Alert: ${escapeHtml(competitorName)}</h2>
+        <div style="color:#64748b;font-size:13px;margin-bottom:14px;">
+          ${escapeHtml(r["Date"] || "-")} &nbsp;|&nbsp; Category: <strong>${escapeHtml(r["Category"] || "Market Move")}</strong>
+          ${related !== "-" ? ` &nbsp;|&nbsp; Related Account: <strong>${escapeHtml(related)}</strong>` : ""}
+        </div>
+
+        <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px;border-radius:4px;margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:bold;color:#b91c1c;text-transform:uppercase;">Strategic Headline</div>
+          <div style="font-size:16px;font-weight:bold;color:#0f172a;margin-top:2px;">"${escapeHtml(headline)}"</div>
+        </div>
+
+        <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Executive Briefing & Summary</h3>
+        <p style="background:#f8fafc;padding:12px;border-radius:4px;">${escapeHtml(summary)}</p>
+
+        ${fullAnalysis && fullAnalysis !== summary ? `
+          <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Full Strategic Analysis</h3>
+          <div style="background:#f8fafc;padding:12px;border-radius:4px;">${fullAnalysis.split("\n\n").map(p => `<p>${escapeHtml(p)}</p>`).join("")}</div>
+        ` : ""}
+
+        <div style="margin-top:16px;background:#f0fdf4;border-left:4px solid #10b981;padding:12px;border-radius:4px;">
+          <div style="font-size:11px;font-weight:bold;color:#047857;text-transform:uppercase;">Channelplay Market Opportunity & Pitch Angle</div>
+          <div style="font-size:13.5px;color:#065f46;margin-top:4px;">
+            This market movement by <strong>${escapeHtml(competitorName)}</strong> creates a direct conversational hook. Use this signal to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.
+          </div>
+        </div>
+
+        ${r["URL"] ? `
+          <div style="margin-top:16px;">
+            <a href="${escapeAttr(r["URL"])}" target="_blank" style="color:#4f46e5;font-weight:bold;font-size:13px;">View Live Source Article &#8599;</a>
+          </div>
+        ` : ""}
+
+        <div style="margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">
+          Shared via Competitor Watch Dashboard · <a href="${escapeAttr(directLink)}" style="color:#4f46e5;">Open in Dashboard</a>
+        </div>
+      </div>
+    `;
+
+    return {
+      title: `Competitor Alert: ${competitorName} — ${headline}`,
+      brandName: competitorName,
+      type: "competitor",
+      directLink,
+      plainText: plain,
+      richHtml: richHtml,
+      subject: `Competitor Intelligence Alert: ${competitorName} - ${headline}`,
+    };
+  }
+}
+
+function openShareModal(type, target){
+  const data = buildShareData(type, target);
+  if (!data) return;
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "shareModalOverlay";
+
+  const hasNativeShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  overlay.innerHTML = `
+    <div class="modal share-modal">
+      <div class="share-modal-header">
+        <h3>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          <span>Share Strategic Briefing — ${escapeHtml(data.brandName)}</span>
+        </h3>
+        <button class="share-modal-close" id="closeShareModalBtn" title="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <div class="share-channel-grid">
+        <button class="share-channel-btn" id="shareCopyRichBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+          <span>Copy Rich Briefing<br><small style="font-weight:normal;opacity:0.8;">Outlook / Gmail / Docs</small></span>
+        </button>
+
+        <button class="share-channel-btn" id="shareCopyPlainBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>Copy Plain Text<br><small style="font-weight:normal;opacity:0.8;">Slack / Teams / WhatsApp</small></span>
+        </button>
+
+        <button class="share-channel-btn" id="shareCopyLinkBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+          <span>Copy Direct Link<br><small style="font-weight:normal;opacity:0.8;">One-click Deep Link</small></span>
+        </button>
+
+        <button class="share-channel-btn" id="shareMailtoBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+          <span>Open in Mail App<br><small style="font-weight:normal;opacity:0.8;">Draft New Email</small></span>
+        </button>
+
+        ${hasNativeShare ? `
+          <button class="share-channel-btn" id="shareNativeDeviceBtn" style="background:var(--accent-soft);border-color:var(--accent);color:var(--accent);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            <span>Device Share Sheet<br><small style="font-weight:normal;opacity:0.8;">Native Mobile/Mac</small></span>
+          </button>
+        ` : ""}
+      </div>
+
+      <div class="share-preview-wrap">
+        <div class="share-preview-header">
+          <span>Briefing Preview (Includes Headline, Summary, Channelplay Pitch & Live News)</span>
+          <span style="font-size:10.5px;color:var(--accent);">Ready to Export</span>
+        </div>
+        <div class="share-preview-content" id="sharePreviewBox">${escapeHtml(data.plainText)}</div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;">
+        <span id="shareStatusNote" style="font-size:12px;color:var(--accent);font-weight:600;"></span>
+        <button class="btn secondary tiny" id="shareCloseBottomBtn">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const statusNote = document.getElementById("shareStatusNote");
+  const flashNote = (msg) => {
+    statusNote.textContent = msg;
+    setTimeout(() => { if (statusNote) statusNote.textContent = ""; }, 3000);
+  };
+
+  document.getElementById("closeShareModalBtn").addEventListener("click", () => overlay.remove());
+  document.getElementById("shareCloseBottomBtn").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+
+  document.getElementById("shareCopyRichBtn").addEventListener("click", (e) => {
+    copyRichShareText(data.plainText, data.richHtml, e.currentTarget);
+    flashNote("Copied rich formatted briefing to clipboard! ✓");
+  });
+
+  document.getElementById("shareCopyPlainBtn").addEventListener("click", (e) => {
+    copyToClipboard(data.plainText, e.currentTarget);
+    flashNote("Copied plain text briefing to clipboard! ✓");
+  });
+
+  document.getElementById("shareCopyLinkBtn").addEventListener("click", (e) => {
+    copyToClipboard(data.directLink, e.currentTarget);
+    flashNote("Copied direct link to clipboard! ✓");
+  });
+
+  document.getElementById("shareMailtoBtn").addEventListener("click", () => {
+    const subject = encodeURIComponent(data.subject);
+    const body = encodeURIComponent(data.plainText);
+    window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+    flashNote("Opened mail client! ✓");
+  });
+
+  if (hasNativeShare) {
+    const nativeBtn = document.getElementById("shareNativeDeviceBtn");
+    if (nativeBtn) {
+      nativeBtn.addEventListener("click", () => {
+        navigator.share({
+          title: data.title,
+          text: data.plainText,
+          url: data.directLink
+        }).then(() => flashNote("Shared successfully! ✓"))
+          .catch(() => {});
+      });
+    }
+  }
+}
+
+function copyRichShareText(plainText, htmlText, btnEl){
+  try {
+    const item = new ClipboardItem({
+      "text/plain": new Blob([plainText], { type: "text/plain" }),
+      "text/html": new Blob([htmlText], { type: "text/html" }),
+    });
+    navigator.clipboard.write([item]).then(() => flashBtnText(btnEl, "Copied Rich Text ✓"));
+  } catch (e) {
+    copyToClipboard(plainText, btnEl);
+  }
+}
+
+function flashBtnText(btnEl, msg){
+  if (!btnEl) return;
+  const original = btnEl.innerHTML;
+  btnEl.style.borderColor = "var(--accent)";
+  btnEl.style.background = "var(--accent-soft)";
+  setTimeout(() => {
+    btnEl.innerHTML = original;
+  }, 2000);
 }
 
 /* ---------------- Add Brand Modal ---------------- */
@@ -681,6 +1036,10 @@ function renderOverview(){
         <button class="detail-cta-btn" onclick="event.stopPropagation(); showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">
           <span>View Brand Profile</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <button class="btn secondary tiny" onclick="event.stopPropagation(); openShareModal('brand', '${escapeAttr(r.brand).replace(/'/g, "\\'")}')" title="Share strategic briefing">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          <span>Share</span>
         </button>
       </div>
     </div>`;
@@ -1545,7 +1904,13 @@ function renderCompetitors(){
           <span>Expand Analysis</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
-        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:600;font-size:12px;">Article &#8599;</a>` : ""}
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn secondary tiny" style="color:var(--accent);font-weight:600;font-size:11.5px;">Article &#8599;</a>` : ""}
+          <button class="btn secondary tiny" onclick="event.stopPropagation(); openShareModal('competitor', ${i})" title="Share competitor briefing">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            <span>Share</span>
+          </button>
+        </div>
       </div>
     </div>`;
   }).join("") : `<div class="empty" style="grid-column:1/-1;">No competitor intelligence matching the selected criteria.</div>`;
@@ -1659,10 +2024,14 @@ function showCompetitorDetail(indexOrObj){
     r = window.__currentCompetitorRows[indexOrObj];
   } else if (typeof indexOrObj === "object") {
     r = indexOrObj;
+  } else if (typeof indexOrObj === "string") {
+    const list = workbookData["Competitor Watch"] || [];
+    r = list.find(c => c["Competitor"] === indexOrObj) || { "Competitor": indexOrObj };
   }
   if (!r) return renderCompetitors();
 
   const competitorName = r["Competitor"] || "Competitor";
+  window.location.hash = "competitor=" + encodeURIComponent(competitorName);
   const trackedBrands = new Set((workbookData["Brands Master"] || []).map(b => b["Brand"]));
   const isTracked = trackedBrands.has(competitorName);
   const related = r["Related Tracked Brand"] || "-";
@@ -1678,10 +2047,15 @@ function showCompetitorDetail(indexOrObj){
 
   document.getElementById("content").innerHTML = `
     <div class="competitor-detail-container">
-      <div>
+      <div class="detail-nav-bar">
         <button class="back-btn" onclick="renderCompetitors()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
           <span>Back to Competitor Watch</span>
+        </button>
+
+        <button class="share-briefing-btn" onclick="openShareModal('competitor', '${escapeAttr(competitorName).replace(/'/g, "\\'")}')" title="Share competitor intelligence briefing externally">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          <span>Share Briefing</span>
         </button>
       </div>
 
@@ -1935,6 +2309,8 @@ function flashCopied(btnEl){
 
 function showBrandDetail(brandName){
   window.__viewingBrand = brandName;
+  window.__viewingCompetitor = null;
+  window.location.hash = "brand=" + encodeURIComponent(brandName);
   document.querySelectorAll(".nav-item-btn").forEach(b => b.classList.remove("active"));
   renderBrandDetail(brandName);
 }
@@ -1990,10 +2366,17 @@ function renderBrandDetail(brandName){
   const stageOptions = stages.map(s => `<option value="${s}" ${s === currentStage ? "selected" : ""}>${s}</option>`).join("");
 
   document.getElementById("content").innerHTML = `
-    <button class="back-btn" onclick="renderTab('overview')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      <span>Back to Overview CRM</span>
-    </button>
+    <div class="detail-nav-bar">
+      <button class="back-btn" onclick="renderTab('overview')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        <span>Back to Overview CRM</span>
+      </button>
+
+      <button class="share-briefing-btn" onclick="openShareModal('brand', '${escapeAttr(brandName).replace(/'/g, "\\'")}')" title="Share full strategic research briefing externally">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+        <span>Share Briefing</span>
+      </button>
+    </div>
 
     <div class="detail-hero">
       <div class="detail-hero-left">
@@ -2265,6 +2648,28 @@ function buildEmailDraft(brand, topOpp, news, sheetDraft){
 }
 
 /* ---------------- Event Listeners & Bootstrapping ---------------- */
+function checkUrlHashRoute(){
+  const hash = (window.location.hash || "").replace(/^#/, "");
+  if (!hash) return false;
+  if (hash.startsWith("brand=")) {
+    const brandName = decodeURIComponent(hash.slice(6));
+    if (brandName && workbookData["Brands Master"]) {
+      showBrandDetail(brandName);
+      return true;
+    }
+  } else if (hash.startsWith("competitor=")) {
+    const compName = decodeURIComponent(hash.slice(11));
+    if (compName && workbookData["Competitor Watch"]) {
+      showCompetitorDetail(compName);
+      return true;
+    }
+  } else if (["overview","news","opportunities","contacts","competitors"].includes(hash)) {
+    renderTab(hash);
+    return true;
+  }
+  return false;
+}
+
 document.getElementById("unlockBtn").addEventListener("click", unlock);
 document.getElementById("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
 document.getElementById("refreshBtn").addEventListener("click", refresh);
@@ -2283,9 +2688,15 @@ document.querySelectorAll(".nav-item-btn").forEach(btn => {
     const ok = await loadWorkbook(pw);
     if (ok) {
       revealChrome();
-      renderTab(currentTab);
+      const routed = checkUrlHashRoute();
+      if (!routed) renderTab(currentTab);
     }
   }
+  window.addEventListener("hashchange", () => {
+    if (workbookData["Brands Master"]) {
+      checkUrlHashRoute();
+    }
+  });
 })();
 </script>
 </body>
