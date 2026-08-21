@@ -1565,13 +1565,16 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   flex-wrap: wrap;
 }
 .strategic-analysis-content {
-  font-size: 14.5px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--text-primary);
-  white-space: pre-line;
 }
 .strategic-analysis-content p {
   margin-bottom: 14px;
+  line-height: 1.8;
+}
+.strategic-analysis-content p:last-child {
+  margin-bottom: 0;
 }
 .opportunity-callout-box {
   background: var(--accent-soft);

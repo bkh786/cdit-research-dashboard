@@ -526,7 +526,7 @@ function buildShareData(type, target){
 
         ${fullAnalysis && fullAnalysis !== summary ? `
           <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Full Strategic Analysis</h3>
-          <div style="background:#f8fafc;padding:12px;border-radius:4px;">${fullAnalysis.split("\n\n").map(p => `<p>${escapeHtml(p)}</p>`).join("")}</div>
+          <div style="background:#f8fafc;padding:12px;border-radius:4px;">${formatParagraphs(fullAnalysis)}</div>
         ` : ""}
 
         <div style="margin-top:16px;background:#f0fdf4;border-left:4px solid #10b981;padding:12px;border-radius:4px;">
@@ -803,7 +803,26 @@ function priorityLabel(score){
   return "Low";
 }
 function escapeHtml(s){
-  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  if (s === null || s === undefined) return "";
+  // Decode common HTML entities first to prevent double-encoding (e.g. &#39; -> &amp;#39;)
+  let str = String(s)
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+
+  return str.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function formatParagraphs(text){
+  if (!text) return "<p>No detailed analysis available.</p>";
+  return String(text)
+    .trim()
+    .split(/\n{2,}/)
+    .map(p => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`)
+    .join("");
 }
 function escapeAttr(s){ return escapeHtml(s).replace(/`/g, "&#96;"); }
 function starRow(score, max = 5){
@@ -2097,7 +2116,7 @@ function showCompetitorDetail(indexOrObj){
         <div class="crm-panel" style="padding:24px;">
           <div class="row-label" style="font-size:11px;margin-bottom:12px;">EXECUTIVE BRIEFING & SUMMARY</div>
           <div style="font-size:14px;line-height:1.75;color:var(--text-secondary);">
-            ${escapeHtml(summaryText || "No executive summary available.")}
+            ${formatParagraphs(summaryText || "No executive summary available.")}
           </div>
         </div>
 
@@ -2105,7 +2124,7 @@ function showCompetitorDetail(indexOrObj){
         <div class="crm-panel" style="padding:24px;">
           <div class="row-label" style="font-size:11px;color:var(--accent);margin-bottom:14px;">FULL STRATEGIC ANALYSIS</div>
           <div class="strategic-analysis-content">
-            ${escapeHtml(fullAnalysis).split("\n\n").map(p => `<p>${escapeHtml(p)}</p>`).join("")}
+            ${formatParagraphs(fullAnalysis)}
           </div>
 
           <!-- Channelplay Opportunity Callout -->
