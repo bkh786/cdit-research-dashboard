@@ -1,199 +1,1318 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-accent="indigo">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CDIT Sales Intelligence Dashboard</title>
+<title>Consumer Electronics Brand’s Research — Sales Intelligence CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0f172a; --panel:#111827; --panel2:#1a2234; --border:#26314a;
-    --text:#e5e7eb; --muted:#94a3b8; --accent:#6366f1; --accent-soft:rgba(99,102,241,.15);
-    --high:#ef4444; --med:#f59e0b; --low:#22c55e; --star:#f59e0b; --row-hover:#161f33;
+  :root {
+    --bg-base: #090d16;
+    --bg-surface: #0f172a;
+    --bg-card: #141e33;
+    --bg-card-hover: #1b2742;
+    --bg-elevated: #1e293b;
+    --border: #23314e;
+    --border-light: rgba(255, 255, 255, 0.08);
+    --border-focus: #6366f1;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #6366f1;
+    --accent-hover: #4f46e5;
+    --accent-soft: rgba(99, 102, 241, 0.14);
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --high: #f43f5e;
+    --high-soft: rgba(244, 63, 94, 0.14);
+    --med: #f59e0b;
+    --med-soft: rgba(245, 158, 11, 0.14);
+    --low: #10b981;
+    --low-soft: rgba(16, 185, 129, 0.14);
+    --info: #0ea5e9;
+    --info-soft: rgba(14, 165, 233, 0.14);
+    --star: #fbbf24;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45);
+    --sidebar-w: 250px;
+    --sidebar-w-collapsed: 72px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  html[data-theme="light"]{
-    --bg:#f4f5f9; --panel:#ffffff; --panel2:#ffffff; --border:#e2e6ee;
-    --text:#0f172a; --muted:#5b6577; --row-hover:#f1f3fa;
+
+  html[data-theme="light"] {
+    --bg-base: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --bg-elevated: #e2e8f0;
+    --border: #e2e8f0;
+    --border-light: rgba(0, 0, 0, 0.06);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --high-soft: rgba(244, 63, 94, 0.12);
+    --med-soft: rgba(245, 158, 11, 0.12);
+    --low-soft: rgba(16, 185, 129, 0.12);
+    --info-soft: rgba(14, 165, 233, 0.12);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.12);
   }
-  html[data-accent="teal"]{ --accent:#0d9488; --accent-soft:rgba(13,148,136,.15); }
-  html[data-accent="rose"]{ --accent:#e11d48; --accent-soft:rgba(225,29,72,.15); }
-  html[data-accent="amber"]{ --accent:#d97706; --accent-soft:rgba(217,119,6,.15); }
-  html[data-accent="indigo"]{ --accent:#6366f1; --accent-soft:rgba(99,102,241,.15); }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-  header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:10;}
-  header h1{font-size:18px;margin:0;font-weight:600;}
-  header .sub{color:var(--muted);font-size:12px;margin-top:2px;}
-  .btn{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
-  .btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
-  .btn.tiny{padding:5px 10px;font-size:11px;border-radius:6px;}
-  .btn:disabled{opacity:.5;cursor:not-allowed;}
-  nav{display:flex;gap:4px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--panel);overflow-x:auto;}
-  nav button{background:none;border:none;color:var(--muted);padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
-  nav button.active{color:var(--text);border-bottom-color:var(--accent);}
-  main{padding:24px 28px;max-width:1400px;margin:0 auto;}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
-  .card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px;}
-  .card .num{font-size:26px;font-weight:700;}
-  .card .label{color:var(--muted);font-size:12px;margin-top:4px;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th{text-align:left;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);white-space:nowrap;}
-  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere;max-width:340px;}
-  tr:hover td{background:var(--row-hover);}
-  .panel{background:var(--panel2);border:1px solid var(--border);border-radius:12px;overflow:auto;max-height:70vh;}
-  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
-  .pill.High{background:rgba(239,68,68,.15);color:var(--high);}
-  .pill.Medium{background:rgba(245,158,11,.15);color:var(--med);}
-  .pill.Low{background:rgba(34,197,94,.15);color:var(--low);}
-  .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-  input[type=text],input[type=password]{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;min-width:220px;}
-  select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;}
-  .empty{padding:60px 20px;text-align:center;color:var(--muted);}
-  .gate{display:flex;align-items:center;justify-content:center;height:80vh;flex-direction:column;gap:14px;}
-  .gate .box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:28px;width:320px;text-align:center;}
-  .error-text{color:var(--high);font-size:12px;margin-top:8px;}
-  a{color:var(--accent);text-decoration:none;}
-  a:hover{text-decoration:underline;}
-  a.brand-link{color:var(--text);font-weight:600;}
-  a.brand-link:hover{color:var(--accent);}
-  .score{font-weight:700;}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;}
-  .modal{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:90vw;}
-  .modal h3{margin:0 0 16px;font-size:16px;}
-  .field{margin-bottom:12px;}
-  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
-  .field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;}
-  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
 
-  /* Theme switcher */
-  .theme-switcher{position:relative;}
-  .theme-btn{background:transparent;border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:15px;}
-  .theme-menu{position:absolute;right:0;top:42px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;width:200px;box-shadow:0 12px 32px rgba(0,0,0,.35);display:none;z-index:50;}
-  .theme-menu.open{display:block;}
-  .theme-menu .row-label{font-size:11px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em;}
-  .mode-toggle{display:flex;gap:6px;margin-bottom:14px;}
-  .mode-toggle button{flex:1;padding:6px 0;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;cursor:pointer;}
-  .mode-toggle button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .accent-dots{display:flex;gap:8px;}
-  .accent-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
-  .accent-dot.active{border-color:var(--text);}
+  html[data-accent="teal"] {
+    --accent: #0d9488; --accent-hover: #0f766e;
+    --accent-soft: rgba(13, 148, 136, 0.14);
+    --accent-gradient: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+    --border-focus: #0d9488;
+  }
+  html[data-accent="rose"] {
+    --accent: #e11d48; --accent-hover: #be123c;
+    --accent-soft: rgba(225, 29, 72, 0.14);
+    --accent-gradient: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);
+    --border-focus: #e11d48;
+  }
+  html[data-accent="amber"] {
+    --accent: #d97706; --accent-hover: #b45309;
+    --accent-soft: rgba(217, 119, 6, 0.14);
+    --accent-gradient: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+    --border-focus: #d97706;
+  }
+  html[data-accent="indigo"] {
+    --accent: #6366f1; --accent-hover: #4f46e5;
+    --accent-soft: rgba(99, 102, 241, 0.14);
+    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    --border-focus: #6366f1;
+  }
+  html[data-accent="emerald"] {
+    --accent: #059669; --accent-hover: #047857;
+    --accent-soft: rgba(5, 150, 105, 0.14);
+    --accent-gradient: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    --border-focus: #059669;
+  }
 
-  /* Brand detail page */
-  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-bottom:16px;cursor:pointer;}
-  .detail-grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
-  @media (max-width:900px){ .detail-grid{grid-template-columns:1fr;} }
-  .detail-header{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
-  .detail-header h2{margin:0;font-size:24px;}
-  .section{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;}
-  .section h3{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
-  .exec-summary{font-size:14px;line-height:1.7;overflow-wrap:anywhere;}
-  .stars{color:var(--star);font-size:20px;letter-spacing:2px;}
-  .stars .empty-star{color:var(--border);}
-  .score-value{font-size:13px;color:var(--muted);margin-top:4px;}
-  .score-line-label{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;}
-  .news-item{border-bottom:1px solid var(--border);padding:14px 0;}
-  .news-item:last-child{border-bottom:none;}
-  .news-item .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:11px;color:var(--muted);}
-  .news-item h4{margin:0 0 6px;font-size:14px;overflow-wrap:anywhere;}
-  .news-item p{margin:0 0 6px;font-size:13px;line-height:1.6;color:var(--text);overflow-wrap:anywhere;}
-  .cat-tag{background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:999px;font-weight:700;white-space:nowrap;}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 13.5px;
+    line-height: 1.5;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
 
-  /* Competitor Watch cards */
-  .competitor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start;}
-  .competitor-card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:border-color .15s,transform .15s;min-width:0;}
-  .competitor-card:hover{border-color:var(--accent);}
-  .competitor-card .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--muted);}
-  .competitor-card h4{margin:0 0 8px;font-size:14.5px;line-height:1.4;overflow-wrap:anywhere;}
-  .competitor-card p{margin:0;font-size:13px;line-height:1.65;color:var(--text);overflow-wrap:anywhere;}
-  .competitor-card .expand{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
-  .competitor-card .expand p{margin-bottom:8px;}
-  .competitor-card .expand-hint{margin-top:10px;font-size:11px;color:var(--accent);font-weight:600;}
+  /* App Layout */
+  .app-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+  }
 
-  .filter-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
-  .filter-pill{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:999px;font-size:12px;cursor:pointer;font-weight:600;}
-  .filter-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .filter-pill:hover{border-color:var(--accent);}
+  /* Sidebar */
+  aside.sidebar {
+    width: var(--sidebar-w);
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: 40;
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+  }
+  aside.sidebar.collapsed {
+    width: var(--sidebar-w-collapsed);
+  }
 
-  .track-brand-btn{margin-top:12px;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 12px;border-radius:8px;font-size:11px;cursor:pointer;font-weight:700;}
-  .track-brand-btn:hover{background:var(--accent-soft);}
-  .track-brand-btn:disabled{opacity:.65;cursor:default;border-color:var(--border);color:var(--muted);}
+  .sidebar-header {
+    height: 68px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .brand-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 16px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  }
+  .brand-title-group {
+    display: flex;
+    flex-direction: column;
+    transition: opacity 0.2s, width 0.2s;
+  }
+  .sidebar.collapsed .brand-title-group {
+    display: none;
+  }
+  .brand-main-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .brand-sub-title {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
 
-  .ai-draft-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
-  .email-hook{font-size:15px;font-weight:700;margin:0 0 12px;color:var(--accent);}
-  .spinner-text{font-size:12px;color:var(--muted);}
-  .contact-card .cf{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;gap:10px;}
-  .contact-card .cf:last-child{border-bottom:none;}
-  .contact-card .cf-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
-  .contact-card .cf-value{text-align:right;word-break:break-word;}
-  .copy-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0;}
-  .copy-btn:hover{color:var(--accent);border-color:var(--accent);}
-  .email-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;font-size:13px;line-height:1.7;}
-  .email-box p{margin:0 0 12px;}
-  .email-subject{font-weight:700;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
-  .draft-note{font-size:11px;color:var(--muted);margin-top:10px;}
-  .pipeline-editor{display:flex;gap:8px;align-items:center;margin-top:10px;}
-  .save-note{font-size:11px;color:var(--low);margin-top:6px;display:none;}
+  .collapse-toggle-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+  }
+  .collapse-toggle-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .sidebar.collapsed .collapse-toggle-btn svg {
+    transform: rotate(180deg);
+  }
+  .sidebar.collapsed .sidebar-header {
+    justify-content: center;
+    padding: 0;
+  }
+  .sidebar.collapsed .sidebar-header .brand-logo-wrap {
+    display: none;
+  }
+
+  .sidebar-nav {
+    padding: 16px 10px;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nav-section-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 8px 10px 4px;
+    transition: opacity 0.2s;
+  }
+  .sidebar.collapsed .nav-section-label {
+    display: none;
+  }
+
+  .nav-item-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: var(--transition);
+    position: relative;
+    white-space: nowrap;
+  }
+  .nav-item-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-card-hover);
+  }
+  .nav-item-btn.active {
+    color: #ffffff;
+    background: var(--accent);
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+  }
+  .nav-item-btn svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+  .nav-item-label {
+    flex: 1;
+    transition: opacity 0.2s;
+  }
+  .sidebar.collapsed .nav-item-label {
+    display: none;
+  }
+  .nav-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+  }
+  .nav-item-btn.active .nav-badge {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+  }
+  .sidebar.collapsed .nav-badge {
+    display: none;
+  }
+  .sidebar.collapsed .nav-item-btn {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  /* Tooltip for collapsed sidebar */
+  .sidebar.collapsed .nav-item-btn[data-title]:hover::after {
+    content: attr(data-title);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .sidebar-footer {
+    padding: 14px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .sidebar.collapsed .sidebar-footer {
+    padding: 12px 6px;
+  }
+
+  /* Main Wrapper */
+  .main-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* Top Header */
+  header.top-header {
+    height: 68px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    backdrop-filter: blur(12px);
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--low);
+    box-shadow: 0 0 8px var(--low);
+    animation: pulse 2s infinite;
+  }
+  .status-dot.locked {
+    background: var(--high);
+    box-shadow: 0 0 8px var(--high);
+    animation: none;
+  }
+  .status-dot.loading {
+    background: var(--med);
+    box-shadow: 0 0 8px var(--med);
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+  }
+  .btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+  }
+  .btn:active {
+    transform: translateY(0);
+  }
+  .btn.secondary {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .btn.secondary:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .btn.tiny {
+    padding: 5px 10px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Theme Switcher */
+  .theme-switcher { position: relative; }
+  .icon-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .icon-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+  .theme-menu {
+    position: absolute;
+    right: 0;
+    top: 46px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    width: 220px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    z-index: 100;
+  }
+  .theme-menu.open { display: block; }
+  .theme-menu .row-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .mode-toggle {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .mode-toggle button {
+    flex: 1;
+    padding: 6px 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .mode-toggle button.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+  .accent-dots { display: flex; gap: 8px; }
+  .accent-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s;
+  }
+  .accent-dot:hover { transform: scale(1.15); }
+  .accent-dot.active { border-color: var(--text-primary); transform: scale(1.1); }
+
+  /* Content area */
+  main.main-content {
+    flex: 1;
+    padding: 28px;
+    max-width: 1560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Password Gate View */
+  .gate {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 75vh;
+    flex-direction: column;
+    padding: 20px;
+  }
+  .gate-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px 32px;
+    width: 100%;
+    max-width: 390px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+  }
+  .gate-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--accent-gradient);
+  }
+  .gate-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .gate-card h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .gate-card p {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    margin-bottom: 22px;
+  }
+
+  /* KPI Cards Grid */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .kpi-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .kpi-card.active-filter {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent), var(--shadow-md);
+  }
+  .kpi-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .kpi-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .kpi-icon-wrap {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .kpi-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.1;
+  }
+  .kpi-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-light);
+  }
+  .kpi-filter-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--accent);
+    color: #ffffff;
+    display: none;
+  }
+  .kpi-card.active-filter .kpi-filter-tag {
+    display: inline-block;
+  }
+
+  /* Table Controls & Filter Bar */
+  .table-controls-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .search-input-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 280px;
+    max-width: 500px;
+  }
+  .search-input-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 14px 10px 38px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    outline: none;
+    transition: var(--transition);
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .active-filter-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .filter-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  /* CRM Panel & Table */
+  .crm-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .table-responsive {
+    overflow-x: auto;
+    max-height: 70vh;
+  }
+  table.crm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+  }
+  table.crm-table thead th {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    user-select: none;
+  }
+  table.crm-table thead th.sortable {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  table.crm-table thead th.sortable:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+  .th-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sort-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+    font-size: 10px;
+  }
+  th.sorted-asc .sort-icon, th.sorted-desc .sort-icon {
+    color: var(--accent);
+  }
+
+  table.crm-table tbody td {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--text-primary);
+  }
+  table.crm-table tbody tr {
+    transition: background 0.15s;
+  }
+  table.crm-table tbody tr:hover td {
+    background: var(--bg-card-hover);
+  }
+  table.crm-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Badges & Pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .pill.High { background: var(--high-soft); color: var(--high); border: 1px solid rgba(244, 63, 94, 0.25); }
+  .pill.Medium { background: var(--med-soft); color: var(--med); border: 1px solid rgba(245, 158, 11, 0.25); }
+  .pill.Low { background: var(--low-soft); color: var(--low); border: 1px solid rgba(16, 185, 129, 0.25); }
+  .pill.Neutral { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+  .pill.Stage { background: var(--info-soft); color: var(--info); border: 1px solid rgba(14, 165, 233, 0.25); }
+
+  .brand-cell {
+    display: flex;
+    flex-direction: column;
+  }
+  .brand-title-link {
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 13.5px;
+    transition: color 0.15s;
+  }
+  .brand-title-link:hover {
+    color: var(--accent);
+  }
+  .brand-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .date-cell {
+    display: flex;
+    flex-direction: column;
+  }
+  .date-primary {
+    font-weight: 600;
+    font-size: 12.5px;
+  }
+  .date-relative {
+    font-size: 10.5px;
+    color: var(--text-muted);
+  }
+
+  /* Inputs, Selects & Modals */
+  input[type=text], input[type=password], select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    outline: none;
+    transition: var(--transition);
+    font-family: inherit;
+  }
+  input[type=text]:focus, input[type=password]:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .error-text { color: var(--high); font-size: 12px; margin-top: 6px; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    width: 440px;
+    max-width: 90vw;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal h3 { margin-bottom: 18px; font-size: 17px; font-weight: 700; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+  .field input, .field select { width: 100%; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* Empty state */
+  .empty { padding: 60px 20px; text-align: center; color: var(--text-muted); font-size: 13.5px; }
+
+  /* Brand Detail Page */
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+  }
+  .back-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+  }
+  .detail-hero {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .detail-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .detail-hero-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--accent-gradient);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .detail-hero h2 {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 1024px) {
+    .detail-grid { grid-template-columns: 1fr; }
+  }
+  .section-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  .section-card h3 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .exec-summary {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text-primary);
+  }
+  .stars { color: var(--star); font-size: 18px; letter-spacing: 2px; }
+  .stars .empty-star { color: var(--border); }
+  .score-line-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+
+  .news-item {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+  }
+  .news-item:first-child { padding-top: 0; }
+  .news-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .news-item .meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .news-item h4 { font-size: 14.5px; font-weight: 700; margin-bottom: 6px; }
+  .news-item p { font-size: 13px; line-height: 1.65; color: var(--text-secondary); margin-bottom: 8px; }
+  .cat-tag {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  /* Email Box */
+  .ai-draft-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .email-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    font-size: 13px;
+    line-height: 1.75;
+  }
+  .email-subject {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .draft-note { font-size: 11.5px; color: var(--text-muted); }
+
+  /* Contact Card */
+  .contact-card .cf {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    gap: 10px;
+  }
+  .contact-card .cf:last-child { border-bottom: none; }
+  .contact-card .cf-label { color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+  .contact-card .cf-value { text-align: right; word-break: break-word; font-weight: 500; }
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  .pipeline-editor { display: flex; gap: 8px; align-items: center; }
+  .save-note { font-size: 11.5px; color: var(--low); margin-top: 8px; display: none; }
+
+  /* Competitor Watch Cards */
+  .competitor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 18px;
+  }
+  .competitor-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .competitor-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .competitor-card .expand {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .competitor-card .expand-hint {
+    margin-top: 12px;
+    font-size: 11.5px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .filter-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .filter-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+  }
+  .filter-pill.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+  .track-brand-btn {
+    margin-top: 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .track-brand-btn:hover { background: var(--accent-soft); }
+
+  @media (max-width: 768px) {
+    header.top-header { padding: 0 16px; }
+    main.main-content { padding: 16px; }
+    .page-title { font-size: 15px; }
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div>
-    <h1>CDIT Sales Intelligence Dashboard</h1>
-    <div class="sub" id="syncStatus">Locked</div>
-  </div>
-  <div style="display:flex;gap:10px;align-items:center;">
-    <button class="btn secondary" id="addBrandBtn" style="display:none;">+ Add Brand</button>
-    <button class="btn secondary" id="refreshBtn" style="display:none;">Refresh</button>
-    <div class="theme-switcher" id="themeSwitcher" style="display:none;">
-      <button class="theme-btn" id="themeBtn" title="Appearance">&#9788;</button>
-      <div class="theme-menu" id="themeMenu">
-        <div class="row-label">Mode</div>
-        <div class="mode-toggle">
-          <button data-mode="dark">Dark</button>
-          <button data-mode="light">Light</button>
+<div class="app-container">
+  <!-- Collapsible Sidebar Panel -->
+  <aside class="sidebar" id="appSidebar" style="display:none;">
+    <div class="sidebar-header">
+      <a href="#" class="brand-logo-wrap" onclick="renderTab('overview');return false;">
+        <div class="brand-icon">CE</div>
+        <div class="brand-title-group">
+          <span class="brand-main-title">CE Research CRM</span>
+          <span class="brand-sub-title">Intelligence Hub</span>
         </div>
-        <div class="row-label">Accent</div>
-        <div class="accent-dots">
-          <div class="accent-dot" data-accent="indigo" style="background:#6366f1;"></div>
-          <div class="accent-dot" data-accent="teal" style="background:#0d9488;"></div>
-          <div class="accent-dot" data-accent="rose" style="background:#e11d48;"></div>
-          <div class="accent-dot" data-accent="amber" style="background:#d97706;"></div>
+      </a>
+      <button class="collapse-toggle-btn" id="sidebarCollapseBtn" title="Toggle Sidebar (Collapse / Expand)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      
+      <button class="nav-item-btn active" data-tab="overview" data-title="Overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"></rect>
+          <rect x="14" y="3" width="7" height="7"></rect>
+          <rect x="14" y="14" width="7" height="7"></rect>
+          <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        <span class="nav-item-label">Overview</span>
+        <span class="nav-badge" id="badgeOverview">0</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="news" data-title="News Feed">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
+          <path d="M18 14h-8"></path>
+          <path d="M15 18h-5"></path>
+          <path d="M10 6h8v4h-8V6Z"></path>
+        </svg>
+        <span class="nav-item-label">News Feed</span>
+        <span class="nav-badge" id="badgeNews">0</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="opportunities" data-title="Opportunities">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span class="nav-item-label">Opportunities</span>
+        <span class="nav-badge" id="badgeOpps">0</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="contacts" data-title="Contacts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span class="nav-item-label">Contacts</span>
+        <span class="nav-badge" id="badgeContacts">0</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="competitors" data-title="Competitor Watch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <span class="nav-item-label">Competitor Watch</span>
+        <span class="nav-badge" id="badgeCompetitors">0</span>
+      </button>
+
+      <button class="nav-item-btn" data-tab="emails" data-title="Email Drafts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+          <polyline points="22,6 12,13 2,6"></polyline>
+        </svg>
+        <span class="nav-item-label">Email Drafts</span>
+        <span class="nav-badge" id="badgeEmails">0</span>
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn secondary tiny" id="sidebarAddBrandBtn" style="width:100%;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span class="nav-item-label">+ Add Brand</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="main-wrapper">
+    <header class="top-header">
+      <div class="header-left">
+        <h1 class="page-title">
+          <span>Consumer Electronics Brand’s Research</span>
+          <span class="sync-badge" id="syncBadge">
+            <span class="status-dot locked" id="syncDot"></span>
+            <span id="syncStatus">Locked</span>
+          </span>
+        </h1>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn secondary" id="refreshBtn" style="display:none;" title="Refresh live Google Sheets data">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Refresh</span>
+        </button>
+
+        <button class="btn" id="addBrandBtn" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Add Brand</span>
+        </button>
+
+        <div class="theme-switcher" id="themeSwitcher" style="display:none;">
+          <button class="icon-btn" id="themeBtn" title="Theme & Color Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+          </button>
+          <div class="theme-menu" id="themeMenu">
+            <div class="row-label">Theme Mode</div>
+            <div class="mode-toggle">
+              <button data-mode="dark">Dark</button>
+              <button data-mode="light">Light</button>
+            </div>
+            <div class="row-label">Accent Color</div>
+            <div class="accent-dots">
+              <div class="accent-dot" data-accent="indigo" style="background:#6366f1;" title="Indigo"></div>
+              <div class="accent-dot" data-accent="teal" style="background:#0d9488;" title="Teal"></div>
+              <div class="accent-dot" data-accent="emerald" style="background:#059669;" title="Emerald"></div>
+              <div class="accent-dot" data-accent="rose" style="background:#e11d48;" title="Rose"></div>
+              <div class="accent-dot" data-accent="amber" style="background:#d97706;" title="Amber"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="icon-btn" id="lockBtn" style="display:none;" title="Lock Session">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div id="content">
+        <!-- Password Gate Screen -->
+        <div class="gate">
+          <div class="gate-card">
+            <div class="gate-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </div>
+            <h2>Protected CRM Dashboard</h2>
+            <p>Enter the dashboard access password to unlock Consumer Electronics research data.</p>
+            <input type="password" id="pwInput" placeholder="Enter password..." style="width:100%;margin-bottom:12px;" />
+            <button class="btn" id="unlockBtn" style="width:100%;">
+              <span>Unlock Dashboard</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </button>
+            <div class="error-text" id="pwError"></div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   </div>
-</header>
-
-<nav id="tabs" style="display:none;">
-  <button data-tab="overview" class="active">Overview</button>
-  <button data-tab="news">News Feed</button>
-  <button data-tab="opportunities">Opportunities</button>
-  <button data-tab="contacts">Contacts</button>
-  <button data-tab="competitors">Competitor Watch</button>
-  <button data-tab="emails">Email Drafts</button>
-</nav>
-
-<main>
-  <div id="content">
-    <div class="gate">
-      <div class="box">
-        <div style="margin-bottom:14px;font-weight:600;">Enter dashboard password</div>
-        <input type="password" id="pwInput" placeholder="Password" style="width:100%;margin-bottom:10px;" />
-        <button class="btn" id="unlockBtn" style="width:100%;">Unlock</button>
-        <div class="error-text" id="pwError"></div>
-      </div>
-    </div>
-  </div>
-</main>
+</div>
 
 <script>
 let workbookData = {};
 let currentTab = "overview";
+let activeKpiFilter = null; // 'all', 'opps', 'high', 'dormant'
+let overviewSortCol = "latestResearch"; // default sort by latest research date
+let overviewSortDir = "desc"; // latest first
+let overviewColumnFilters = {}; // { colKey: filterValue }
 
 function saveSessionPassword(pw){ sessionStorage.setItem("cdit_pw", pw); }
 function getSessionPassword(){ return sessionStorage.getItem("cdit_pw") || ""; }
+function clearSessionPassword(){ sessionStorage.removeItem("cdit_pw"); }
 
-/* ---------------- Theme switcher ---------------- */
+/* ---------------- Theme & Sidebar Controls ---------------- */
 function applyTheme(){
   const mode = localStorage.getItem("cdit_theme") || "dark";
   const accent = localStorage.getItem("cdit_accent") || "indigo";
@@ -202,6 +1321,7 @@ function applyTheme(){
   document.querySelectorAll(".mode-toggle button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
   document.querySelectorAll(".accent-dot").forEach(d => d.classList.toggle("active", d.dataset.accent === accent));
 }
+
 function initThemeControls(){
   document.querySelectorAll(".mode-toggle button").forEach(b => {
     b.addEventListener("click", () => { localStorage.setItem("cdit_theme", b.dataset.mode); applyTheme(); });
@@ -215,6 +1335,22 @@ function initThemeControls(){
   });
   document.addEventListener("click", () => document.getElementById("themeMenu").classList.remove("open"));
   applyTheme();
+
+  // Sidebar toggle
+  const sidebar = document.getElementById("appSidebar");
+  const isCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
+  if (isCollapsed) sidebar.classList.add("collapsed");
+
+  document.getElementById("sidebarCollapseBtn").addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    localStorage.setItem("sidebar_collapsed", sidebar.classList.contains("collapsed"));
+  });
+
+  // Lock button
+  document.getElementById("lockBtn").addEventListener("click", () => {
+    clearSessionPassword();
+    location.reload();
+  });
 }
 
 async function unlock(){
@@ -231,30 +1367,55 @@ async function unlock(){
 }
 
 function revealChrome(){
-  document.getElementById("tabs").style.display = "flex";
-  document.getElementById("refreshBtn").style.display = "inline-block";
-  document.getElementById("addBrandBtn").style.display = "inline-block";
+  document.getElementById("appSidebar").style.display = "flex";
+  document.getElementById("refreshBtn").style.display = "inline-flex";
+  document.getElementById("addBrandBtn").style.display = "inline-flex";
   document.getElementById("themeSwitcher").style.display = "block";
+  document.getElementById("lockBtn").style.display = "inline-flex";
+  updateSidebarBadges();
+}
+
+function updateSidebarBadges(){
+  const brands = workbookData["Brands Master"] || [];
+  const news = workbookData["News feed"] || [];
+  const opps = workbookData["Opportunities"] || [];
+  const contacts = workbookData["Contacts"] || [];
+  const competitors = workbookData["Competitor Watch"] || [];
+  const emails = workbookData["Email Drafts"] || [];
+
+  document.getElementById("badgeOverview").textContent = brands.length;
+  document.getElementById("badgeNews").textContent = news.length;
+  document.getElementById("badgeOpps").textContent = opps.length;
+  document.getElementById("badgeContacts").textContent = contacts.length;
+  document.getElementById("badgeCompetitors").textContent = competitors.length;
+  document.getElementById("badgeEmails").textContent = emails.length;
 }
 
 async function loadWorkbook(pw){
-  document.getElementById("syncStatus").textContent = "Loading...";
+  const dot = document.getElementById("syncDot");
+  const status = document.getElementById("syncStatus");
+  dot.className = "status-dot loading";
+  status.textContent = "Syncing Sheets...";
   try {
     const resp = await fetch("/api/sheet-data", {
       headers: { "x-dashboard-password": pw }
     });
     if (resp.status === 401) {
-      document.getElementById("syncStatus").textContent = "Locked";
+      dot.className = "status-dot locked";
+      status.textContent = "Locked";
       return false;
     }
     if (!resp.ok) throw new Error("API error " + resp.status);
     const json = await resp.json();
     workbookData = json.sheets;
-    document.getElementById("syncStatus").textContent = "Live — last synced " + new Date(json.syncedAt).toLocaleString();
+    dot.className = "status-dot";
+    status.textContent = "Live · " + new Date(json.syncedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    updateSidebarBadges();
     return true;
   } catch (e) {
     console.error(e);
-    document.getElementById("syncStatus").textContent = "Sync failed: " + e.message;
+    dot.className = "status-dot locked";
+    status.textContent = "Sync failed";
     return false;
   }
 }
@@ -268,26 +1429,26 @@ async function refresh(){
   }
 }
 
-/* ---------------- Add Brand ---------------- */
+/* ---------------- Add Brand Modal ---------------- */
 function openAddBrandModal(){
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.id = "addBrandOverlay";
   overlay.innerHTML = `
     <div class="modal">
-      <h3>Add a brand to track</h3>
-      <div class="field"><label>Brand name</label><input id="fBrand" type="text" placeholder="e.g. Fire-Boltt"></div>
+      <h3>Add New Consumer Electronics Brand</h3>
+      <div class="field"><label>Brand name</label><input id="fBrand" type="text" placeholder="e.g. Fire-Boltt, Boat, Noise"></div>
       <div class="field"><label>Sector</label><input id="fSector" type="text" placeholder="e.g. Consumer Electronics"></div>
-      <div class="field"><label>Segment</label><input id="fSegment" type="text" placeholder="e.g. Wearables, Audio"></div>
+      <div class="field"><label>Segment</label><input id="fSegment" type="text" placeholder="e.g. Wearables, Audio, Smart Home"></div>
       <div class="field"><label>Priority Tier</label>
         <select id="fTier"><option>High</option><option>Medium</option><option selected>Low</option></select>
       </div>
-      <div class="field"><label>Website</label><input id="fWebsite" type="text" placeholder="e.g. fire-boltt.com"></div>
+      <div class="field"><label>Website</label><input id="fWebsite" type="text" placeholder="e.g. fireboltt.com"></div>
       <div class="field"><label>HQ / India Office</label><input id="fHQ" type="text" placeholder="e.g. Gurugram, Haryana"></div>
       <div class="error-text" id="addBrandError"></div>
       <div class="modal-actions">
         <button class="btn secondary" id="cancelAddBrand">Cancel</button>
-        <button class="btn" id="submitAddBrand">Add Brand</button>
+        <button class="btn" id="submitAddBrand">Add & Save</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -303,7 +1464,7 @@ async function submitAddBrand(){
   const today = new Date().toISOString().slice(0, 10);
   const brandRow = {
     "Brand": brandName,
-    "Sector": document.getElementById("fSector").value.trim(),
+    "Sector": document.getElementById("fSector").value.trim() || "Consumer Electronics",
     "Segment": document.getElementById("fSegment").value.trim(),
     "Priority Tier": document.getElementById("fTier").value,
     "Website": document.getElementById("fWebsite").value.trim(),
@@ -327,7 +1488,7 @@ async function submitAddBrand(){
     await refresh();
   } catch (e) {
     errEl.textContent = e.message;
-    btn.disabled = false; btn.textContent = "Add Brand";
+    btn.disabled = false; btn.textContent = "Add & Save";
   }
 }
 
@@ -364,7 +1525,7 @@ async function updatePipelineStage(brandName, newStage, btnEl, noteEl){
   }
 }
 
-/* ---------------- Shared helpers ---------------- */
+/* ---------------- Shared Helpers ---------------- */
 function priorityLabel(score){
   score = Number(score) || 0;
   if (score >= 4) return "High";
@@ -375,29 +1536,114 @@ function escapeHtml(s){
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function escapeAttr(s){ return escapeHtml(s).replace(/`/g, "&#96;"); }
-function starRow(score, max){
-  max = max || 5;
+function starRow(score, max = 5){
   score = Math.round(Number(score) || 0);
   let out = "";
   for (let i = 1; i <= max; i++) out += i <= score ? "&#9733;" : `<span class="empty-star">&#9733;</span>`;
   return `<span class="stars">${out}</span>`;
 }
-function brandLink(name){
-  if (!name) return "";
-  return `<a class="brand-link" href="#" onclick="showBrandDetail('${escapeAttr(name).replace(/'/g,"&#39;")}');return false;">${escapeHtml(name)}</a>`;
+function brandLink(name, subtitle = ""){
+  if (!name) return "-";
+  return `
+    <div class="brand-cell">
+      <a class="brand-title-link" href="#" onclick="showBrandDetail('${escapeAttr(name).replace(/'/g,"&#39;")}');return false;">${escapeHtml(name)}</a>
+      ${subtitle ? `<span class="brand-subtitle">${escapeHtml(subtitle)}</span>` : ""}
+    </div>
+  `;
+}
+function formatRelativeDate(dateStr){
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const now = new Date();
+  const diffDays = Math.round((now - d) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 0 && diffDays < 30) return `${diffDays}d ago`;
+  return d.toISOString().slice(0, 10);
 }
 function sortByDateDesc(rows, field){
   return rows.slice().sort((a, b) => String(b[field] || "").localeCompare(String(a[field] || "")));
 }
 
-/* ---------------- Overview / generic tabs ---------------- */
+/* ---------------- Overview Page with Interactive Filters & Sorting ---------------- */
+function getBrandLatestResearchMap(){
+  const news = workbookData["News feed"] || [];
+  const pipeline = workbookData["Pipeline"] || [];
+  const brands = workbookData["Brands Master"] || [];
+  const map = {};
+
+  // Initialize from Brands Master Date Added
+  brands.forEach(b => {
+    map[b["Brand"]] = { date: b["Date Added"] || "2000-01-01", snippet: "Brand record added" };
+  });
+
+  // Check Pipeline updates
+  pipeline.forEach(p => {
+    const b = p["Brand"];
+    const d = p["Last Update"];
+    if (d && (!map[b] || String(d).localeCompare(String(map[b].date)) > 0)) {
+      map[b] = { date: d, snippet: `Pipeline: ${p["Stage"] || "Updated"}` };
+    }
+  });
+
+  // Check News dates (the most active research signal)
+  news.forEach(n => {
+    const b = n["Brand"];
+    const d = n["Date"];
+    if (d && (!map[b] || String(d).localeCompare(String(map[b].date)) > 0)) {
+      map[b] = { date: d, snippet: n["Headline"] || "News research updated" };
+    }
+  });
+
+  return map;
+}
+
+function handleKpiClick(filterKey){
+  if (activeKpiFilter === filterKey) {
+    activeKpiFilter = null; // toggle off to clear
+  } else {
+    activeKpiFilter = filterKey;
+  }
+  renderOverview();
+}
+
+function handleOverviewSort(colKey){
+  if (overviewSortCol === colKey) {
+    overviewSortDir = overviewSortDir === "asc" ? "desc" : "asc";
+  } else {
+    overviewSortCol = colKey;
+    overviewSortDir = (colKey === "latestResearch" || colKey === "dateAdded" || colKey === "score") ? "desc" : "asc";
+  }
+  renderOverview();
+}
+
+function setColumnFilter(colKey, value){
+  if (!value) delete overviewColumnFilters[colKey];
+  else overviewColumnFilters[colKey] = value;
+  renderOverview();
+}
+
+function clearAllFilters(){
+  activeKpiFilter = null;
+  overviewColumnFilters = {};
+  const searchBox = document.getElementById("searchBox");
+  if (searchBox) searchBox.value = "";
+  renderOverview();
+}
+
 function renderOverview(){
   window.__viewingBrand = null;
   const brands = workbookData["Brands Master"] || [];
   const opps = workbookData["Opportunities"] || [];
   const pipeline = workbookData["Pipeline"] || [];
-  const high = opps.filter(o => Number(o["Priority Score (1-5)"]) >= 4).length;
-  const dormant = opps.filter(o => Number(o["Priority Score (1-5)"]) <= 2).length;
+  const latestResearchMap = getBrandLatestResearchMap();
+
+  const highOpps = opps.filter(o => Number(o["Priority Score (1-5)"]) >= 4).length;
+  const highBrands = brands.filter(b => b["Priority Tier"] === "High").length;
+  const dormantCount = pipeline.filter(p => p["Stage"] === "Dormant" || p["Stage"] === "Lost").length ||
+    opps.filter(o => Number(o["Priority Score (1-5)"]) <= 2).length;
+
   const pipelineByBrand = Object.fromEntries(pipeline.map(p => [p["Brand"], p["Stage"]]));
   const topOppByBrand = {};
   opps.forEach(o => {
@@ -406,34 +1652,234 @@ function renderOverview(){
       topOppByBrand[b] = o;
     }
   });
-  const rows = brands.map(b => {
+
+  // Prepare enriched brand rows
+  let rowsData = brands.map(b => {
     const top = topOppByBrand[b["Brand"]];
-    return `<tr>
-      <td>${brandLink(b["Brand"])}</td>
-      <td><span class="pill ${escapeHtml(b["Priority Tier"])}">${escapeHtml(b["Priority Tier"])}</span></td>
-      <td>${escapeHtml(top ? top["Opportunity Type"] : "-")}</td>
-      <td class="score">${top ? escapeHtml(top["Priority Score (1-5)"]) : "-"}</td>
-      <td>${escapeHtml(pipelineByBrand[b["Brand"]] || "-")}</td>
-      <td>${escapeHtml(b["Date Added"] || "-")}</td>
-    </tr>`;
-  }).join("");
+    const latest = latestResearchMap[b["Brand"]] || { date: b["Date Added"] || "-", snippet: "" };
+    return {
+      brand: b["Brand"],
+      sector: b["Sector"] || "",
+      segment: b["Segment"] || "",
+      priorityTier: b["Priority Tier"] || "Low",
+      topOpportunity: top ? top["Opportunity Type"] : "-",
+      score: top ? Number(top["Priority Score (1-5)"]) || 0 : 0,
+      scoreText: top ? top["Priority Score (1-5)"] : "-",
+      pipelineStage: pipelineByBrand[b["Brand"]] || "Prospect",
+      dateAdded: b["Date Added"] || "-",
+      latestResearch: latest.date || "-",
+      latestResearchSnippet: latest.snippet || "",
+      hasOpp: !!top
+    };
+  });
+
+  // Apply KPI Tile Filter
+  if (activeKpiFilter === "opps") {
+    rowsData = rowsData.filter(r => r.hasOpp);
+  } else if (activeKpiFilter === "high") {
+    rowsData = rowsData.filter(r => r.priorityTier === "High" || r.score >= 4);
+  } else if (activeKpiFilter === "dormant") {
+    rowsData = rowsData.filter(r => r.priorityTier === "Low" || r.pipelineStage === "Dormant" || r.score <= 2);
+  }
+
+  // Apply Column Filters
+  Object.keys(overviewColumnFilters).forEach(col => {
+    const val = overviewColumnFilters[col];
+    if (val) {
+      rowsData = rowsData.filter(r => String(r[col] || "").toLowerCase() === String(val).toLowerCase());
+    }
+  });
+
+  // Sorting
+  rowsData.sort((a, b) => {
+    let vA = a[overviewSortCol];
+    let vB = b[overviewSortCol];
+    if (overviewSortCol === "score") {
+      vA = Number(vA) || 0;
+      vB = Number(vB) || 0;
+    } else {
+      vA = String(vA || "").toLowerCase();
+      vB = String(vB || "").toLowerCase();
+    }
+    if (vA < vB) return overviewSortDir === "asc" ? -1 : 1;
+    if (vA > vB) return overviewSortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  // Distinct values for column filter dropdowns
+  const distinctTiers = [...new Set(brands.map(b => b["Priority Tier"]).filter(Boolean))];
+  const distinctStages = [...new Set(pipeline.map(p => p["Stage"]).filter(Boolean))];
+
+  // Render Table Rows
+  const tableRows = rowsData.length ? rowsData.map(r => `
+    <tr>
+      <td>${brandLink(r.brand, r.segment ? `${r.sector} · ${r.segment}` : r.sector)}</td>
+      <td><span class="pill ${escapeHtml(r.priorityTier)}">${escapeHtml(r.priorityTier)}</span></td>
+      <td>${escapeHtml(r.topOpportunity)}</td>
+      <td>
+        <span class="pill ${r.score >= 4 ? "High" : r.score === 3 ? "Medium" : "Low"}">
+          ${r.score ? `${r.score}/5` : "-"}
+        </span>
+      </td>
+      <td><span class="pill Stage">${escapeHtml(r.pipelineStage)}</span></td>
+      <td>
+        <div class="date-cell" title="${escapeAttr(r.latestResearchSnippet)}">
+          <span class="date-primary">${escapeHtml(r.latestResearch)}</span>
+          <span class="date-relative">${formatRelativeDate(r.latestResearch)}</span>
+        </div>
+      </td>
+      <td><span style="color:var(--text-muted);font-size:12px;">${escapeHtml(r.dateAdded)}</span></td>
+      <td>
+        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">
+          View Profile &#8594;
+        </button>
+      </td>
+    </tr>
+  `).join("") : `<tr><td colspan="8" class="empty">No brands matching the selected criteria.</td></tr>`;
+
+  // Sort indicator helper
+  function sortIndicator(col){
+    if (overviewSortCol !== col) return `<span class="sort-icon">⇅</span>`;
+    return overviewSortDir === "asc" ? `<span class="sort-icon">▲</span>` : `<span class="sort-icon">▼</span>`;
+  }
+
+  // Active filter banner
+  const hasActiveFilters = activeKpiFilter || Object.keys(overviewColumnFilters).length > 0;
+  let activeFilterLabel = "";
+  if (activeKpiFilter === "opps") activeFilterLabel = "Filter: Brands with Open Opportunities";
+  else if (activeKpiFilter === "high") activeFilterLabel = "Filter: High Priority (Tier High or Score 4-5)";
+  else if (activeKpiFilter === "dormant") activeFilterLabel = "Filter: Dormant / Low Priority";
+  else if (activeKpiFilter === "all") activeFilterLabel = "Filter: All Brands Tracked";
+
   document.getElementById("content").innerHTML = `
-    <div class="cards">
-      <div class="card"><div class="num">${brands.length}</div><div class="label">Brands Tracked</div></div>
-      <div class="card"><div class="num">${opps.length}</div><div class="label">Open Opportunities</div></div>
-      <div class="card"><div class="num" style="color:var(--high)">${high}</div><div class="label">High Priority (4-5)</div></div>
-      <div class="card"><div class="num" style="color:var(--low)">${dormant}</div><div class="label">Dormant / Low Priority</div></div>
+    <!-- KPI Tiles Grid with Interactive Filter Clicks -->
+    <div class="kpi-grid">
+      <div class="kpi-card ${activeKpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleKpiClick('all')" title="Click to view all brands">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Brands Tracked</span>
+          <div class="kpi-icon-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9M14 17H5M17 12H3"/></svg>
+          </div>
+        </div>
+        <div class="kpi-value">${brands.length}</div>
+        <div class="kpi-hint">
+          <span>Active accounts</span>
+          <span class="kpi-filter-tag">Filter Active</span>
+        </div>
+      </div>
+
+      <div class="kpi-card ${activeKpiFilter === 'opps' ? 'active-filter' : ''}" onclick="handleKpiClick('opps')" title="Click to filter brands with open opportunities">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Open Opportunities</span>
+          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--info)">${opps.length}</div>
+        <div class="kpi-hint">
+          <span>Scored leads</span>
+          <span class="kpi-filter-tag">Filter Active</span>
+        </div>
+      </div>
+
+      <div class="kpi-card ${activeKpiFilter === 'high' ? 'active-filter' : ''}" onclick="handleKpiClick('high')" title="Click to filter high priority accounts">
+        <div class="kpi-card-top">
+          <span class="kpi-label">High Priority (4-5)</span>
+          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--high)">${highOpps || highBrands}</div>
+        <div class="kpi-hint">
+          <span>Immediate outreach</span>
+          <span class="kpi-filter-tag">Filter Active</span>
+        </div>
+      </div>
+
+      <div class="kpi-card ${activeKpiFilter === 'dormant' ? 'active-filter' : ''}" onclick="handleKpiClick('dormant')" title="Click to filter dormant & low priority accounts">
+        <div class="kpi-card-top">
+          <span class="kpi-label">Dormant / Low Priority</span>
+          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+        </div>
+        <div class="kpi-value" style="color:var(--low)">${dormantCount}</div>
+        <div class="kpi-hint">
+          <span>Nurturing tier</span>
+          <span class="kpi-filter-tag">Filter Active</span>
+        </div>
+      </div>
     </div>
-    <div class="panel">
-      <table>
-        <thead><tr><th>Brand</th><th>Priority Tier</th><th>Top Opportunity</th><th>Score</th><th>Pipeline Stage</th><th>Date Added</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
+
+    <!-- Table Toolbar: Search & Column Filters -->
+    <div class="table-controls-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchBox" class="search-input" placeholder="Search any brand, segment, sector, stage, score, opportunity..." />
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        ${hasActiveFilters ? `
+          <div class="active-filter-banner">
+            <span>${escapeHtml(activeFilterLabel || "Active Filters")} (${rowsData.length} brands)</span>
+            <button class="filter-clear-btn" onclick="clearAllFilters()">Clear Filter</button>
+          </div>
+        ` : ""}
+
+        <select id="tierFilterSelect" onchange="setColumnFilter('priorityTier', this.value)" style="padding:8px 12px;">
+          <option value="">All Tiers</option>
+          ${distinctTiers.map(t => `<option value="${escapeAttr(t)}" ${overviewColumnFilters.priorityTier === t ? "selected" : ""}>${escapeHtml(t)} Tier</option>`).join("")}
+        </select>
+
+        <select id="stageFilterSelect" onchange="setColumnFilter('pipelineStage', this.value)" style="padding:8px 12px;">
+          <option value="">All Stages</option>
+          ${distinctStages.map(s => `<option value="${escapeAttr(s)}" ${overviewColumnFilters.pipelineStage === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+
+    <!-- CRM Data Table -->
+    <div class="crm-panel">
+      <div class="table-responsive">
+        <table class="crm-table" id="dataTable">
+          <thead>
+            <tr>
+              <th class="sortable ${overviewSortCol === 'brand' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('brand')">
+                <div class="th-content">Brand & Sector ${sortIndicator('brand')}</div>
+              </th>
+              <th class="sortable ${overviewSortCol === 'priorityTier' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('priorityTier')">
+                <div class="th-content">Priority Tier ${sortIndicator('priorityTier')}</div>
+              </th>
+              <th class="sortable ${overviewSortCol === 'topOpportunity' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('topOpportunity')">
+                <div class="th-content">Top Opportunity ${sortIndicator('topOpportunity')}</div>
+              </th>
+              <th class="sortable ${overviewSortCol === 'score' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('score')">
+                <div class="th-content">Score ${sortIndicator('score')}</div>
+              </th>
+              <th class="sortable ${overviewSortCol === 'pipelineStage' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('pipelineStage')">
+                <div class="th-content">Pipeline Stage ${sortIndicator('pipelineStage')}</div>
+              </th>
+              <th class="sortable ${overviewSortCol === 'latestResearch' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('latestResearch')" title="Sorted by latest research update">
+                <div class="th-content">Latest Research ${sortIndicator('latestResearch')}</div>
+              </th>
+              <th class="sortable ${overviewSortCol === 'dateAdded' ? 'sorted-' + overviewSortDir : ''}" onclick="handleOverviewSort('dateAdded')">
+                <div class="th-content">Date Added ${sortIndicator('dateAdded')}</div>
+              </th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  wireSearch();
 }
-function genericTable(sheetName, opts){
+
+/* ---------------- Generic Table for News, Contacts, etc. ---------------- */
+function genericTable(sheetName, opts = {}){
   window.__viewingBrand = null;
-  opts = opts || {};
   let rows = workbookData[sheetName] || [];
   if (opts.sortDateField) rows = sortByDateDesc(rows, opts.sortDateField);
   const cols = rows[0] ? Object.keys(rows[0]) : [];
@@ -442,10 +1888,16 @@ function genericTable(sheetName, opts){
     `<td>${c === "Brand" ? brandLink(r[c]) : escapeHtml(r[c])}</td>`
   ).join("")}</tr>`).join("");
   document.getElementById("content").innerHTML = `
-    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search ${escapeHtml(sheetName)}..."></div>
-    <div class="panel"><table id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+    <div class="table-controls-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchBox" class="search-input" placeholder="Search ${escapeHtml(sheetName)}...">
+      </div>
+    </div>
+    <div class="crm-panel"><div class="table-responsive"><table class="crm-table" id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>`;
   wireSearch();
 }
+
 function renderOpportunities(){
   window.__viewingBrand = null;
   const rows = workbookData["Opportunities"] || [];
@@ -462,8 +1914,13 @@ function renderOpportunities(){
       }).join("")}</tr>`;
     }).join("");
   document.getElementById("content").innerHTML = `
-    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search opportunities..."></div>
-    <div class="panel"><table id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+    <div class="table-controls-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchBox" class="search-input" placeholder="Search opportunities...">
+      </div>
+    </div>
+    <div class="crm-panel"><div class="table-responsive"><table class="crm-table" id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div></div>`;
   wireSearch();
 }
 
@@ -487,27 +1944,33 @@ function renderCompetitors(){
     const competitorName = r["Competitor"] || "";
     const isTracked = competitorName && trackedBrands.has(competitorName);
     const trackBtn = competitorName ? `
-      <div><button class="track-brand-btn" ${isTracked ? "disabled" : ""} onclick="event.stopPropagation(); addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">${isTracked ? "Already tracked &#10003;" : "+ Track this brand"}</button></div>` : "";
+      <div><button class="track-brand-btn" ${isTracked ? "disabled" : ""} onclick="event.stopPropagation(); addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">${isTracked ? "Already tracked ✓" : "+ Track with AI Research"}</button></div>` : "";
     return `
     <div class="competitor-card" onclick="toggleCompetitorItem(${i})">
       <div class="meta"><span class="cat-tag">${escapeHtml(r["Category"] || r["Related Tracked Brand"] || "")}</span><span>${escapeHtml(r["Date"])}</span><span>· ${escapeHtml(r["Source"])}</span></div>
       <h4>${escapeHtml(r["Headline"])}</h4>
       <p>${escapeHtml(r["Summary"])}</p>
       <div id="competitor-expand-${i}" class="expand">
-        <p><strong>Competitor:</strong> ${escapeHtml(r["Competitor"])} &nbsp;·&nbsp; <strong>Related to your brand:</strong> ${escapeHtml(r["Related Tracked Brand"])}</p>
+        <p><strong>Competitor:</strong> ${escapeHtml(r["Competitor"])} &nbsp;·&nbsp; <strong>Related to:</strong> ${escapeHtml(r["Related Tracked Brand"])}</p>
         <p>${escapeHtml(r["Full Analysis"] || r["Summary"])}</p>
-        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View source &#8594;</a>` : ""}
+        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--accent);font-weight:600;">View source article &#8594;</a>` : ""}
       </div>
-      <div class="expand-hint" id="competitor-hint-${i}">Click to expand full analysis &#8595;</div>
+      <div class="expand-hint" id="competitor-hint-${i}">Click to expand analysis &#8595;</div>
       ${trackBtn}
     </div>`;
   }).join("");
   document.getElementById("content").innerHTML = `
-    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search competitor watch..."></div>
+    <div class="table-controls-bar">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchBox" class="search-input" placeholder="Search competitor watch insights...">
+      </div>
+    </div>
     <div class="filter-pills">${pills}</div>
     <div class="competitor-grid">${list}</div>`;
   wireSearch();
 }
+
 function setCompetitorFilter(c){
   window.__competitorFilter = c;
   renderCompetitors();
@@ -517,8 +1980,9 @@ function toggleCompetitorItem(i){
   const hint = document.getElementById(`competitor-hint-${i}`);
   const open = el.style.display === "block";
   el.style.display = open ? "none" : "block";
-  hint.innerHTML = open ? "Click to expand full analysis &#8595;" : "Click to collapse &#8593;";
+  hint.innerHTML = open ? "Click to expand analysis &#8595;" : "Click to collapse &#8593;";
 }
+
 async function addCompetitorAsTrackedBrand(brandName, btnEl){
   btnEl.disabled = true;
   btnEl.textContent = "Researching (Gemini)...";
@@ -543,16 +2007,17 @@ function wireSearch(){
   const box = document.getElementById("searchBox");
   if (!box) return;
   box.addEventListener("input", (e) => {
-    const q = e.target.value.toLowerCase();
+    const q = e.target.value.toLowerCase().trim();
     document.querySelectorAll("#dataTable tbody tr, .news-item, .competitor-card").forEach(tr => {
-      tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none";
+      tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
     });
   });
 }
+
 function renderTab(tab){
   currentTab = tab;
   window.__viewingBrand = null;
-  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".nav-item-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   if (!workbookData["Brands Master"]) return;
   if (tab === "overview") return renderOverview();
   if (tab === "news") return genericTable("News feed", { sortDateField: "Date" });
@@ -562,12 +2027,12 @@ function renderTab(tab){
   if (tab === "emails") return genericTable("Email Drafts");
 }
 
-/* ---------------- Brand detail page ---------------- */
+/* ---------------- Brand Detail Page ---------------- */
 function copyToClipboard(text, btnEl){
   navigator.clipboard.writeText(text).then(() => {
     if (btnEl) {
       const old = btnEl.textContent;
-      btnEl.textContent = "Copied";
+      btnEl.textContent = "Copied ✓";
       setTimeout(() => { btnEl.textContent = old; }, 1500);
     }
   });
@@ -588,13 +2053,13 @@ function copyEmailRich(subject, htmlBody, btnEl){
 function flashCopied(btnEl){
   if (!btnEl) return;
   const old = btnEl.textContent;
-  btnEl.textContent = "Copied — paste into Outlook/Gmail";
+  btnEl.textContent = "Copied — paste into Outlook/Gmail ✓";
   setTimeout(() => { btnEl.textContent = old; }, 2000);
 }
 
 function showBrandDetail(brandName){
   window.__viewingBrand = brandName;
-  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".nav-item-btn").forEach(b => b.classList.remove("active"));
   renderBrandDetail(brandName);
 }
 
@@ -621,7 +2086,7 @@ function renderBrandDetail(brandName){
       <div class="meta"><span class="cat-tag">${escapeHtml(n["Category"])}</span><span>${escapeHtml(n["Date"])}</span><span>· ${escapeHtml(n["Source"])}</span></div>
       <h4>${escapeHtml(n["Headline"])}</h4>
       <p>${escapeHtml(n["AI Summary"])}</p>
-      ${n["URL"] ? `<a href="${escapeAttr(n["URL"])}" target="_blank" rel="noopener">View source &#8594;</a>` : ""}
+      ${n["URL"] ? `<a href="${escapeAttr(n["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">View source &#8594;</a>` : ""}
     </div>`).join("") : `<div class="empty">No news items tracked for this brand yet.</div>`;
 
   const oppsHtml = opps.length ? opps.map(o => `
@@ -647,44 +2112,73 @@ function renderBrandDetail(brandName){
   const stageOptions = stages.map(s => `<option value="${s}" ${s === currentStage ? "selected" : ""}>${s}</option>`).join("");
 
   document.getElementById("content").innerHTML = `
-    <div class="back-link" onclick="renderTab('overview')">&#8592; Back to Overview</div>
-    <div class="detail-header">
-      <h2>${escapeHtml(brand["Brand"])}</h2>
-      <span class="pill ${escapeHtml(brand["Priority Tier"] || "Low")}">${escapeHtml(brand["Priority Tier"] || "Unrated")}</span>
-      ${pipelineRow ? `<span class="pill Medium">${escapeHtml(pipelineRow["Stage"])}</span>` : ""}
-    </div>
-    <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">
-      ${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}
-      ${brand["Website"] ? ` · <a href="https://${escapeAttr(brand["Website"].replace(/^https?:\/\//,""))}" target="_blank" rel="noopener">${escapeHtml(brand["Website"])}</a>` : ""}
+    <button class="back-btn" onclick="renderTab('overview')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      <span>Back to Overview CRM</span>
+    </button>
+
+    <div class="detail-hero">
+      <div class="detail-hero-left">
+        <div class="detail-hero-icon">${escapeHtml(brand["Brand"].charAt(0))}</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+            <h2>${escapeHtml(brand["Brand"])}</h2>
+            <span class="pill ${escapeHtml(brand["Priority Tier"] || "Low")}">${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</span>
+            ${pipelineRow ? `<span class="pill Stage">${escapeHtml(pipelineRow["Stage"])}</span>` : ""}
+          </div>
+          <div style="color:var(--text-secondary);font-size:13px;">
+            ${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}
+            ${brand["Website"] ? ` · <a href="https://${escapeAttr(brand["Website"].replace(/^https?:\/\//,""))}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">${escapeHtml(brand["Website"])} &#8599;</a>` : ""}
+          </div>
+        </div>
+      </div>
+      <div>
+        <button class="btn secondary" onclick="openAddBrandModal()">+ Add New Brand</button>
+      </div>
     </div>
 
     <div class="detail-grid">
       <div>
-        <div class="section">
-          <h3>Executive Summary</h3>
+        <div class="section-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Executive Summary
+          </h3>
           <div class="exec-summary">${execSummary}</div>
         </div>
-        <div class="section">
-          <h3>Opportunity Breakdown</h3>
+
+        <div class="section-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Opportunity Breakdown
+          </h3>
           ${oppsHtml}
         </div>
-        <div class="section">
-          <h3>Detailed News Analysis (most recent first)</h3>
+
+        <div class="section-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
+            Detailed News Analysis (Most Recent First)
+          </h3>
           ${newsHtml}
         </div>
-        <div class="section">
-          <h3>Drafted Outreach Email</h3>
+
+        <div class="section-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            Drafted Outreach Email
+          </h3>
           <div class="ai-draft-bar">
-            <button class="btn tiny" id="aiDraftBtn">&#10024; Generate AI Email draft</button>
-            <span class="spinner-text" id="aiDraftStatus">${hasSheetDraft ? "" : "No draft yet — click to generate one."}</span>
+            <button class="btn tiny" id="aiDraftBtn">✨ Generate AI Email Draft</button>
+            <span class="spinner-text" id="aiDraftStatus" style="font-size:12px;color:var(--text-muted);">${hasSheetDraft ? "" : "No draft yet — click to generate one."}</span>
           </div>
           <div id="emailResultWrap" style="${hasSheetDraft ? "" : "display:none;"}">
             <div class="email-box" id="emailBoxContent">
               <div class="email-subject" id="emailSubjectLine">${hasSheetDraft ? escapeHtml(window.__emailDraftState.subject) : ""}</div>
               <div id="emailBodyContent">${hasSheetDraft ? window.__emailDraftState.bodyHtml : ""}</div>
             </div>
-            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <button class="btn tiny" id="copyEmailBtn">Copy formatted email</button>
+            <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+              <button class="btn tiny" id="copyEmailBtn">Copy Formatted Email</button>
               <span class="draft-note" id="emailDraftNote">${hasSheetDraft ? "Sourced from Email Drafts sheet." : ""}</span>
             </div>
           </div>
@@ -692,25 +2186,36 @@ function renderBrandDetail(brandName){
       </div>
 
       <div>
-        <div class="section contact-card">
-          <h3>Key Contact</h3>
+        <div class="section-card contact-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Key Contact
+          </h3>
           ${contactHtml}
         </div>
-        <div class="section">
-          <h3>Opportunity Score</h3>
+
+        <div class="section-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            Opportunity Score
+          </h3>
           ${topOpp ? `
             <div class="score-line">
               <div class="score-line-label">Priority Score — ${escapeHtml(topOpp["Priority Score (1-5)"])}/5</div>
               ${starRow(topOpp["Priority Score (1-5)"])}
             </div>
-            <div class="score-line" style="margin-top:14px;">
+            <div class="score-line" style="margin-top:16px;">
               <div class="score-line-label">Confidence Score — ${escapeHtml(topOpp["Confidence Score (1-5)"])}/5</div>
               ${starRow(topOpp["Confidence Score (1-5)"])}
             </div>
           ` : `<div class="empty" style="padding:10px 0;">Not yet scored</div>`}
         </div>
-        <div class="section">
-          <h3>Pipeline Stage</h3>
+
+        <div class="section-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            Pipeline Stage
+          </h3>
           <div class="pipeline-editor">
             <select id="stageSelect">${stageOptions}</select>
             <button class="btn tiny" id="saveStageBtn">Save</button>
@@ -783,7 +2288,6 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
     document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news and live channelplay.in content.";
     statusEl.textContent = "Draft ready.";
 
-    // Best-effort: log the generated draft to the Email Drafts sheet for a record.
     fetch("/api/sheet-write", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
@@ -856,23 +2360,24 @@ function renderContactCard(contact){
       <button class="copy-btn" data-copy="${escapeAttr(val)}">Copy</button>
     </div>`).join("");
   if (contact["LinkedIn Profile"] && !/not yet|not researched|search /i.test(contact["LinkedIn Profile"])) {
-    html += `<div class="cf"><div><div class="cf-label">LinkedIn</div><div class="cf-value"><a href="${escapeAttr(contact["LinkedIn Profile"])}" target="_blank" rel="noopener">Profile &#8594;</a></div></div></div>`;
+    html += `<div class="cf"><div><div class="cf-label">LinkedIn</div><div class="cf-value"><a href="${escapeAttr(contact["LinkedIn Profile"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">Profile &#8594;</a></div></div></div>`;
   }
   return html || `<div class="empty" style="padding:10px 0;">Contact research pending.</div>`;
 }
 
-/* ---------------- Wiring ---------------- */
+/* ---------------- Event Listeners & Bootstrapping ---------------- */
 document.getElementById("unlockBtn").addEventListener("click", unlock);
 document.getElementById("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
 document.getElementById("refreshBtn").addEventListener("click", refresh);
 document.getElementById("addBrandBtn").addEventListener("click", openAddBrandModal);
+document.getElementById("sidebarAddBrandBtn").addEventListener("click", openAddBrandModal);
 initThemeControls();
 
-document.querySelectorAll("nav button").forEach(btn => {
+document.querySelectorAll(".nav-item-btn").forEach(btn => {
   btn.addEventListener("click", () => renderTab(btn.dataset.tab));
 });
 
-// Auto-unlock if a password is already stored in this browser session
+// Auto-unlock if password exists in session
 (async () => {
   const pw = getSessionPassword();
   if (pw) {
