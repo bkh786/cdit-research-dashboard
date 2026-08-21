@@ -363,95 +363,142 @@ function buildShareData(type, target){
     const topOpp = opps[0];
     const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
 
-    const plainExecSummary = (buildExecSummary(brand, topOpp, news, pipelineRow) || "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    const rawExecSummary = (buildExecSummary(brand, topOpp, news, pipelineRow) || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
     const directLink = `${window.location.origin}${window.location.pathname}#brand=${encodeURIComponent(brandName)}`;
 
-    let plain = `====================================================\n`;
-    plain += `STRATEGIC RESEARCH BRIEFING: ${brandName.toUpperCase()}\n`;
-    plain += `====================================================\n\n`;
+    let plain = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    plain += `📊 STRATEGIC RESEARCH BRIEFING: ${brandName.toUpperCase()}\n`;
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    plain += `📌 STRATEGIC OVERVIEW & PROFILE:\n`;
+    plain += `📌 STRATEGIC PROFILE & METADATA:\n`;
+    plain += `• Brand: ${brandName}\n`;
     plain += `• Sector / Segment: ${brand["Sector"] || "Consumer Electronics"}${brand["Segment"] ? ` · ${brand["Segment"]}` : ""}\n`;
-    plain += `• Priority Rating: ${brand["Priority Tier"] || "Unrated"} Priority (Score: ${topOpp ? `${topOpp["Priority Score (1-5)"]}/5` : "Unrated"})\n`;
+    plain += `• Priority Tier: ${brand["Priority Tier"] || "Unrated"} Priority (Score: ${topOpp ? `${topOpp["Priority Score (1-5)"]}/5` : "Unrated"})\n`;
     plain += `• Pipeline Stage: ${pipelineRow ? pipelineRow["Stage"] : "Prospect"}\n`;
     plain += `• Latest Research Date: ${latestResearch.date || "-"}\n`;
     if (brand["Website"]) plain += `• Website: ${brand["Website"]}\n`;
     plain += `• Direct Dashboard Link: ${directLink}\n\n`;
 
-    plain += `📝 EXECUTIVE SUMMARY:\n`;
-    plain += `${plainExecSummary}\n\n`;
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    plain += `📝 EXECUTIVE BRIEFING:\n`;
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    plain += `${rawExecSummary}\n\n`;
 
     if (opps.length) {
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       plain += `🎯 CHANNELPLAY OPPORTUNITY BREAKDOWN & PITCH ANGLE:\n`;
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
       opps.forEach((o, i) => {
         plain += `[${i+1}] ${o["Opportunity Type"]} (Score: ${o["Priority Score (1-5)"]}/5)\n`;
         plain += `  • Business Impact: ${o["Business Impact"]}\n`;
         plain += `  • Channelplay Pitch: ${o["Opportunity for Channelplay"]}\n`;
-        plain += `  • Recommended Service: ${o["Recommended Service"]}\n`;
-        plain += `  • Target Department: ${o["Recommended Contact Department"]}\n`;
+        plain += `  • Recommended Service: ${o["Recommended Service"]} · Department: ${o["Recommended Contact Department"]}\n`;
         plain += `  • Suggested Next Action: ${o["Suggested Next Action"]}\n\n`;
       });
     }
 
     if (news.length) {
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       plain += `📰 RECENT STRATEGIC SIGNALS & LIVE NEWS:\n`;
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
       news.slice(0, 5).forEach((n, i) => {
-        plain += `[${i+1}] ${n["Headline"]} (${n["Date"]} · ${n["Source"] || "News"})\n`;
-        if (n["AI Summary"] || n["Summary"]) plain += `  • Summary: ${n["AI Summary"] || n["Summary"]}\n`;
-        if (n["URL"]) plain += `  • Live News Link: ${n["URL"]}\n`;
+        plain += `[${i+1}] ${n["Headline"]}\n`;
+        plain += `    Date: ${n["Date"]} | Source: ${n["Source"] || "News"}\n`;
+        if (n["AI Summary"] || n["Summary"]) plain += `    Summary: ${n["AI Summary"] || n["Summary"]}\n`;
+        if (n["URL"]) plain += `    Live Article: ${n["URL"]}\n`;
         plain += `\n`;
       });
     }
 
     if (contact) {
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       plain += `👤 KEY DECISION MAKER & CONTACT:\n`;
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       plain += `• Name: ${contact["Decision Maker Name"] || "Research Pending"}\n`;
       plain += `• Designation: ${contact["Designation"] || "-"}\n`;
       plain += `• Department: ${contact["Department"] || "Strategy / Sales"}\n`;
       if (contact["Official Email (public only)"]) plain += `• Email: ${contact["Official Email (public only)"]}\n`;
       if (contact["Official Contact Number (public only)"]) plain += `• Phone: ${contact["Official Contact Number (public only)"]}\n`;
       if (contact["LinkedIn Profile"]) plain += `• LinkedIn: ${contact["LinkedIn Profile"]}\n`;
-      if (contact["Office Location"]) plain += `• Office: ${contact["Office Location"]}\n`;
+      if (contact["Office Location"]) plain += `• Office Location: ${contact["Office Location"]}\n`;
+      plain += `\n`;
     }
 
+    plain += `🚀 Open in Dashboard: ${directLink}\n`;
+
     let richHtml = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#1e293b;max-width:680px;">
-        <h2 style="color:#0f172a;margin-bottom:4px;">Strategic Research Briefing: ${escapeHtml(brandName)}</h2>
-        <div style="color:#64748b;font-size:13px;margin-bottom:16px;">
-          ${escapeHtml(brand["Sector"] || "Consumer Electronics")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""} &nbsp;|&nbsp;
-          <strong>${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</strong> &nbsp;|&nbsp;
-          Stage: <strong>${escapeHtml(pipelineRow ? pipelineRow["Stage"] : "Prospect")}</strong>
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.65;color:#1e293b;max-width:680px;background:#ffffff;padding:24px;border:1px solid #e2e8f0;border-radius:8px;">
+        <div style="border-bottom:2px solid #4f46e5;padding-bottom:12px;margin-bottom:18px;">
+          <div style="display:inline-block;background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;margin-bottom:6px;">Strategic Research Briefing</div>
+          <h1 style="margin:0 0 6px 0;font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">${escapeHtml(brandName)}</h1>
+          <div style="font-size:13px;color:#64748b;">
+            🏢 <strong>Sector:</strong> ${escapeHtml(brand["Sector"] || "Consumer Electronics")}${brand["Segment"] ? ` · ${escapeHtml(brand["Segment"])}` : ""} &nbsp;|&nbsp;
+            ⭐ <strong>Priority:</strong> <span style="color:#4338ca;font-weight:600;">${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</span> &nbsp;|&nbsp;
+            📊 <strong>Pipeline Stage:</strong> <span style="font-weight:600;color:#0f172a;">${escapeHtml(pipelineRow ? pipelineRow["Stage"] : "Prospect")}</span>
+          </div>
         </div>
 
-        <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Executive Summary</h3>
-        <p style="background:#f8fafc;padding:12px;border-left:4px solid #4f46e5;border-radius:4px;">${escapeHtml(plainExecSummary)}</p>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 8px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">📝 Executive Summary</h3>
+          <div style="background:#f8fafc;border-left:4px solid #4f46e5;padding:14px 16px;border-radius:4px;font-size:14px;line-height:1.7;color:#334155;">
+            ${formatParagraphs(rawExecSummary)}
+          </div>
+        </div>
 
         ${opps.length ? `
-          <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Channelplay Opportunity Breakdown & Pitch Angle</h3>
-          ${opps.map(o => `
-            <div style="margin-bottom:14px;background:#f8fafc;padding:12px;border-radius:6px;border:1px solid #e2e8f0;">
-              <div style="font-weight:bold;color:#0f172a;">${escapeHtml(o["Opportunity Type"])} (Score: ${escapeHtml(o["Priority Score (1-5)"])}/5)</div>
-              <div style="margin-top:4px;"><strong>Business Impact:</strong> ${escapeHtml(o["Business Impact"])}</div>
-              <div style="margin-top:4px;"><strong>Channelplay Pitch:</strong> ${escapeHtml(o["Opportunity for Channelplay"])}</div>
-              <div style="margin-top:4px;font-size:12px;color:#64748b;"><strong>Recommended Service:</strong> ${escapeHtml(o["Recommended Service"])} · <strong>Department:</strong> ${escapeHtml(o["Recommended Contact Department"])}</div>
-              <div style="margin-top:4px;font-size:12px;color:#059669;"><strong>Next Action:</strong> ${escapeHtml(o["Suggested Next Action"])}</div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 10px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">🎯 Channelplay Opportunity Breakdown & Pitch Angle</h3>
+          ${opps.map((o, i) => `
+            <div style="margin-bottom:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;">
+              <div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:6px;">[${i+1}] ${escapeHtml(o["Opportunity Type"])} <span style="background:#e0e7ff;color:#4338ca;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:6px;">Score: ${escapeHtml(o["Priority Score (1-5)"])}/5</span></div>
+              <div style="font-size:13.5px;line-height:1.6;color:#334155;margin-bottom:6px;"><strong>Business Impact:</strong> ${escapeHtml(o["Business Impact"])}</div>
+              <div style="font-size:13.5px;line-height:1.6;color:#0f172a;background:#ffffff;border:1px solid #e2e8f0;padding:10px 12px;border-radius:4px;margin-bottom:6px;"><strong>Channelplay Pitch:</strong> ${escapeHtml(o["Opportunity for Channelplay"])}</div>
+              <div style="font-size:12.5px;color:#64748b;">
+                <strong>Recommended Service:</strong> ${escapeHtml(o["Recommended Service"])} &nbsp;·&nbsp;
+                <strong>Department:</strong> ${escapeHtml(o["Recommended Contact Department"])} &nbsp;·&nbsp;
+                <span style="color:#059669;font-weight:600;"><strong>Next Action:</strong> ${escapeHtml(o["Suggested Next Action"])}</span>
+              </div>
             </div>
           `).join("")}
+        </div>
         ` : ""}
 
         ${news.length ? `
-          <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Recent Signals & Live News</h3>
-          ${news.slice(0, 5).map(n => `
-            <div style="margin-bottom:10px;">
-              <div style="font-weight:bold;color:#0f172a;">${escapeHtml(n["Headline"])} <span style="font-size:12px;color:#64748b;font-weight:normal;">(${escapeHtml(n["Date"])} · ${escapeHtml(n["Source"] || "Source")})</span></div>
-              <div style="font-size:13px;color:#475569;">${escapeHtml(n["AI Summary"] || n["Summary"] || "")}</div>
-              ${n["URL"] ? `<div><a href="${escapeAttr(n["URL"])}" target="_blank" style="color:#4f46e5;font-size:12px;">Live Article Link &#8599;</a></div>` : ""}
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 10px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">📰 Recent Strategic Signals & Live News</h3>
+          ${news.slice(0, 5).map((n, i) => `
+            <div style="margin-bottom:12px;padding:12px 14px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;">
+              <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">
+                ${escapeHtml(n["Headline"])} 
+                <span style="font-size:12px;color:#64748b;font-weight:normal;">(${escapeHtml(n["Date"])} · ${escapeHtml(n["Source"] || "Source")})</span>
+              </div>
+              <div style="font-size:13px;line-height:1.6;color:#475569;margin-bottom:6px;">
+                ${escapeHtml(n["AI Summary"] || n["Summary"] || "")}
+              </div>
+              ${n["URL"] ? `<div><a href="${escapeAttr(n["URL"])}" target="_blank" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:underline;">View Live Source Article &#8599;</a></div>` : ""}
             </div>
           `).join("")}
+        </div>
         ` : ""}
 
-        <div style="margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">
-          Shared via Consumer Electronics Brand Research Dashboard · <a href="${escapeAttr(directLink)}" style="color:#4f46e5;">Open in Dashboard</a>
+        ${contact ? `
+        <div style="margin-bottom:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;">
+          <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">👤 Key Decision Maker & Contact</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(contact["Decision Maker Name"] || "Research Pending")}</div>
+          <div style="font-size:13px;color:#64748b;margin-top:2px;">
+            ${escapeHtml(contact["Designation"] || "-")} · ${escapeHtml(contact["Department"] || "Strategy / Sales")}
+          </div>
+          <div style="font-size:12.5px;color:#475569;margin-top:4px;">
+            ${contact["Official Email (public only)"] ? `✉️ ${escapeHtml(contact["Official Email (public only)"])} &nbsp;|&nbsp; ` : ""}
+            ${contact["Official Contact Number (public only)"] ? `📞 ${escapeHtml(contact["Official Contact Number (public only)"])} &nbsp;|&nbsp; ` : ""}
+            ${contact["Office Location"] ? `📍 ${escapeHtml(contact["Office Location"])}` : ""}
+          </div>
+          ${contact["LinkedIn Profile"] ? `<div style="margin-top:4px;"><a href="${escapeAttr(contact["LinkedIn Profile"])}" target="_blank" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:underline;">LinkedIn Profile &#8599;</a></div>` : ""}
+        </div>
+        ` : ""}
+
+        <div style="padding-top:14px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;text-align:center;">
+          Shared via Consumer Electronics Brand Research Dashboard · <a href="${escapeAttr(directLink)}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">Open in Dashboard</a>
         </div>
       </div>
     `;
@@ -478,72 +525,86 @@ function buildShareData(type, target){
     const fullAnalysis = r["Full Analysis"] || r["Summary"] || "";
     const directLink = `${window.location.origin}${window.location.pathname}#competitor=${encodeURIComponent(competitorName)}`;
 
-    let plain = `====================================================\n`;
-    plain += `COMPETITOR INTELLIGENCE BRIEFING: ${competitorName.toUpperCase()}\n`;
-    plain += `====================================================\n\n`;
+    let plain = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    plain += `🚨 COMPETITOR INTELLIGENCE BRIEFING: ${competitorName.toUpperCase()}\n`;
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     plain += `⚡ STRATEGIC HEADLINE:\n"${headline}"\n\n`;
 
-    plain += `📌 SIGNAL DETAILS:\n`;
+    plain += `📌 SIGNAL PROFILE:\n`;
     plain += `• Competitor: ${competitorName}\n`;
     plain += `• Category: ${r["Category"] || "Market Move"}\n`;
-    plain += `• Date: ${r["Date"] || "-"}\n`;
-    if (r["Source"]) plain += `• Source: ${r["Source"]}\n`;
+    plain += `• Date: ${r["Date"] || "-"}${r["Source"] ? ` (${r["Source"]})` : ""}\n`;
     if (related !== "-") plain += `• Related Tracked Account: ${related}\n`;
     if (r["URL"]) plain += `• Live News Link: ${r["URL"]}\n`;
-    plain += `• Direct Dashboard Link: ${directLink}\n\n`;
+    plain += `• Dashboard Deep Link: ${directLink}\n\n`;
 
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     plain += `📝 EXECUTIVE BRIEFING & SUMMARY:\n`;
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     plain += `${summary || "No executive summary provided."}\n\n`;
 
     if (fullAnalysis && fullAnalysis !== summary) {
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       plain += `🔍 FULL STRATEGIC ANALYSIS:\n`;
+      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       plain += `${fullAnalysis}\n\n`;
     }
 
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
     plain += `🎯 CHANNELPLAY MARKET OPPORTUNITY & PITCH ANGLE:\n`;
-    plain += `This market movement by ${competitorName} creates a direct conversational hook for Channelplay to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.\n\n`;
+    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    plain += `This market movement by ${competitorName} creates a direct conversational hook. Use this signal to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.\n\n`;
 
     if (r["URL"]) {
-      plain += `🔗 LIVE SOURCE ARTICLE:\n${r["URL"]}\n`;
+      plain += `🔗 Live Source Article: ${r["URL"]}\n`;
     }
+    plain += `🚀 Dashboard Deep Link: ${directLink}\n`;
 
     let richHtml = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;line-height:1.6;color:#1e293b;max-width:680px;">
-        <h2 style="color:#0f172a;margin-bottom:4px;">Competitor Alert: ${escapeHtml(competitorName)}</h2>
-        <div style="color:#64748b;font-size:13px;margin-bottom:14px;">
-          ${escapeHtml(r["Date"] || "-")} &nbsp;|&nbsp; Category: <strong>${escapeHtml(r["Category"] || "Market Move")}</strong>
-          ${related !== "-" ? ` &nbsp;|&nbsp; Related Account: <strong>${escapeHtml(related)}</strong>` : ""}
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.65;color:#1e293b;max-width:680px;background:#ffffff;padding:24px;border:1px solid #e2e8f0;border-radius:8px;">
+        <div style="border-bottom:2px solid #4f46e5;padding-bottom:12px;margin-bottom:18px;">
+          <div style="display:inline-block;background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;margin-bottom:6px;">Competitor Market Alert</div>
+          <h1 style="margin:0 0 6px 0;font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">Competitor Intelligence: ${escapeHtml(competitorName)}</h1>
+          <div style="font-size:13px;color:#64748b;">
+            📅 <strong>Date:</strong> ${escapeHtml(r["Date"] || "-")} &nbsp;|&nbsp;
+            🏷️ <strong>Category:</strong> <span style="color:#4338ca;font-weight:600;">${escapeHtml(r["Category"] || "Market Move")}</span>
+            ${related !== "-" ? ` &nbsp;|&nbsp; 🎯 <strong>Related Account:</strong> ${escapeHtml(related)}` : ""}
+            ${r["Source"] ? ` &nbsp;|&nbsp; 📰 <strong>Source:</strong> ${escapeHtml(r["Source"])}` : ""}
+          </div>
         </div>
 
-        <div style="background:#fef2f2;border-left:4px solid #ef4444;padding:12px;border-radius:4px;margin-bottom:16px;">
-          <div style="font-size:11px;font-weight:bold;color:#b91c1c;text-transform:uppercase;">Strategic Headline</div>
-          <div style="font-size:16px;font-weight:bold;color:#0f172a;margin-top:2px;">"${escapeHtml(headline)}"</div>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;padding:14px 16px;border-radius:6px;margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">⚡ Strategic Headline</div>
+          <div style="font-size:15px;font-weight:700;color:#0f172a;line-height:1.5;">"${escapeHtml(headline)}"</div>
         </div>
 
-        <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Executive Briefing & Summary</h3>
-        <p style="background:#f8fafc;padding:12px;border-radius:4px;">${escapeHtml(summary)}</p>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 8px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">📝 Executive Briefing & Summary</h3>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:14px 16px;border-radius:6px;font-size:14px;line-height:1.7;color:#334155;">
+            ${formatParagraphs(summary || "No executive summary available.")}
+          </div>
+        </div>
 
         ${fullAnalysis && fullAnalysis !== summary ? `
-          <h3 style="color:#4f46e5;font-size:15px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-top:20px;">Full Strategic Analysis</h3>
-          <div style="background:#f8fafc;padding:12px;border-radius:4px;">${formatParagraphs(fullAnalysis)}</div>
+        <div style="margin-bottom:20px;">
+          <h3 style="margin:0 0 8px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">🔍 Full Strategic Analysis</h3>
+          <div style="background:#ffffff;border:1px solid #e2e8f0;padding:14px 16px;border-radius:6px;font-size:14px;line-height:1.7;color:#1e293b;">
+            ${formatParagraphs(fullAnalysis)}
+          </div>
+        </div>
         ` : ""}
 
-        <div style="margin-top:16px;background:#f0fdf4;border-left:4px solid #10b981;padding:12px;border-radius:4px;">
-          <div style="font-size:11px;font-weight:bold;color:#047857;text-transform:uppercase;">Channelplay Market Opportunity & Pitch Angle</div>
-          <div style="font-size:13.5px;color:#065f46;margin-top:4px;">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #10b981;padding:14px 16px;border-radius:6px;margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;color:#047857;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🎯 Channelplay Market Opportunity & Pitch Angle</div>
+          <div style="font-size:13.5px;line-height:1.65;color:#065f46;">
             This market movement by <strong>${escapeHtml(competitorName)}</strong> creates a direct conversational hook. Use this signal to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.
           </div>
         </div>
 
-        ${r["URL"] ? `
-          <div style="margin-top:16px;">
-            <a href="${escapeAttr(r["URL"])}" target="_blank" style="color:#4f46e5;font-weight:bold;font-size:13px;">View Live Source Article &#8599;</a>
-          </div>
-        ` : ""}
-
-        <div style="margin-top:20px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">
-          Shared via Competitor Watch Dashboard · <a href="${escapeAttr(directLink)}" style="color:#4f46e5;">Open in Dashboard</a>
+        <div style="padding-top:14px;border-top:1px solid #e2e8f0;font-size:12.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          ${r["URL"] ? `<div>🔗 <a href="${escapeAttr(r["URL"])}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">View Live Source Article &#8599;</a></div>` : `<div></div>`}
+          <div>🚀 Shared via <a href="${escapeAttr(directLink)}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">Competitor Watch Dashboard</a></div>
         </div>
       </div>
     `;
@@ -817,11 +878,11 @@ function escapeHtml(s){
   return str.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function formatParagraphs(text){
-  if (!text) return "<p>No detailed analysis available.</p>";
+  if (!text) return "<p style=\"margin:0 0 10px 0;line-height:1.65;\">No detailed analysis available.</p>";
   return String(text)
     .trim()
     .split(/\n{2,}/)
-    .map(p => `<p>${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`)
+    .map(p => `<p style="margin:0 0 10px 0;line-height:1.65;">${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`)
     .join("");
 }
 function escapeAttr(s){ return escapeHtml(s).replace(/`/g, "&#96;"); }
