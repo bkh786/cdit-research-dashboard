@@ -2208,16 +2208,33 @@ async function addCompetitorAsTrackedBrand(brandName, btnEl){
   btnEl.disabled = true;
   const originalText = btnEl.innerHTML;
   btnEl.textContent = "Researching (Gemini)...";
+
+  let compContext = null;
+  const compList = workbookData["Competitor Watch"] || [];
+  const found = compList.find(c => c["Competitor"] === brandName);
+  if (found) {
+    compContext = {
+      headline: found["Headline"] || "",
+      summary: found["Summary"] || "",
+      fullAnalysis: found["Full Analysis"] || "",
+      category: found["Category"] || "",
+      source: found["Source"] || "",
+      url: found["URL"] || "",
+      date: found["Date"] || ""
+    };
+  }
+
   try {
     const resp = await fetch("/api/research-brand", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
-      body: JSON.stringify({ brand: brandName })
+      body: JSON.stringify({ brand: brandName, context: compContext })
     });
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || "Research failed");
     btnEl.textContent = "Added to CRM ✓";
     await refresh();
+    showBrandDetail(brandName);
   } catch (e) {
     btnEl.textContent = "Failed — retry";
     btnEl.disabled = false;
