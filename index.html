@@ -106,9 +106,23 @@
       <div class="header-left">
         <h1 class="page-title">
           <span>Consumer Electronics Brand’s Research</span>
-          <span class="sync-badge" id="syncBadge">
+          <span class="sync-badge" id="syncBadge" title="Google Sheets live data sync status">
             <span class="status-dot locked" id="syncDot"></span>
             <span id="syncStatus">Locked</span>
+          </span>
+          <span class="sync-badge gemini-badge" id="geminiBadge" title="Google Gemini AI API status">
+            <svg class="gemini-sparkle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <defs>
+                <linearGradient id="geminiGradHeader" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#1BA1E3" />
+                  <stop offset="45%" stop-color="#5471EF" />
+                  <stop offset="100%" stop-color="#D96570" />
+                </linearGradient>
+              </defs>
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#geminiGradHeader)" />
+            </svg>
+            <span class="status-dot locked" id="geminiDot"></span>
+            <span id="geminiStatus">Gemini · Locked</span>
           </span>
         </h1>
       </div>
@@ -274,8 +288,16 @@ function updateSidebarBadges(){
 async function loadWorkbook(pw){
   const dot = document.getElementById("syncDot");
   const status = document.getElementById("syncStatus");
+  const geminiDot = document.getElementById("geminiDot");
+  const geminiStatus = document.getElementById("geminiStatus");
+
   dot.className = "status-dot loading";
   status.textContent = "Syncing Sheets...";
+  if (geminiDot && geminiStatus) {
+    geminiDot.className = "status-dot loading";
+    geminiStatus.textContent = "Gemini · Connecting...";
+  }
+
   try {
     const resp = await fetch("/api/sheet-data", {
       headers: { "x-dashboard-password": pw }
@@ -283,6 +305,10 @@ async function loadWorkbook(pw){
     if (resp.status === 401) {
       dot.className = "status-dot locked";
       status.textContent = "Locked";
+      if (geminiDot && geminiStatus) {
+        geminiDot.className = "status-dot locked";
+        geminiStatus.textContent = "Gemini · Locked";
+      }
       return false;
     }
     if (!resp.ok) throw new Error("API error " + resp.status);
@@ -290,12 +316,27 @@ async function loadWorkbook(pw){
     workbookData = json.sheets;
     dot.className = "status-dot";
     status.textContent = "Live · " + new Date(json.syncedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+    if (geminiDot && geminiStatus) {
+      if (json.geminiConnected !== false) {
+        geminiDot.className = "status-dot";
+        geminiStatus.textContent = "Gemini · Live";
+      } else {
+        geminiDot.className = "status-dot locked";
+        geminiStatus.textContent = "Gemini · Offline";
+      }
+    }
+
     updateSidebarBadges();
     return true;
   } catch (e) {
     console.error(e);
     dot.className = "status-dot locked";
     status.textContent = "Sync failed";
+    if (geminiDot && geminiStatus) {
+      geminiDot.className = "status-dot locked";
+      geminiStatus.textContent = "Gemini · Offline";
+    }
     return false;
   }
 }

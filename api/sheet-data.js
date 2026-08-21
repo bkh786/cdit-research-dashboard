@@ -58,7 +58,12 @@ module.exports = async (req, res) => {
     });
 
     res.setHeader("Cache-Control", "no-store");
-    res.status(200).json({ syncedAt: new Date().toISOString(), sheets: result });
+    res.status(200).json({
+      syncedAt: new Date().toISOString(),
+      sheets: result,
+      geminiConnected: !!process.env.GEMINI_API_KEY,
+      geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash"
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "Failed to load sheet data" });

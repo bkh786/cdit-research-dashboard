@@ -360,13 +360,29 @@ header.top-header {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
+  transition: var(--transition);
+}
+.sync-badge.gemini-badge {
+  gap: 6px;
+}
+.sync-badge:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+}
+.gemini-sparkle-icon {
+  flex-shrink: 0;
+  display: block;
+  animation: geminiTwinkle 4s ease-in-out infinite;
+}
+@keyframes geminiTwinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+  50% { transform: scale(1.12) rotate(6deg); opacity: 1; filter: drop-shadow(0 0 5px rgba(84, 113, 239, 0.65)); }
 }
 .status-dot {
   width: 7px;
