@@ -17,6 +17,13 @@
 // Required environment variables (in addition to DASHBOARD_PASSWORD,
 // APPS_SCRIPT_URL, APPS_SCRIPT_SECRET, GEMINI_API_KEY, optional GEMINI_MODEL).
 
+const FALLBACK_MODELS = [
+  process.env.GEMINI_MODEL || "gemini-2.0-flash",
+  "gemini-2.5-flash",
+  "gemini-1.5-flash",
+  "gemini-2.0-flash-lite",
+];
+
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
@@ -58,34 +65,7 @@ Use real, current, verifiable public information only (press coverage, company w
 
 Do not fabricate anything. If you cannot verify a named individual at all, set decisionMakerName to empty string and explain in researchStatus that no public decision-maker could be confirmed -- but still try to find the company's general contact email/phone from its official website, since that is legitimately public even when no individual is.`;
 
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-    const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 1500 },
-        }),
-      }
-    );
-    if (!geminiResp.ok) {
-      const errText = await geminiResp.text();
-      throw new Error(`Gemini API error ${geminiResp.status}: ${errText}`);
-    }
-    const geminiData = await geminiResp.json();
-    const finishReason = geminiData.candidates?.[0]?.finishReason;
-    const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error(`Gemini returned no usable content (finishReason: ${finishReason || "unknown"}). Try again.`);
-    let r;
-    try {
-      r = JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      throw new Error(`Gemini's response was truncated or malformed (finishReason: ${finishReason || "unknown"}). Try again.`);
-    }
+    const r = await callGeminiWithFallbacks(prompt);
 
     // Prefer the named individual's own public email/phone. If those aren't
     // publicly indexed (the common case), fall back to the company's general
@@ -114,25 +94,96 @@ Do not fabricate anything. If you cannot verify a named individual at all, set d
       "Research Status": statusNote,
     };
 
-    const updateResult = await postToAppsScript({
-      action: "updateRow", sheet: "Contacts", matchColumn: "Brand", matchValue: brand, updates,
-    });
-
-    // If there was no existing Contacts row for this brand at all, add one.
-    if (!updateResult.updated) {
-      await postToAppsScript({
-        action: "appendRows", sheet: "Contacts", rows: [{ "Brand": brand, ...updates }],
+    let sheetSaved = false;
+    try {
+      const updateResult = await postToAppsScript({
+        action: "updateRow", sheet: "Contacts", matchColumn: "Brand", matchValue: brand, updates,
       });
+
+      // If there was no existing Contacts row for this brand at all, add one.
+      if (updateResult && !updateResult.updated && !updateResult.skipped) {
+        await postToAppsScript({
+          action: "appendRows", sheet: "Contacts", rows: [{ "Brand": brand, ...updates }],
+        });
+      }
+      sheetSaved = true;
+    } catch (sheetErr) {
+      console.warn("Apps Script sync skipped or encountered error:", sheetErr.message);
     }
 
-    res.status(200).json({ ok: true, contact: r });
+    res.status(200).json({ ok: true, contact: r, updates, sheetSaved });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "Failed to research contact" });
   }
 };
 
+async function callGeminiWithFallbacks(prompt) {
+  let lastErr = null;
+  const uniqueModels = [...new Set(FALLBACK_MODELS)];
+
+  for (const model of uniqueModels) {
+    // 1. Try with Google Search Grounding
+    try {
+      return await callGeminiModel(model, prompt, true);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`Gemini (${model}) with search failed: ${err.message}`);
+    }
+
+    // 2. Try without Search Grounding (higher rate limits / fallback)
+    try {
+      return await callGeminiModel(model, prompt, false);
+    } catch (err) {
+      lastErr = err;
+      console.warn(`Gemini (${model}) direct failed: ${err.message}`);
+      if (err.message.includes("429") || err.message.includes("quota") || err.message.includes("RESOURCE_EXHAUSTED")) {
+        await new Promise(r => setTimeout(r, 1200));
+      }
+    }
+  }
+
+  throw lastErr || new Error("All Gemini models encountered rate limits or errors. Please try again in a few moments.");
+}
+
+async function callGeminiModel(model, prompt, useSearch) {
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 2000 },
+  };
+  if (useSearch) {
+    body.tools = [{ google_search: {} }];
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const geminiResp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!geminiResp.ok) {
+    const errText = await geminiResp.text();
+    let msg = errText;
+    try {
+      const j = JSON.parse(errText);
+      if (j.error && j.error.message) msg = j.error.message;
+    } catch (_) {}
+    throw new Error(`Gemini (${model}) ${geminiResp.status}: ${msg}`);
+  }
+
+  const geminiData = await geminiResp.json();
+  const finishReason = geminiData.candidates?.[0]?.finishReason;
+  const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error(`Gemini returned no usable JSON (finishReason: ${finishReason || "unknown"}). Try again.`);
+  return JSON.parse(jsonMatch[0]);
+}
+
 async function postToAppsScript(body) {
+  if (!process.env.APPS_SCRIPT_URL) {
+    return { ok: true, skipped: true };
+  }
   const resp = await fetch(process.env.APPS_SCRIPT_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -342,7 +342,12 @@ async function refresh(){
   if (ok) {
     if (window.__viewingBrand) renderBrandDetail(window.__viewingBrand);
     else if (window.__viewingCompetitor !== null && window.__viewingCompetitor !== undefined) showCompetitorDetail(window.__viewingCompetitor);
-    else renderTab(currentTab);
+    else {
+      renderTab(currentTab);
+      if (currentTab === "contacts") {
+        checkAndShowContactResearchPrompt();
+      }
+    }
   }
 }
 
@@ -1664,10 +1669,31 @@ function renderContacts(){
   const st = tabState.contacts;
   let rows = (workbookData["Contacts"] || []).slice();
 
+  // Merge any tracked brands from Brands Master that don't have a contact row yet
+  const masterBrands = workbookData["Brands Master"] || [];
+  const existingBrands = new Set(rows.map(r => r["Brand"]));
+  masterBrands.forEach(b => {
+    if (b["Brand"] && !existingBrands.has(b["Brand"])) {
+      rows.push({
+        "Brand": b["Brand"],
+        "Decision Maker Name": "",
+        "Designation": "",
+        "Department": "",
+        "Official Email (public only)": "",
+        "Official Contact Number (public only)": "",
+        "LinkedIn Profile": "",
+        "Office Location": b["HQ / India Office"] || "",
+        "Company Website": b["Website"] || "",
+        "Research Status": "Not yet researched"
+      });
+    }
+  });
+
   const totalContacts = rows.length;
   const emailsAvailable = rows.filter(r => r["Official Email (public only)"] && !/not found|pending/i.test(r["Official Email (public only)"])).length;
   const phonesAvailable = rows.filter(r => r["Official Contact Number (public only)"] && !/not found|pending/i.test(r["Official Contact Number (public only)"])).length;
   const linkedinAvailable = rows.filter(r => r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"])).length;
+  const pendingCount = rows.filter(r => !r["Decision Maker Name"] || /not yet|pending|unverified/i.test(r["Research Status"] || "")).length;
 
   // KPI Filter
   if (st.kpiFilter === "email") rows = rows.filter(r => r["Official Email (public only)"] && !/not found|pending/i.test(r["Official Email (public only)"]));
@@ -1694,6 +1720,7 @@ function renderContacts(){
     const email = r["Official Email (public only)"];
     const phone = r["Official Contact Number (public only)"];
     const hasLinkedIn = r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"]);
+    const hasDecisionMaker = !!r["Decision Maker Name"];
 
     return `
     <tr>
@@ -1728,9 +1755,15 @@ function renderContacts(){
         ` : `<span style="color:var(--text-muted);font-size:11px;">-</span>`}
       </td>
       <td>
-        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
-          Profile &#8594;
-        </button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="btn tiny ai-research-btn" data-brand="${escapeAttr(r["Brand"])}" onclick="researchBrandContact('${escapeAttr(r["Brand"]).replace(/'/g,"\\'")}', this)" title="Research verified decision-maker for ${escapeAttr(r["Brand"])} via Gemini AI">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <span>${hasDecisionMaker ? "Re-research" : "Research"}</span>
+          </button>
+          <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"\\'")}')">
+            Profile &#8594;
+          </button>
+        </div>
       </td>
     </tr>`;
   }).join("") : `<tr><td colspan="8" class="empty">No contacts matching the selected criteria.</td></tr>`;
@@ -1784,6 +1817,9 @@ function renderContacts(){
       </div>
     </div>
 
+    <!-- Contact Research Prompt Banner Container -->
+    <div id="contactResearchBannerWrap"></div>
+
     <!-- Toolbar -->
     <div class="table-controls-bar">
       <div class="search-input-wrap">
@@ -1803,6 +1839,11 @@ function renderContacts(){
           <option value="">All Departments</option>
           ${distinctDepts.map(d => `<option value="${escapeAttr(d)}" ${st.filters.department === d ? "selected" : ""}>${escapeHtml(d)}</option>`).join("")}
         </select>
+
+        <button class="btn ai-research-btn" id="toolbarResearchContactsBtn" onclick="openContactResearchModal()" title="Research and refresh contacts with Gemini AI" style="padding:8px 14px;font-size:12.5px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          <span>Refresh & Research Contacts (AI)</span>
+        </button>
       </div>
     </div>
 
@@ -1837,6 +1878,403 @@ function renderContacts(){
   `;
 
   wireSearchForTab("contacts");
+
+  // If there are pending contacts, proactively show the banner notice
+  if (pendingCount > 0) {
+    checkAndShowContactResearchPrompt();
+  }
+}
+
+/* ==========================================================================
+   GEMINI CONTACT RESEARCH CONTROLLER & RUNNER
+   ========================================================================== */
+let isBatchResearchRunning = false;
+let shouldCancelBatchResearch = false;
+
+function showGlobalToast(msg, isError = false){
+  let toast = document.getElementById("globalToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "globalToast";
+    toast.style.cssText = "position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:all 0.3s ease;display:flex;align-items:center;gap:8px;";
+    document.body.appendChild(toast);
+  }
+  toast.style.background = isError ? "#ef4444" : "var(--bg-surface, #1e293b)";
+  toast.style.color = "#ffffff";
+  toast.style.border = isError ? "1px solid #dc2626" : "1px solid var(--accent, #6366f1)";
+  toast.textContent = msg;
+  toast.style.opacity = "1";
+  toast.style.transform = "translateY(0)";
+  clearTimeout(window.__toastTimeout);
+  window.__toastTimeout = setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
+  }, 4500);
+}
+
+function checkAndShowContactResearchPrompt(){
+  const bannerWrap = document.getElementById("contactResearchBannerWrap");
+  if (!bannerWrap) return;
+  const contacts = workbookData["Contacts"] || [];
+  const masterBrands = workbookData["Brands Master"] || [];
+  const contactBrandMap = new Map();
+  contacts.forEach(c => contactBrandMap.set(c["Brand"], c));
+
+  let pendingCount = 0;
+  masterBrands.forEach(b => {
+    const c = contactBrandMap.get(b["Brand"]);
+    if (!c || !c["Decision Maker Name"] || /not yet|pending|unverified/i.test(c["Research Status"] || "")) {
+      pendingCount++;
+    }
+  });
+
+  if (pendingCount > 0) {
+    bannerWrap.innerHTML = `
+      <div class="contact-research-banner">
+        <div class="contact-research-banner-left">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0;">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <div>
+            <strong>${pendingCount} tracked brand${pendingCount > 1 ? "s have" : " has"} pending contact details.</strong>
+            <span style="color:var(--text-secondary);margin-left:6px;">Run Gemini AI research with live Google Search grounding.</span>
+          </div>
+        </div>
+        <div class="contact-research-banner-actions">
+          <button class="btn tiny ai-research-btn" onclick="openContactResearchModal('pending')" style="background:linear-gradient(135deg, #4f46e5, #7c3aed);color:#fff;border-color:transparent;">
+            <span>✨ Research Pending (${pendingCount})</span>
+          </button>
+          <button class="btn secondary tiny" onclick="document.getElementById('contactResearchBannerWrap').innerHTML=''">Dismiss</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+async function researchBrandContact(brandName, btnEl){
+  if (!brandName) return;
+  const originalHtml = btnEl ? btnEl.innerHTML : "";
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.classList.add("is-loading");
+    btnEl.innerHTML = `
+      <svg class="spinner-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+      <span>Researching...</span>
+    `;
+  }
+
+  // Find department recommendation from opportunities
+  const allOpps = workbookData["Opportunities"] || [];
+  const brandOpps = allOpps.filter(o => o["Brand"] === brandName);
+  const recommendedDept = brandOpps[0]?.["Recommended Contact Department"] || "";
+
+  try {
+    const resp = await fetch("/api/research-contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-dashboard-password": getSessionPassword()
+      },
+      body: JSON.stringify({ brand: brandName, recommendedDept })
+    });
+
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      throw new Error(data.error || "Gemini research failed");
+    }
+
+    const c = data.contact;
+    const updates = data.updates || {
+      "Decision Maker Name": c.decisionMakerName || "",
+      "Designation": c.designation || "",
+      "Department": c.department || "",
+      "LinkedIn Profile": c.linkedinUrl || "",
+      "Official Email (public only)": c.emailPublic || c.generalCompanyEmail || "",
+      "Official Contact Number (public only)": c.phonePublic || c.generalCompanyPhone || "",
+      "Office Location": c.officeLocation || "",
+      "Company Website": c.companyWebsite || "",
+      "Research Status": c.researchStatus || "Researched via Gemini + Google Search grounding."
+    };
+
+    // Update in-memory workbookData["Contacts"]
+    if (!workbookData["Contacts"]) workbookData["Contacts"] = [];
+    const existingIndex = workbookData["Contacts"].findIndex(row => row["Brand"] === brandName);
+    if (existingIndex >= 0) {
+      workbookData["Contacts"][existingIndex] = {
+        ...workbookData["Contacts"][existingIndex],
+        ...updates
+      };
+    } else {
+      workbookData["Contacts"].push({
+        "Brand": brandName,
+        ...updates
+      });
+    }
+
+    // If currently viewing brand detail for this brand, update card in place
+    if (window.__viewingBrand === brandName) {
+      const cardBody = document.getElementById("brandDetailContactCardBody");
+      const updatedContact = workbookData["Contacts"].find(row => row["Brand"] === brandName);
+      if (cardBody && updatedContact) {
+        cardBody.innerHTML = renderContactCard(updatedContact);
+      }
+    } else if (currentTab === "contacts") {
+      renderContacts();
+    }
+
+    if (btnEl) {
+      btnEl.innerHTML = `<span>Researched ✓</span>`;
+      btnEl.classList.remove("is-loading");
+      setTimeout(() => {
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = originalHtml;
+        }
+      }, 2500);
+    }
+
+    showGlobalToast(`✓ Researched ${brandName}: ${c.decisionMakerName ? c.decisionMakerName + " (" + (c.designation || "Executive") + ")" : "Company contact verified"}`);
+    return { ok: true, brand: brandName, contact: c };
+  } catch (err) {
+    console.error("Contact research error:", err);
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.classList.remove("is-loading");
+      btnEl.innerHTML = `<span>Retry Research</span>`;
+    }
+    showGlobalToast(`⚠️ Research failed for ${brandName}: ${err.message}`, true);
+    return { ok: false, brand: brandName, error: err.message };
+  }
+}
+
+function openContactResearchModal(prefilter = "all"){
+  const existing = document.getElementById("contactResearchModalOverlay");
+  if (existing) existing.remove();
+
+  const masterBrands = (workbookData["Brands Master"] || []).map(b => b["Brand"]).filter(Boolean);
+  const contacts = workbookData["Contacts"] || [];
+  const contactMap = new Map();
+  contacts.forEach(c => contactMap.set(c["Brand"], c));
+
+  const allBrandNames = [...new Set([...masterBrands, ...contacts.map(c => c["Brand"]).filter(Boolean)])];
+  const pendingBrands = [];
+  const researchedBrands = [];
+
+  allBrandNames.forEach(bName => {
+    const c = contactMap.get(bName);
+    const isPending = !c || !c["Decision Maker Name"] || /not yet|pending|unverified/i.test(c["Research Status"] || "");
+    if (isPending) {
+      pendingBrands.push(bName);
+    } else {
+      researchedBrands.push(bName);
+    }
+  });
+
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.id = "contactResearchModalOverlay";
+
+  overlay.innerHTML = `
+    <div class="modal contact-research-modal">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            <h3 style="margin:0;font-size:17px;font-weight:800;">Gemini Contact Researcher</h3>
+          </div>
+          <p style="margin:4px 0 0 0;font-size:12.5px;color:var(--text-secondary);">
+            Queries Gemini with Google Search grounding to identify decision-makers, titles, LinkedIn, and verified company contact channels for each brand.
+          </p>
+        </div>
+        <button class="share-modal-close" id="closeContactResearchModalBtn" title="Close" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);font-size:18px;">✕</button>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-bottom:14px;">
+        <div style="flex:1;padding:10px 14px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">Total Tracked Brands</div>
+          <div style="font-size:18px;font-weight:800;color:var(--text-primary);margin-top:2px;">${allBrandNames.length}</div>
+        </div>
+        <div style="flex:1;padding:10px 14px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">Pending Research</div>
+          <div style="font-size:18px;font-weight:800;color:var(--warning, #f59e0b);margin-top:2px;">${pendingBrands.length}</div>
+        </div>
+        <div style="flex:1;padding:10px 14px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border);">
+          <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;">Verified Contacts</div>
+          <div style="font-size:18px;font-weight:800;color:var(--low, #10b981);margin-top:2px;">${researchedBrands.length}</div>
+        </div>
+      </div>
+
+      <div id="batchProgressArea" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;">
+          <span id="batchProgressLabel">Starting Gemini research...</span>
+          <span id="batchProgressPercent">0%</span>
+        </div>
+        <div class="contact-batch-progress">
+          <div class="contact-batch-progress-bar" id="batchProgressBar"></div>
+        </div>
+      </div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">Brands in Queue:</div>
+      <div class="contact-batch-list" id="batchBrandList">
+        ${allBrandNames.map(bName => {
+          const c = contactMap.get(bName);
+          const isPending = !c || !c["Decision Maker Name"] || /not yet|pending|unverified/i.test(c["Research Status"] || "");
+          return `
+            <div class="contact-batch-item" id="batchItem-${escapeAttr(bName).replace(/[^a-zA-Z0-9]/g, '_')}">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-weight:700;">${escapeHtml(bName)}</span>
+                ${c && c["Decision Maker Name"] ? `<span style="color:var(--text-secondary);font-size:11.5px;">(${escapeHtml(c["Decision Maker Name"])} · ${escapeHtml(c["Designation"] || "Leader")})</span>` : ""}
+              </div>
+              <span class="pill ${isPending ? 'Medium' : 'Low'}" style="font-size:10.5px;">
+                ${isPending ? 'Pending' : 'Verified'}
+              </span>
+            </div>
+          `;
+        }).join("")}
+      </div>
+
+      <div class="modal-actions" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;">
+        <button class="btn secondary tiny" id="cancelBatchBtn" style="display:none;" onclick="cancelBatchContactResearch()">Stop Research</button>
+        <div style="display:flex;gap:8px;margin-left:auto;">
+          ${pendingBrands.length > 0 ? `
+            <button class="btn tiny ai-research-btn" id="startPendingBtn" onclick="runBatchContactResearch(${JSON.stringify(pendingBrands).replace(/"/g, '&quot;')})">
+              <span>⚡ Research Pending Only (${pendingBrands.length})</span>
+            </button>
+          ` : ""}
+          <button class="btn tiny secondary" id="startAllBtn" onclick="runBatchContactResearch(${JSON.stringify(allBrandNames).replace(/"/g, '&quot;')})">
+            <span>🔄 Re-research All (${allBrandNames.length})</span>
+          </button>
+          <button class="btn secondary tiny" id="closeBatchModalBtn" onclick="document.getElementById('contactResearchModalOverlay').remove()">Done</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  document.getElementById("closeContactResearchModalBtn").addEventListener("click", () => {
+    if (isBatchResearchRunning) {
+      if (confirm("Research is currently in progress. Stop and close?")) {
+        cancelBatchContactResearch();
+        overlay.remove();
+      }
+    } else {
+      overlay.remove();
+    }
+  });
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay && !isBatchResearchRunning) {
+      overlay.remove();
+    }
+  });
+
+  if (prefilter === "pending" && pendingBrands.length > 0) {
+    const pendingBtn = document.getElementById("startPendingBtn");
+    if (pendingBtn) pendingBtn.focus();
+  }
+}
+
+async function runBatchContactResearch(brandNames){
+  if (!brandNames || !brandNames.length) return;
+  isBatchResearchRunning = true;
+  shouldCancelBatchResearch = false;
+
+  const startPendingBtn = document.getElementById("startPendingBtn");
+  const startAllBtn = document.getElementById("startAllBtn");
+  const cancelBatchBtn = document.getElementById("cancelBatchBtn");
+  const closeBatchModalBtn = document.getElementById("closeBatchModalBtn");
+  const progressArea = document.getElementById("batchProgressArea");
+  const progressBar = document.getElementById("batchProgressBar");
+  const progressLabel = document.getElementById("batchProgressLabel");
+  const progressPercent = document.getElementById("batchProgressPercent");
+
+  if (startPendingBtn) startPendingBtn.style.display = "none";
+  if (startAllBtn) startAllBtn.style.display = "none";
+  if (closeBatchModalBtn) closeBatchModalBtn.style.display = "none";
+  if (cancelBatchBtn) cancelBatchBtn.style.display = "inline-flex";
+  if (progressArea) progressArea.style.display = "block";
+
+  const total = brandNames.length;
+  let completed = 0;
+  let successCount = 0;
+
+  for (let i = 0; i < total; i++) {
+    if (shouldCancelBatchResearch) {
+      if (progressLabel) progressLabel.textContent = `Stopped by user. Completed ${completed} of ${total}.`;
+      break;
+    }
+
+    const brand = brandNames[i];
+    const itemEl = document.getElementById(`batchItem-${brand.replace(/[^a-zA-Z0-9]/g, '_')}`);
+    if (itemEl) {
+      itemEl.className = "contact-batch-item active";
+      itemEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+
+    if (progressLabel) progressLabel.textContent = `Researching [${brand}] (${i + 1}/${total}) via Gemini...`;
+    const pct = Math.round(((i) / total) * 100);
+    if (progressBar) progressBar.style.width = pct + "%";
+    if (progressPercent) progressPercent.textContent = pct + "%";
+
+    const res = await researchBrandContact(brand, null);
+    completed++;
+
+    if (res && res.ok) {
+      successCount++;
+      if (itemEl) {
+        itemEl.className = "contact-batch-item done";
+        const badge = itemEl.querySelector(".pill");
+        if (badge) {
+          badge.className = "pill Low";
+          badge.textContent = res.contact.decisionMakerName ? `${res.contact.decisionMakerName} ✓` : "Company Contact ✓";
+        }
+      }
+    } else {
+      if (itemEl) {
+        itemEl.className = "contact-batch-item failed";
+        const badge = itemEl.querySelector(".pill");
+        if (badge) {
+          badge.className = "pill High";
+          badge.textContent = "Failed";
+        }
+      }
+    }
+
+    const finishPct = Math.round((completed / total) * 100);
+    if (progressBar) progressBar.style.width = finishPct + "%";
+    if (progressPercent) progressPercent.textContent = finishPct + "%";
+
+    if (i < total - 1 && !shouldCancelBatchResearch) {
+      await new Promise(r => setTimeout(r, 1200));
+    }
+  }
+
+  isBatchResearchRunning = false;
+  if (cancelBatchBtn) cancelBatchBtn.style.display = "none";
+  if (closeBatchModalBtn) {
+    closeBatchModalBtn.style.display = "inline-flex";
+    closeBatchModalBtn.textContent = "Done & View Contacts";
+  }
+
+  if (progressLabel) {
+    progressLabel.textContent = shouldCancelBatchResearch
+      ? `Research halted. Processed ${completed} brands.`
+      : `Complete! Successfully researched ${successCount} of ${total} brands via Gemini.`;
+  }
+
+  if (currentTab === "contacts") {
+    renderContacts();
+  }
+}
+
+function cancelBatchContactResearch(){
+  shouldCancelBatchResearch = true;
+  isBatchResearchRunning = false;
+  const progressLabel = document.getElementById("batchProgressLabel");
+  if (progressLabel) progressLabel.textContent = "Stopping research queue...";
 }
 
 /* Brand Domain Mapping & Realtime Online Logo Resolver */
@@ -2560,11 +2998,19 @@ function renderBrandDetail(brandName){
 
       <div>
         <div class="section-card contact-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            Key Contact & Decision Maker
-          </h3>
-          ${contactHtml}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+            <h3 style="margin-bottom:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              Key Contact & Decision Maker
+            </h3>
+            <button class="btn tiny ai-research-btn" id="brandDetailAiResearchBtn" onclick="researchBrandContact('${escapeAttr(brandName).replace(/'/g,"\\'")}', this)" title="Research verified decision-maker using Gemini AI">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              <span>✨ Research Contact (Gemini)</span>
+            </button>
+          </div>
+          <div id="brandDetailContactCardBody">
+            ${contactHtml}
+          </div>
         </div>
 
         <div class="section-card">
