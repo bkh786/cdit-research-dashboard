@@ -45,32 +45,54 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const prompt = `You are an elite B2B sales intelligence researcher for the Indian market.
-Identify the specific, real decision-maker executive at "${brand}" (India operations) for a retail-execution and field-force outsourcing pitch${recommendedDept ? ` (ideally in ${recommendedDept}, or senior leadership/sales)` : ""}.
+    const prompt = `You are an elite B2B sales intelligence researcher for Channelplay, an Indian retail-execution, promoter staffing, visual merchandising, and field-force outsourcing company.
 
-Search instructions:
-1. Search for the current Managing Director, CEO, Country Head, VP of Sales, Business Head, Head of Retail Operations, or Head of Trade Marketing at "${brand}" in India.
-2. Once the person's name is identified, execute a search specifically for their real LinkedIn profile:
-   Query: site:linkedin.com/in/ "[Executive Name]" "${brand}" India
-3. CRITICAL LINKEDIN ACCURACY RULE:
-   - ONLY return a "https://www.linkedin.com/in/..." URL if you verified the EXACT profile URL directly in the Google Search results.
-   - NEVER guess, approximate, or hallucinate a LinkedIn profile URL or fabricate random alphanumeric hash suffixes (e.g. DO NOT invent fake slugs like arnold-su-7b19a126).
-   - If the exact personal profile URL is not found in the search results, set "linkedinUrl" to an empty string "". The system will automatically provide a verified 1-click LinkedIn people search. DO NOT GUESS.
-4. Identify their full name, exact title, department, office location, company website, verified email/phone, and real LinkedIn URL.
+TARGET DECISION-MAKER ROLE:
+You MUST search for and identify the executive at "${brand}" (India operations) who heads the MARKETING or SALES functions with commercial decision-making authority.
+Channelplay pitches retail promoter staffing, visual merchandising, retail execution audits, mystery shopping, brand activation, and sales force automation. The primary buyer is the Marketing Head or Sales Head.
+${recommendedDept ? `Recommended focus department: "${recommendedDept}".` : ""}
+
+MANDATORY ROLE PRIORITY (Search strictly in this order):
+1. TOP PRIORITY — MARKETING LEADERSHIP:
+   - Head of Marketing / Marketing Head
+   - Chief Marketing Officer (CMO)
+   - Vice President - Marketing (VP - Marketing)
+   - Director of Marketing / Marketing Director
+   - General Manager - Marketing (GM - Marketing)
+   - Head of Trade Marketing / Head of Brand Marketing / Head of Retail Marketing
+2. SECOND PRIORITY — SALES & COMMERCIAL LEADERSHIP:
+   - Head of Sales / Sales Head / Chief Sales Officer (CSO)
+   - Vice President - Sales (VP - Sales)
+   - Director of Sales / General Manager - Sales
+   - Commercial Director / Business Head / Head of Retail Operations
+3. THIRD PRIORITY (ONLY if specific Marketing or Sales heads cannot be identified through public records):
+   - Managing Director, President, or CEO who actively directs marketing, sales, and commercial operations in India.
+
+SEARCH INSTRUCTIONS:
+1. Conduct targeted Google Searches for the marketing or sales leader of "${brand}" in India:
+   - "${brand}" India ("Head of Marketing" OR "VP Marketing" OR "Chief Marketing Officer" OR "Director of Marketing" OR "General Manager Marketing" OR "Marketing Head")
+   - "${brand}" India ("Head of Sales" OR "VP Sales" OR "Director of Sales" OR "Head of Trade Marketing")
+2. Verify their identity and current role via Indian business press, marketing portals, and corporate announcements (Exchange4Media, ET BrandEquity, LiveMint, Storyboard18, afaqs!, Medianews4u, Retail4Growth, Indian Retailer, company press releases).
+3. Search for their verified LinkedIn profile using Google Search:
+   Query: site:linkedin.com/in/ "[Full Name]" "${brand}" India
+4. CRITICAL LINKEDIN ACCURACY RULE:
+   - ONLY return a "https://www.linkedin.com/in/..." URL if you literally see the EXACT, real profile URL in Google Search results.
+   - NEVER fabricate, guess, or construct a LinkedIn URL from the person's name (e.g. NEVER make up "linkedin.com/in/firstname-lastname" or invent alphanumeric suffixes).
+   - If you do not have the confirmed, exact personal profile URL from search results, return "" (empty string) for "linkedinUrl". The system will automatically generate a verified 1-click LinkedIn people search link. DO NOT GUESS.
 
 Respond with ONLY a JSON object (no markdown code fences, no commentary) with these exact keys:
 {
-  "decisionMakerName": "Full name of the executive (e.g. Arnold Su)",
-  "designation": "Job title (e.g. Vice President - Consumer & Gaming PC)",
-  "department": "Department (e.g. Executive Leadership, Systems Business, Sales)",
+  "decisionMakerName": "Full name of the marketing/sales executive (e.g. Priyanka Sethi)",
+  "designation": "Exact job title (e.g. Head of Marketing, VP - Marketing, Director - Marketing)",
+  "department": "Department (e.g. Marketing, Trade Marketing, Sales & Marketing)",
   "linkedinUrl": "exact verified https://www.linkedin.com/in/... URL from search results, or empty string if unconfirmed",
   "officeLocation": "City, State in India",
-  "companyWebsite": "domain name (e.g. asus.com/in)",
+  "companyWebsite": "domain name (e.g. haier.com/in)",
   "emailPublic": "corporate or direct email address",
   "phonePublic": "corporate office or direct phone number",
   "generalCompanyEmail": "general contact email",
   "generalCompanyPhone": "headquarters telephone",
-  "researchStatus": "1-2 sentences about who this leader is at ${brand} and verified sources (LinkedIn, company website, annual reports)."
+  "researchStatus": "1-2 sentences summarizing their marketing/sales mandate at ${brand} and verified public sources."
 }`;
 
     let r = null;
@@ -229,7 +251,7 @@ function resolveLinkedInUrl(rawUrl, name, brand, groundingUris = []) {
   const cleanName = (name || "").trim();
   const searchFallback = cleanName
     ? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(cleanName + " " + cleanBrand)}`
-    : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(cleanBrand + " leadership")}`;
+    : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(cleanBrand + " marketing leadership")}`;
 
   // 1. Check KNOWN_LEADERS first for direct verified URL
   const lowerBrand = cleanBrand.toLowerCase();
@@ -258,31 +280,33 @@ function resolveLinkedInUrl(rawUrl, name, brand, groundingUris = []) {
     }
   }
 
-  // 3. Inspect rawUrl provided by the model
+  // 3. Inspect rawUrl provided by the model:
+  // ONLY accept rawUrl IF it was actually verified in Google Search grounding URIs!
+  // If the model generated a URL that was NOT in grounding URIs, it is an unverified hallucination.
   const normalizedRaw = normalizeLinkedInProfileUrl(rawUrl);
-  if (normalizedRaw) {
-    const inGrounding = (groundingUris || []).some(u => {
+  if (normalizedRaw && groundingUris && groundingUris.length > 0) {
+    const inGrounding = groundingUris.some(u => {
       return typeof u === "string" && normalizeLinkedInProfileUrl(u) === normalizedRaw;
     });
     if (inGrounding) {
       return normalizedRaw;
     }
-
-    // Check if the URL has a random alphanumeric hash suffix (e.g. -7b19a126, -220858a4)
-    const hasHashSuffix = /\/in\/[a-zA-Z0-9._%-]+-[a-zA-Z0-9]{6,12}\/?$/i.test(normalizedRaw);
-    if (hasHashSuffix) {
-      console.warn(`Discarding ungrounded LinkedIn profile URL with random hash suffix: ${normalizedRaw}. Using search link.`);
-      return searchFallback;
-    }
-
-    return normalizedRaw;
   }
 
+  // If not confirmed via Google search grounding or verified directory, use 100% reliable 1-click LinkedIn people search
   return searchFallback;
 }
 
-// Known executive leadership lookup for major Indian consumer electronics & appliances brands
+// Known executive leadership lookup prioritizing Marketing & Sales leadership for major Indian consumer brands
 const KNOWN_LEADERS = {
+  "haier": {
+    name: "Priyanka Sethi",
+    title: "Head of Marketing",
+    location: "Greater Noida, Uttar Pradesh",
+    domain: "haier.com/in",
+    dept: "Marketing & Brand Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Priyanka%20Sethi%20Haier%20India"
+  },
   "asus": {
     name: "Arnold Su",
     title: "Vice President - Consumer and Gaming PC, System Business Group",
@@ -292,36 +316,36 @@ const KNOWN_LEADERS = {
     linkedinUrl: "https://www.linkedin.com/in/arnold-su-220858a4/"
   },
   "acer": {
-    name: "Harish Kohli",
-    title: "President & Managing Director - Acer India",
+    name: "Sooraj Balakrishnan",
+    title: "Associate Director & Head of Marketing",
     location: "Bengaluru, Karnataka",
     domain: "acer.com/in",
-    dept: "Executive Leadership & Systems Sales",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Harish%20Kohli%20Acer%20India"
+    dept: "Marketing & Retail Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sooraj%20Balakrishnan%20Acer%20India"
   },
   "hp": {
-    name: "Ipsita Dasgupta",
-    title: "Senior VP & Managing Director - HP India Market",
+    name: "Sunish Raman",
+    title: "Head of Marketing",
     location: "Gurugram, Haryana",
     domain: "hp.com/in",
-    dept: "Executive Leadership & India Market",
-    linkedinUrl: "https://www.linkedin.com/in/ipsitadasgupta/"
+    dept: "Marketing & Brand Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sunish%20Raman%20HP%20India"
   },
   "lenovo": {
-    name: "Shailendra Katyal",
-    title: "Managing Director - Lenovo India",
+    name: "Amit Doshi",
+    title: "Chief Marketing Officer",
     location: "Bengaluru, Karnataka",
     domain: "lenovo.com/in",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/in/shailendra-katyal/"
+    dept: "Marketing & Brand Experience",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Amit%20Doshi%20Lenovo%20India"
   },
   "dell": {
-    name: "Alok Ohrie",
-    title: "President & Managing Director - Dell Technologies India",
+    name: "Mayank Batra",
+    title: "Director - Marketing",
     location: "Bengaluru, Karnataka",
     domain: "dell.com/in",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/in/alok-ohrie-676b731/"
+    dept: "Marketing & Commercial Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Mayank%20Batra%20Dell%20Technologies%20India"
   },
   "apple": {
     name: "Ashish Chowdhary",
@@ -332,28 +356,28 @@ const KNOWN_LEADERS = {
     linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Ashish%20Chowdhary%20Apple%20India"
   },
   "blue star": {
-    name: "B Thiagarajan",
-    title: "Managing Director",
+    name: "Girish Hingorani",
+    title: "Vice President - Marketing & Corporate Communications",
     location: "Mumbai, Maharashtra",
     domain: "bluestarindia.com",
-    dept: "Executive Leadership & Commercial Operations",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=B%20Thiagarajan%20Blue%20Star"
+    dept: "Marketing & Corporate Communications",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Girish%20Hingorani%20Blue%20Star"
   },
   "voltas": {
-    name: "Pradeep Bakshi",
-    title: "Managing Director & CEO",
+    name: "Deba Ghoshal",
+    title: "Vice President and Head of Marketing",
     location: "Mumbai, Maharashtra",
     domain: "voltas.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Pradeep%20Bakshi%20Voltas"
+    dept: "Marketing & Sales Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Deba%20Ghoshal%20Voltas"
   },
   "havells": {
-    name: "Anil Rai Gupta",
-    title: "Chairman & Managing Director",
+    name: "Rohit Kapoor",
+    title: "Executive Vice President - Marketing",
     location: "Noida, Uttar Pradesh",
     domain: "havells.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Anil%20Rai%20Gupta%20Havells"
+    dept: "Marketing & Brand Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Rohit%20Kapoor%20Havells%20Marketing"
   },
   "lloyd": {
     name: "Rajesh Rathi",
@@ -364,35 +388,35 @@ const KNOWN_LEADERS = {
     linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Rajesh%20Rathi%20Lloyd%20Havells"
   },
   "samsung": {
-    name: "JB Park",
-    title: "President & CEO - Southwest Asia",
+    name: "Sumit Walia",
+    title: "Vice President - Marketing",
     location: "Gurugram, Haryana",
     domain: "samsung.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=JB%20Park%20Samsung"
+    dept: "Marketing & Trade Activation",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sumit%20Walia%20Samsung%20India"
   },
   "lg": {
-    name: "Hong Ju Jeon",
-    title: "Managing Director - India",
+    name: "Surinder Sachdeva",
+    title: "Senior Vice President - Marketing & Commercial Strategy",
     location: "Greater Noida, Uttar Pradesh",
     domain: "lg.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Hong%20Ju%20Jeon%20LG"
+    dept: "Marketing & Sales Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Surinder%20Sachdeva%20LG%20India"
   },
   "whirlpool": {
-    name: "Narasimhan Eswar",
-    title: "Managing Director",
+    name: "Bhaskar Ramesh",
+    title: "Vice President - Marketing",
     location: "Gurugram, Haryana",
     domain: "whirlpoolindia.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Narasimhan%20Eswar%20Whirlpool"
+    dept: "Marketing & Commercial Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Bhaskar%20Ramesh%20Whirlpool%20India"
   },
   "daikin": {
     name: "Kanwaljeet Jawa",
     title: "Chairman & Managing Director",
     location: "Gurugram, Haryana",
     domain: "daikinindia.com",
-    dept: "Executive Leadership",
+    dept: "Executive Leadership & Sales",
     linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Kanwaljeet%20Jawa%20Daikin"
   },
   "carrier": {
@@ -400,23 +424,23 @@ const KNOWN_LEADERS = {
     title: "Managing Director - India",
     location: "Gurugram, Haryana",
     domain: "carrier.com",
-    dept: "Executive Leadership",
+    dept: "Executive Leadership & Sales",
     linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sanjay%20Sharma%20Carrier%20India"
   },
   "panasonic": {
-    name: "Manish Sharma",
-    title: "Chairman - Panasonic Life Solutions India",
+    name: "Pooja Garg Khan",
+    title: "Head - Corporate Communications & Brand",
     location: "Gurugram, Haryana",
     domain: "panasonic.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Manish%20Sharma%20Panasonic"
+    dept: "Brand Marketing & Communications",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Pooja%20Garg%20Khan%20Panasonic%20India"
   },
   "sony": {
     name: "Sunil Nayyar",
     title: "Managing Director",
     location: "New Delhi, Delhi",
     domain: "sony.co.in",
-    dept: "Executive Leadership",
+    dept: "Executive Leadership & Sales",
     linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sunil%20Nayyar%20Sony%20India"
   },
   "boat": {
@@ -432,7 +456,7 @@ const KNOWN_LEADERS = {
     title: "Co-Founder",
     location: "Gurugram, Haryana",
     domain: "gonoise.com",
-    dept: "Executive Leadership",
+    dept: "Executive Leadership & Marketing",
     linkedinUrl: "https://www.linkedin.com/in/amit-khatri-noise/"
   },
   "fire-boltt": {
@@ -444,44 +468,44 @@ const KNOWN_LEADERS = {
     linkedinUrl: "https://www.linkedin.com/in/arnav-kishore/"
   },
   "godrej": {
-    name: "Kamal Nandi",
-    title: "Business Head & Executive VP - Godrej Appliances",
+    name: "Swati Rathi",
+    title: "Executive Vice President and Head of Marketing",
     location: "Mumbai, Maharashtra",
     domain: "godrej.com",
-    dept: "Appliances & Consumer Division",
-    linkedinUrl: "https://www.linkedin.com/in/kamal-nandi-6547a46/"
+    dept: "Marketing - Godrej Appliances",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Swati%20Rathi%20Godrej%20Appliances"
   },
   "bajaj": {
-    name: "Shekhar Bajaj",
-    title: "Chairman & Managing Director",
+    name: "Devika Sachdev",
+    title: "Head of Marketing",
     location: "Mumbai, Maharashtra",
     domain: "bajajelectricals.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Shekhar%20Bajaj%20Bajaj%20Electricals"
+    dept: "Marketing - Consumer Products",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Devika%20Sachdev%20Bajaj%20Electricals"
   },
   "orient": {
-    name: "Rakesh Khanna",
-    title: "Managing Director & CEO",
+    name: "Anika Agarwal",
+    title: "Chief Marketing and Customer Experience Officer",
     location: "New Delhi, Delhi",
     domain: "orientelectric.com",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Rakesh%20Khanna%20Orient%20Electric"
+    dept: "Marketing & CX",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Anika%20Agarwal%20Orient%20Electric"
   },
   "crompton": {
-    name: "Promeet Ghosh",
-    title: "Managing Director & CEO",
+    name: "Pragya Bijalwan",
+    title: "Chief Marketing Officer",
     location: "Mumbai, Maharashtra",
     domain: "crompton.co.in",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Promeet%20Ghosh%20Crompton"
+    dept: "Marketing & Brand Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Pragya%20Bijalwan%20Crompton"
   },
   "philips": {
-    name: "Deepak Sharma",
-    title: "Managing Director & CEO",
+    name: "Deepali Agarwal",
+    title: "Business Head & Head of Marketing",
     location: "Gurugram, Haryana",
     domain: "philips.co.in",
-    dept: "Executive Leadership",
-    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Deepak%20Sharma%20Philips%20India"
+    dept: "Marketing & Commercial Strategy",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Deepali%20Agarwal%20Philips%20India"
   },
   "bosch": {
     name: "Guruprasad Mudlapur",
@@ -490,14 +514,6 @@ const KNOWN_LEADERS = {
     domain: "bosch.in",
     dept: "Executive Leadership",
     linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Guruprasad%20Mudlapur%20Bosch"
-  },
-  "haier": {
-    name: "NS Satish",
-    title: "President - Haier Appliances India",
-    location: "Greater Noida, Uttar Pradesh",
-    domain: "haier.com",
-    dept: "Executive Leadership & Sales",
-    linkedinUrl: "https://www.linkedin.com/in/n-s-satish-54523b14/"
   },
   "ifb": {
     name: "Bikram Nag",

@@ -1911,19 +1911,29 @@ function showGlobalToast(msg, isError = false){
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "globalToast";
-    toast.style.cssText = "position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 8px 24px rgba(0,0,0,0.3);transition:all 0.3s ease;display:flex;align-items:center;gap:8px;";
     document.body.appendChild(toast);
   }
-  toast.style.background = isError ? "#ef4444" : "var(--bg-surface, #1e293b)";
-  toast.style.color = "#ffffff";
-  toast.style.border = isError ? "1px solid #dc2626" : "1px solid var(--accent, #6366f1)";
-  toast.textContent = msg;
-  toast.style.opacity = "1";
-  toast.style.transform = "translateY(0)";
+  const bg = isError ? "#b91c1c" : "#0f172a";
+  const border = isError ? "1px solid #ef4444" : "1px solid rgba(255,255,255,0.2)";
+  const iconColor = isError ? "#fca5a5" : "#34d399";
+  const icon = isError ? "⚠️" : "✓";
+
+  toast.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;font-family:inherit;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,0.35);background:${bg};color:#ffffff !important;border:${border};transition:opacity 0.3s cubic-bezier(0.16,1,0.3,1),transform 0.3s cubic-bezier(0.16,1,0.3,1);display:flex;align-items:center;gap:10px;max-width:440px;word-break:break-word;opacity:0;transform:translateY(12px);pointer-events:auto;cursor:pointer;`;
+  toast.innerHTML = `<span style="font-size:15px;line-height:1;color:${iconColor};flex-shrink:0;">${icon}</span><span style="color:#ffffff !important;line-height:1.4;">${escapeHtml(msg)}</span>`;
+  toast.onclick = () => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(12px)";
+    toast.style.pointerEvents = "none";
+  };
+  requestAnimationFrame(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateY(0)";
+  });
   clearTimeout(window.__toastTimeout);
   window.__toastTimeout = setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(10px)";
+    toast.style.transform = "translateY(12px)";
+    toast.style.pointerEvents = "none";
   }, 4500);
 }
 
