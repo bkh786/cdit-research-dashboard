@@ -40,40 +40,45 @@ module.exports = async (req, res) => {
         "Company Website": String(src["Company Website"] ?? src.companyWebsite ?? "https://www.channelplay.in").trim(),
       };
 
-      // 1. Try updateRow first if an existing record is in the sheet
-      const matchCandidates = [
-        { col: "Sender Name", val: previousSenderName || normalizedRow["Sender Name"] },
-        { col: "Company Name", val: previousCompanyName || normalizedRow["Company Name"] },
-        { col: "Sender Email", val: previousSenderEmail || normalizedRow["Sender Email"] },
-        { col: "Company Website", val: normalizedRow["Company Website"] }
-      ].filter(c => !!c.val);
+      const clientHasExistingRow = req.body?.hasExistingRow === true;
 
-      for (const candidate of matchCandidates) {
-        try {
-          const updateResp = await fetch(process.env.APPS_SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              secret: process.env.APPS_SCRIPT_SECRET,
-              action: "updateRow",
-              sheet: "Email Settings",
-              matchColumn: candidate.col,
-              matchValue: candidate.val,
-              updates: normalizedRow
-            }),
-            redirect: "follow",
-          });
-          const updateData = await updateResp.json();
-          if (updateData && !updateData.error && updateData.updated !== 0 && updateData.updated !== false) {
-            res.status(200).json({ ok: true, action: "updateRow", updated: true, row: normalizedRow, data: updateData });
-            return;
+      // 1. Try updateRow ONLY if client confirmed an existing data row exists in the sheet
+      if (clientHasExistingRow) {
+        const matchCandidates = [
+          { col: "Sender Name", val: previousSenderName || normalizedRow["Sender Name"] },
+          { col: "Company Name", val: previousCompanyName || normalizedRow["Company Name"] },
+          { col: "Sender Email", val: previousSenderEmail || normalizedRow["Sender Email"] },
+          { col: "Company Website", val: normalizedRow["Company Website"] }
+        ].filter(c => !!c.val);
+
+        for (const candidate of matchCandidates) {
+          try {
+            const updateResp = await fetch(process.env.APPS_SCRIPT_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                secret: process.env.APPS_SCRIPT_SECRET,
+                action: "updateRow",
+                sheet: "Email Settings",
+                matchColumn: candidate.col,
+                matchValue: candidate.val,
+                updates: normalizedRow
+              }),
+              redirect: "follow",
+            });
+            const updateData = await updateResp.json();
+            // ONLY treat as updated if updateData explicitly confirms rows were updated!
+            if (updateData && !updateData.error && (updateData.updated === true || updateData.updated > 0 || updateData.rowsUpdated > 0)) {
+              res.status(200).json({ ok: true, action: "updateRow", updated: true, row: normalizedRow, data: updateData });
+              return;
+            }
+          } catch (_) {
+            // continue to next candidate
           }
-        } catch (_) {
-          // continue to next candidate or fallback to appendRows
         }
       }
 
-      // 2. If row was empty (like in screenshot 1) or updateRow matched 0 rows, append the record
+      // 2. If row was empty (like in Screenshot 1 where clientHasExistingRow is false) or updateRow matched 0 rows, append the record!
       const appendResp = await fetch(process.env.APPS_SCRIPT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

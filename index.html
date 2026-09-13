@@ -2943,8 +2943,8 @@ async function saveEmailSettings(newSettings, btnEl){
     "Company Website": newSettings.companyWebsite
   };
 
-  // Update in-memory workbookData["Email Settings"]
-  workbookData["Email Settings"] = [sheetRow];
+  const rawSheetRows = workbookData["Email Settings"] || [];
+  const hasExistingSheetRow = Array.isArray(rawSheetRows) && rawSheetRows.length > 0 && !!rawSheetRows[0]["Sender Name"];
 
   let sheetSuccess = false;
   let errMsg = "";
@@ -2956,16 +2956,19 @@ async function saveEmailSettings(newSettings, btnEl){
         action: "saveEmailSettings",
         sheet: "Email Settings",
         settings: sheetRow,
-        previousSenderName: newSettings.previousSenderName || newSettings.senderName,
-        previousCompanyName: newSettings.previousCompanyName || newSettings.companyName,
-        previousSenderEmail: newSettings.previousSenderEmail || newSettings.senderEmail
+        hasExistingRow: hasExistingSheetRow,
+        previousSenderName: newSettings.previousSenderName || (rawSheetRows[0] ? rawSheetRows[0]["Sender Name"] : "") || newSettings.senderName,
+        previousCompanyName: newSettings.previousCompanyName || (rawSheetRows[0] ? rawSheetRows[0]["Company Name"] : "") || newSettings.companyName,
+        previousSenderEmail: newSettings.previousSenderEmail || (rawSheetRows[0] ? rawSheetRows[0]["Sender Email"] : "") || newSettings.senderEmail
       })
     });
     const data = await resp.json();
-    if (resp.ok && !data.error) {
+    if (resp.ok && !data.error && data.ok) {
       sheetSuccess = true;
+      // Update in-memory workbookData["Email Settings"]
+      workbookData["Email Settings"] = [sheetRow];
     } else {
-      errMsg = data.error || "Sheet sync failed";
+      errMsg = data.error || data.message || "Sheet sync failed";
     }
   } catch (err) {
     errMsg = err.message;
@@ -2979,7 +2982,7 @@ async function saveEmailSettings(newSettings, btnEl){
 
   if (btnEl) {
     btnEl.disabled = false;
-    btnEl.innerHTML = `<span>Saved ✓</span>`;
+    btnEl.innerHTML = sheetSuccess ? `<span>Saved to Sheet ✓</span>` : `<span>Saved Locally</span>`;
     setTimeout(() => {
       renderEmailSettings();
     }, 1200);
@@ -3169,7 +3172,7 @@ function renderEmailSettings(){
   });
 }
 
-async function openOutlookCompose(brandName, contact){
+function openOutlookCompose(brandName, contact){
   const state = window.__emailDraftState;
   if (!state || !state.subject) {
     alert("Please generate or select an outreach email draft first.");
@@ -3197,7 +3200,7 @@ async function openOutlookCompose(brandName, contact){
   const ccEmail = emailSettings.defaultCc || "bikash.roy1@channelplay.in";
   const subject = state.subject || `Supporting ${brandName}'s retail execution with Channelplay`;
 
-  // 2. Ensure the rich HTML and plain text have the SAVED signature from Email Settings
+  // 2. Ensure rich HTML and plain text have the SAVED signature from Email Settings
   let fullRichHtml = state.bodyHtml || "";
   if (!fullRichHtml.includes("email-signature-rendered") && !fullRichHtml.includes("email-signature-card") && !fullRichHtml.includes(emailSettings.senderName)) {
     fullRichHtml += "\n" + emailSettings.signatureHtml;
@@ -3208,37 +3211,19 @@ async function openOutlookCompose(brandName, contact){
     fullPlainText += "\n\n" + emailSettings.signaturePlain;
   }
 
-  // 3. COPY FULL FORMATTED EMAIL (Rich HTML + Plain) TO CLIPBOARD IMMEDIATELY
-  let copied = false;
+  // 3. SYNCHRONOUSLY COPY FULL FORMATTED EMAIL (Rich HTML + Plain)
+  // Exact same proven method that copyEmailRich uses!
+  const plainToCopy = subject + "\n\n" + fullPlainText;
+  const richHtmlToCopy = `<p style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;margin-bottom:16px;"><strong>Subject: ${escapeHtml(subject)}</strong></p>${fullRichHtml}`;
   try {
-    if (navigator.clipboard && window.ClipboardItem) {
-      const typeHtml = "text/html";
-      const typePlain = "text/plain";
-      const blobHtml = new Blob([fullRichHtml], { type: typeHtml });
-      const blobPlain = new Blob([fullPlainText], { type: typePlain });
-      await navigator.clipboard.write([new ClipboardItem({ [typeHtml]: blobHtml, [typePlain]: blobPlain })]);
-      copied = true;
-    } else if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(fullPlainText);
-      copied = true;
-    }
-  } catch (clipErr) {
+    const item = new ClipboardItem({
+      "text/plain": new Blob([plainToCopy], { type: "text/plain" }),
+      "text/html": new Blob([richHtmlToCopy], { type: "text/html" })
+    });
+    navigator.clipboard.write([item]);
+  } catch (e) {
     try {
-      const div = document.createElement("div");
-      div.contentEditable = "true";
-      div.innerHTML = fullRichHtml;
-      div.style.position = "fixed";
-      div.style.left = "-9999px";
-      document.body.appendChild(div);
-      div.focus();
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      const range = document.createRange();
-      range.selectNodeContents(div);
-      sel.addRange(range);
-      document.execCommand("copy");
-      document.body.removeChild(div);
-      copied = true;
+      navigator.clipboard.writeText(plainToCopy);
     } catch (_) {}
   }
 
@@ -3246,28 +3231,19 @@ async function openOutlookCompose(brandName, contact){
   const outlookBtn = document.getElementById("openOutlookBtn");
   if (outlookBtn) {
     const origHtml = outlookBtn.innerHTML;
-    outlookBtn.innerHTML = `<span>Copied &amp; Opening Outlook... ✓</span>`;
-    setTimeout(() => { outlookBtn.innerHTML = origHtml; }, 2500);
+    outlookBtn.innerHTML = `<span>HTML Copied &amp; Opening Outlook... ✓</span>`;
+    setTimeout(() => { outlookBtn.innerHTML = origHtml; }, 3000);
   }
 
   // 4. Notify user that formatted email & saved signature are copied
-  showGlobalToast("Formatted outreach email & saved signature copied to clipboard! (Press Ctrl+V / Cmd+V in Outlook Web message body to paste rich format)");
+  showGlobalToast("📋 Full formatted HTML email & signature copied! In Outlook Web, press Ctrl+V / Cmd+V in the message body to paste.", false);
 
-  // 5. Keep URL length safe from truncation while guaranteeing signature presence
-  let safeBody = fullPlainText;
-  if (encodeURIComponent(safeBody).length > 1500) {
-    const paragraphs = fullPlainText.split("\n\n").filter(p => p.trim());
-    if (paragraphs.length > 2) {
-      const intro = paragraphs.slice(0, 2).join("\n\n");
-      safeBody = `${intro}\n\n[Full rich-formatted email & signature copied to clipboard — press Ctrl+V / Cmd+V here in message body to paste]\n\n${emailSettings.signaturePlain}`;
-    }
-  }
-
+  // 5. Open Outlook Web with To, Cc, Subject pre-filled.
+  // Note: We omit body= from the URL because passing body= forces plain text into the Outlook Web composer and blocks rich HTML formatting.
   const params = new URLSearchParams();
   if (toEmail) params.append("to", toEmail);
   if (ccEmail) params.append("cc", ccEmail);
   if (subject) params.append("subject", subject);
-  if (safeBody) params.append("body", safeBody);
 
   const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`;
   window.open(outlookUrl, "_blank", "noopener,noreferrer");
@@ -3474,6 +3450,10 @@ function renderBrandDetail(brandName){
                 <span>Open in Outlook Web &#8599;</span>
               </button>
               <span class="draft-note" id="emailDraftNote">${hasSheetDraft ? "Sourced from Email Drafts sheet." : ""}</span>
+            </div>
+            <div class="outlook-paste-tip" style="margin-top:12px;padding:9px 13px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
+              <span style="font-size:14px;">💡</span>
+              <span><strong>Outlook Web Tip:</strong> Clicking <strong>Open in Outlook Web</strong> pre-fills recipient, CC &amp; subject, and copies the formatted HTML draft &amp; signature to your clipboard. Simply press <strong>Ctrl+V / Cmd+V</strong> in the Outlook Web message body to paste the styled message.</span>
             </div>
           </div>
         </div>
