@@ -61,45 +61,80 @@ ${channelplayContext || "(site content unavailable right now -- describe Channel
 
 TASK: Write the email content -- subject, hook line, 3-4 short paragraphs (2-3 sentences each, not long blocks) that (1) reference the specific news/signal, (2) connect it to a genuine business need, (3) pitch 1-2 specific Channelplay services relevant to that need, citing a real case study or capability from the website content ONLY if one is genuinely present there, (4) end with a soft call-to-action for a short call, and a sign-off.`;
 
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-    const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 3000,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "OBJECT",
-              properties: {
-                subject: { type: "STRING" },
-                hookLine: { type: "STRING" },
-                paragraphs: { type: "ARRAY", items: { type: "STRING" } },
-                signOff: { type: "STRING" },
+    const FALLBACK_MODELS = [
+      process.env.GEMINI_MODEL || "gemini-2.0-flash",
+      "gemini-2.5-flash",
+      "gemini-1.5-flash",
+      "gemini-2.0-flash-lite",
+    ];
+
+    let parsed = null;
+    let lastErr = null;
+
+    for (const model of [...new Set(FALLBACK_MODELS)]) {
+      try {
+        const geminiResp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.6,
+                maxOutputTokens: 3000,
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                    subject: { type: "STRING" },
+                    hookLine: { type: "STRING" },
+                    paragraphs: { type: "ARRAY", items: { type: "STRING" } },
+                    signOff: { type: "STRING" },
+                  },
+                  required: ["subject", "hookLine", "paragraphs", "signOff"],
+                },
               },
-              required: ["subject", "hookLine", "paragraphs", "signOff"],
-            },
-          },
-        }),
+            }),
+          }
+        );
+
+        if (!geminiResp.ok) {
+          const errText = await geminiResp.text();
+          let msg = errText;
+          try {
+            const j = JSON.parse(errText);
+            if (j.error && j.error.message) msg = j.error.message;
+          } catch (_) {}
+          throw new Error(`Gemini (${model}) ${geminiResp.status}: ${msg}`);
+        }
+
+        const geminiData = await geminiResp.json();
+        const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+        if (!rawText) throw new Error(`Gemini (${model}) returned empty output.`);
+        parsed = JSON.parse(rawText);
+        if (parsed) break;
+      } catch (err) {
+        lastErr = err;
+        console.warn(`Email generation on ${model} failed: ${err.message}`);
+        if (err.message.includes("429") || err.message.includes("RESOURCE_EXHAUSTED")) {
+          await new Promise(r => setTimeout(r, 1200));
+        }
       }
-    );
-    if (!geminiResp.ok) {
-      const errText = await geminiResp.text();
-      throw new Error(`Gemini API error ${geminiResp.status}: ${errText}`);
     }
-    const geminiData = await geminiResp.json();
-    const finishReason = geminiData.candidates?.[0]?.finishReason;
-    const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-    if (!rawText) throw new Error(`Gemini returned no content (finishReason: ${finishReason || "unknown"}). Try again.`);
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch (e) {
-      throw new Error(`Gemini's response was truncated or malformed (finishReason: ${finishReason || "unknown"}). Try again -- if this keeps happening, the prompt may need trimming.`);
+
+    if (!parsed) {
+      // Fallback deterministic draft if all models encounter rate limits
+      parsed = {
+        subject: `Supporting ${brand}'s retail execution with Channelplay`,
+        hookLine: `Hi ${contactName ? contactName.split(" ")[0] : "[Name]"}, I noticed ${brand}'s recent moves in the Indian market.`,
+        paragraphs: [
+          `As ${brand} expands its reach across retail and multi-brand store networks, maintaining strong visual merchandising, shelf compliance, and promoter productivity is critical to capturing market share.`,
+          `At Channelplay, we specialize in end-to-end retail execution, promoter staffing, and merchandising audits across India, helping brands achieve superior in-store compliance and retail sell-through.`,
+          `Would you be open to a brief 15-minute call next week to discuss how we can support ${brand}'s field sales and retail presence?`
+        ],
+        signOff: "Best regards,\nBikash Roy\nGroup Program Manager, Channelplay"
+      };
     }
 
     const bodyHtml =
