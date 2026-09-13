@@ -3180,7 +3180,7 @@ function openOutlookCompose(brandName, contact){
   }
   const emailSettings = getEmailSettings();
 
-  // 1. Resolve recipient official email from contact research
+  // 1. Resolve recipient official email from contact research or brand domain
   let toEmail = "";
   if (contact) {
     toEmail = contact["Official Email (public only)"] || contact["Official Email"] || contact["Email"] || "";
@@ -3192,9 +3192,22 @@ function openOutlookCompose(brandName, contact){
       toEmail = found["Official Email (public only)"] || found["Official Email"] || found["Email"] || "";
     }
   }
-  // Sanitize toEmail if it contains placeholder text
-  if (toEmail.toLowerCase().includes("pending") || toEmail.toLowerCase().includes("not public") || !toEmail.includes("@")) {
-    toEmail = "";
+
+  // If email is missing or placeholder, derive the official brand domain email
+  if (!toEmail || toEmail.toLowerCase().includes("pending") || toEmail.toLowerCase().includes("not public") || !toEmail.includes("@")) {
+    const brands = workbookData["Brands Master"] || [];
+    const bObj = brands.find(b => b["Brand"] === brandName) || {};
+    const website = (contact && contact["Company Website"]) || bObj["Website"] || "";
+    if (website) {
+      const cleanDomain = website.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].trim();
+      if (cleanDomain && cleanDomain.includes(".")) {
+        toEmail = `contact@${cleanDomain}`;
+      }
+    }
+    if (!toEmail && brandName) {
+      const cleanBrand = brandName.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (cleanBrand) toEmail = `contact@${cleanBrand}.com`;
+    }
   }
 
   const ccEmail = emailSettings.defaultCc || "bikash.roy1@channelplay.in";
@@ -3239,13 +3252,25 @@ function openOutlookCompose(brandName, contact){
   showGlobalToast("📋 Full formatted HTML email & signature copied! In Outlook Web, press Ctrl+V / Cmd+V in the message body to paste.", false);
 
   // 5. Open Outlook Web with To, Cc, Subject pre-filled.
-  // Note: We omit body= from the URL because passing body= forces plain text into the Outlook Web composer and blocks rich HTML formatting.
-  const params = new URLSearchParams();
-  if (toEmail) params.append("to", toEmail);
-  if (ccEmail) params.append("cc", ccEmail);
-  if (subject) params.append("subject", subject);
+  // CRITICAL:
+  // - Never use URLSearchParams because it converts spaces to '+' which Outlook Web displays literally.
+  // - Microsoft's official compose deeplink handler expects RFC 6068 mailtouri to parse To, Cc, and Subject.
+  // - We also supply to, cc, and subject as direct URL parameters using encodeURIComponent (which strictly formats spaces as %20).
+  const cleanSubject = String(subject || "").trim();
+  const cleanTo = String(toEmail || "").trim();
+  const cleanCc = String(ccEmail || "").trim();
 
-  const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`;
+  const mailtoParts = [];
+  if (cleanCc) mailtoParts.push("cc=" + encodeURIComponent(cleanCc));
+  if (cleanSubject) mailtoParts.push("subject=" + encodeURIComponent(cleanSubject));
+  const mailtoUri = "mailto:" + cleanTo + (mailtoParts.length ? "?" + mailtoParts.join("&") : "");
+  const encodedMailtoUri = encodeURIComponent(mailtoUri);
+
+  let outlookUrl = `https://outlook.office.com/mail/deeplink/compose?mailtouri=${encodedMailtoUri}`;
+  if (cleanTo) outlookUrl += `&to=${encodeURIComponent(cleanTo)}`;
+  if (cleanCc) outlookUrl += `&cc=${encodeURIComponent(cleanCc)}`;
+  if (cleanSubject) outlookUrl += `&subject=${encodeURIComponent(cleanSubject)}`;
+
   window.open(outlookUrl, "_blank", "noopener,noreferrer");
 }
 
@@ -3321,7 +3346,6 @@ function renderBrandDetail(brandName){
     .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
   const contact = allContacts.find(c => c["Brand"] === brandName);
   const pipelineRow = allPipeline.find(p => p["Brand"] === brandName);
-  const sheetDraft = allDrafts.find(d => d["Brand"] === brandName && d["Subject"]);
   const topOpp = opps[0];
   const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
 
@@ -3344,13 +3368,10 @@ function renderBrandDetail(brandName){
       <p><strong>Next action:</strong> ${escapeHtml(o["Suggested Next Action"])}</p>
     </div>`).join("") : `<div class="empty">No scored opportunities yet.</div>`;
 
-  const hasSheetDraft = !!sheetDraft;
-  if (hasSheetDraft) {
-    const { subject, bodyHtml } = buildEmailDraft(brand, topOpp, news, sheetDraft);
-    window.__emailDraftState = { subject, bodyHtml };
-  } else {
-    window.__emailDraftState = null;
-  }
+  // Always generate fresh, comprehensive outreach draft tailored to this brand, recent news, opportunities, contact, and Email Settings signature
+  // Do NOT read stale, short, or obsolete drafts from the sheet.
+  const initialDraft = buildEmailDraft(brand, topOpp, news, contact);
+  window.__emailDraftState = initialDraft;
   const contactHtml = renderContactCard(contact);
   const stages = ["Prospect","Researching","Connected","Meeting Scheduled","Proposal Shared","Negotiation","Won","Lost","Dormant"];
   const currentStage = pipelineRow ? pipelineRow["Stage"] : "Prospect";
@@ -3434,12 +3455,12 @@ function renderBrandDetail(brandName){
           </h3>
           <div class="ai-draft-bar">
             <button class="btn tiny" id="aiDraftBtn">✨ Generate AI Email Draft</button>
-            <span class="spinner-text" id="aiDraftStatus" style="font-size:12px;color:var(--text-muted);">${hasSheetDraft ? "" : "No draft yet — click to generate one."}</span>
+            <span class="spinner-text" id="aiDraftStatus" style="font-size:12px;color:var(--text-muted);">Ready to send or refine with Gemini</span>
           </div>
-          <div id="emailResultWrap" style="${hasSheetDraft ? "" : "display:none;"}">
+          <div id="emailResultWrap">
             <div class="email-box" id="emailBoxContent">
-              <div class="email-subject" id="emailSubjectLine">${hasSheetDraft ? escapeHtml(window.__emailDraftState.subject) : ""}</div>
-              <div id="emailBodyContent">${hasSheetDraft ? window.__emailDraftState.bodyHtml : ""}</div>
+              <div class="email-subject" id="emailSubjectLine">${escapeHtml(initialDraft.subject)}</div>
+              <div id="emailBodyContent">${initialDraft.bodyHtml}</div>
             </div>
             <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
               <button class="btn tiny" id="copyEmailBtn">Copy Formatted Email</button>
@@ -3449,7 +3470,7 @@ function renderBrandDetail(brandName){
                 </svg>
                 <span>Open in Outlook Web &#8599;</span>
               </button>
-              <span class="draft-note" id="emailDraftNote">${hasSheetDraft ? "Sourced from Email Drafts sheet." : ""}</span>
+              <span class="draft-note" id="emailDraftNote">Personalized strategic outreach draft with your live Email Settings signature.</span>
             </div>
             <div class="outlook-paste-tip" style="margin-top:12px;padding:9px 13px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
               <span style="font-size:14px;">💡</span>
@@ -3656,26 +3677,23 @@ function buildExecSummary(brand, topOpp, news, pipelineRow){
     Recommended next step: ${escapeHtml(topOpp["Suggested Next Action"])}`;
 }
 
-function buildEmailDraft(brand, topOpp, news, sheetDraft){
+function buildEmailDraft(brand, topOpp, news, contact){
   const emailSettings = getEmailSettings();
   const sigHtml = emailSettings.signatureHtml;
   const sigPlain = emailSettings.signaturePlain;
 
-  if (sheetDraft) {
-    const rawBody = String(sheetDraft["Draft Body"] || "");
-    const bodyHtml = rawBody.split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join("") + "\n" + sigHtml;
-    return {
-      subject: sheetDraft["Subject"],
-      bodyHtml,
-      plainBody: rawBody + "\n\n" + sigPlain,
-      isTemplate: false
-    };
-  }
+  const brandName = (brand && brand["Brand"]) || "Brand";
+  const contactName = contact ? String(contact["Decision Maker Name"] || "").trim() : "";
+  const firstName = contactName ? contactName.split(/\s+/)[0] : "";
+  const salutation = firstName ? `Hi ${firstName},` : (contactName ? `Hi ${contactName},` : `Hi [Name],`);
 
-  const subject = `Partnering on ${brand["Brand"]}'s Retail Velocity & In-Store Execution with Channelplay`;
-  const latestNews = news[0];
-  const hookLine = `Hi [Name], congratulations on ${brand["Brand"]}'s recent retail moves${latestNews ? ` (${latestNews["Headline"]})` : ""} in the Indian market.`;
-  const marketContext = `As ${brand["Brand"]} accelerates distribution across multi-brand counters and regional store networks, maintaining strong brand presence, active product demonstrations, and promoter productivity is essential to capturing counter share ahead of peak demand cycles.`;
+  const latestNews = news && news[0];
+  const newsContext = latestNews ? ` (${latestNews["Headline"]})` : "";
+  const oppType = topOpp ? topOpp["Opportunity Type"] : "";
+
+  const subject = `Partnering on ${brandName}'s Retail Velocity & In-Store Execution with Channelplay`;
+  const hookLine = `${salutation} congratulations on ${brandName}'s recent retail moves${newsContext} in the Indian market.`;
+  const marketContext = `As ${brandName} accelerates distribution across multi-brand counters and regional store networks, maintaining strong brand presence, active product demonstrations, and promoter productivity is essential to capturing counter share ahead of peak demand cycles.`;
   const synergiesParagraph = `Channelplay operates as a full-funnel retail execution partner for leading brands in India. We deploy and manage dedicated in-store promoters, execute visual merchandising and POSM rollouts across pan-India counters, and drive accountability via real-time counter tracking.`;
   const capabilities = [
     `Experiential Promoter Deployment: Certified sales staff with proven 90%+ fill rates and 5.3% low attrition.`,
@@ -3684,7 +3702,7 @@ function buildEmailDraft(brand, topOpp, news, sheetDraft){
     `Experiential Demonstrations: Standardized customer journey scripts tailored to maximize conversion rates.`
   ];
   const strategicClosing = `With festive retail footfalls and counter competition climbing, having agile in-store execution ensures your marketing investments translate directly to counter sales.`;
-  const softHook = `Would you be open to a brief 10–15 minute introductory call next week to explore retail synergies for ${brand["Brand"]}?`;
+  const softHook = `Would you be open to a brief 10–15 minute introductory call next week to explore retail synergies for ${brandName}?`;
 
   const bodyHtml = `
 <div class="email-rich-wrap">
