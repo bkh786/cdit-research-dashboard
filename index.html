@@ -1,206 +1,199 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" data-accent="indigo">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Consumer Electronics Brand’s Research — Sales Intelligence CRM</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css" />
+<title>CDIT Sales Intelligence Dashboard</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111827; --panel2:#1a2234; --border:#26314a;
+    --text:#e5e7eb; --muted:#94a3b8; --accent:#6366f1; --accent-soft:rgba(99,102,241,.15);
+    --high:#ef4444; --med:#f59e0b; --low:#22c55e; --star:#f59e0b; --row-hover:#161f33;
+  }
+  html[data-theme="light"]{
+    --bg:#f4f5f9; --panel:#ffffff; --panel2:#ffffff; --border:#e2e6ee;
+    --text:#0f172a; --muted:#5b6577; --row-hover:#f1f3fa;
+  }
+  html[data-accent="teal"]{ --accent:#0d9488; --accent-soft:rgba(13,148,136,.15); }
+  html[data-accent="rose"]{ --accent:#e11d48; --accent-soft:rgba(225,29,72,.15); }
+  html[data-accent="amber"]{ --accent:#d97706; --accent-soft:rgba(217,119,6,.15); }
+  html[data-accent="indigo"]{ --accent:#6366f1; --accent-soft:rgba(99,102,241,.15); }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:10;}
+  header h1{font-size:18px;margin:0;font-weight:600;}
+  header .sub{color:var(--muted);font-size:12px;margin-top:2px;}
+  .btn{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;}
+  .btn.secondary{background:transparent;border:1px solid var(--border);color:var(--text);}
+  .btn.tiny{padding:5px 10px;font-size:11px;border-radius:6px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  nav{display:flex;gap:4px;padding:0 28px;border-bottom:1px solid var(--border);background:var(--panel);overflow-x:auto;}
+  nav button{background:none;border:none;color:var(--muted);padding:12px 14px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+  nav button.active{color:var(--text);border-bottom-color:var(--accent);}
+  main{padding:24px 28px;max-width:1400px;margin:0 auto;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
+  .card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:16px;}
+  .card .num{font-size:26px;font-weight:700;}
+  .card .label{color:var(--muted);font-size:12px;margin-top:4px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:600;padding:10px 12px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--panel);white-space:nowrap;}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere;max-width:340px;}
+  tr:hover td{background:var(--row-hover);}
+  .panel{background:var(--panel2);border:1px solid var(--border);border-radius:12px;overflow:auto;max-height:70vh;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .pill.High{background:rgba(239,68,68,.15);color:var(--high);}
+  .pill.Medium{background:rgba(245,158,11,.15);color:var(--med);}
+  .pill.Low{background:rgba(34,197,94,.15);color:var(--low);}
+  .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+  input[type=text],input[type=password]{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;min-width:220px;}
+  select{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;}
+  .empty{padding:60px 20px;text-align:center;color:var(--muted);}
+  .gate{display:flex;align-items:center;justify-content:center;height:80vh;flex-direction:column;gap:14px;}
+  .gate .box{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:28px;width:320px;text-align:center;}
+  .error-text{color:var(--high);font-size:12px;margin-top:8px;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  a.brand-link{color:var(--text);font-weight:600;}
+  a.brand-link:hover{color:var(--accent);}
+  .score{font-weight:700;}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;}
+  .modal{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:90vw;}
+  .modal h3{margin:0 0 16px;font-size:16px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;font-size:13px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;}
+
+  /* Theme switcher */
+  .theme-switcher{position:relative;}
+  .theme-btn{background:transparent;border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:15px;}
+  .theme-menu{position:absolute;right:0;top:42px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;width:200px;box-shadow:0 12px 32px rgba(0,0,0,.35);display:none;z-index:50;}
+  .theme-menu.open{display:block;}
+  .theme-menu .row-label{font-size:11px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em;}
+  .mode-toggle{display:flex;gap:6px;margin-bottom:14px;}
+  .mode-toggle button{flex:1;padding:6px 0;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;cursor:pointer;}
+  .mode-toggle button.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .accent-dots{display:flex;gap:8px;}
+  .accent-dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;}
+  .accent-dot.active{border-color:var(--text);}
+
+  /* Brand detail page */
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;margin-bottom:16px;cursor:pointer;}
+  .detail-grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;}
+  @media (max-width:900px){ .detail-grid{grid-template-columns:1fr;} }
+  .detail-header{display:flex;align-items:baseline;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+  .detail-header h2{margin:0;font-size:24px;}
+  .section{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;}
+  .section h3{margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);}
+  .exec-summary{font-size:14px;line-height:1.7;overflow-wrap:anywhere;}
+  .stars{color:var(--star);font-size:20px;letter-spacing:2px;}
+  .stars .empty-star{color:var(--border);}
+  .score-value{font-size:13px;color:var(--muted);margin-top:4px;}
+  .score-line-label{font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;}
+  .news-item{border-bottom:1px solid var(--border);padding:14px 0;}
+  .news-item:last-child{border-bottom:none;}
+  .news-item .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-size:11px;color:var(--muted);}
+  .news-item h4{margin:0 0 6px;font-size:14px;overflow-wrap:anywhere;}
+  .news-item p{margin:0 0 6px;font-size:13px;line-height:1.6;color:var(--text);overflow-wrap:anywhere;}
+  .cat-tag{background:var(--accent-soft);color:var(--accent);padding:2px 8px;border-radius:999px;font-weight:700;white-space:nowrap;}
+
+  /* Competitor Watch cards */
+  .competitor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;align-items:start;}
+  .competitor-card{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:border-color .15s,transform .15s;min-width:0;}
+  .competitor-card:hover{border-color:var(--accent);}
+  .competitor-card .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:11px;color:var(--muted);}
+  .competitor-card h4{margin:0 0 8px;font-size:14.5px;line-height:1.4;overflow-wrap:anywhere;}
+  .competitor-card p{margin:0;font-size:13px;line-height:1.65;color:var(--text);overflow-wrap:anywhere;}
+  .competitor-card .expand{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+  .competitor-card .expand p{margin-bottom:8px;}
+  .competitor-card .expand-hint{margin-top:10px;font-size:11px;color:var(--accent);font-weight:600;}
+
+  .filter-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .filter-pill{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:999px;font-size:12px;cursor:pointer;font-weight:600;}
+  .filter-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .filter-pill:hover{border-color:var(--accent);}
+
+  .track-brand-btn{margin-top:12px;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:6px 12px;border-radius:8px;font-size:11px;cursor:pointer;font-weight:700;}
+  .track-brand-btn:hover{background:var(--accent-soft);}
+  .track-brand-btn:disabled{opacity:.65;cursor:default;border-color:var(--border);color:var(--muted);}
+
+  .ai-draft-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .email-hook{font-size:15px;font-weight:700;margin:0 0 12px;color:var(--accent);}
+  .spinner-text{font-size:12px;color:var(--muted);}
+  .contact-card .cf{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;gap:10px;}
+  .contact-card .cf:last-child{border-bottom:none;}
+  .contact-card .cf-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
+  .contact-card .cf-value{text-align:right;word-break:break-word;}
+  .copy-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0;}
+  .copy-btn:hover{color:var(--accent);border-color:var(--accent);}
+  .email-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;font-size:13px;line-height:1.7;}
+  .email-box p{margin:0 0 12px;}
+  .email-subject{font-weight:700;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+  .draft-note{font-size:11px;color:var(--muted);margin-top:10px;}
+  .pipeline-editor{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .save-note{font-size:11px;color:var(--low);margin-top:6px;display:none;}
+</style>
 </head>
 <body>
 
-<div class="app-container">
-  <!-- Collapsible Sidebar Panel -->
-  <aside class="sidebar" id="appSidebar" style="display:none;">
-    <div class="sidebar-header">
-      <a href="javascript:void(0)" class="brand-logo-wrap" onclick="window.location.reload()" title="Click to reload & refresh dashboard">
-        <div class="brand-icon">CE</div>
-        <div class="brand-title-group">
-          <span class="brand-main-title">CE Research CRM</span>
-          <span class="brand-sub-title">Intelligence Hub</span>
-        </div>
-      </a>
-      <button class="collapse-toggle-btn" id="sidebarCollapseBtn" title="Toggle Sidebar (Collapse / Expand)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
-    </div>
-
-    <div class="sidebar-nav">
-      <div class="nav-section-label">Intelligence Hub</div>
-      
-      <button class="nav-item-btn active" data-tab="overview" data-title="Overview">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="7"></rect>
-          <rect x="14" y="3" width="7" height="7"></rect>
-          <rect x="14" y="14" width="7" height="7"></rect>
-          <rect x="3" y="14" width="7" height="7"></rect>
-        </svg>
-        <span class="nav-item-label">Overview</span>
-        <span class="nav-badge" id="badgeOverview">0</span>
-      </button>
-
-      <button class="nav-item-btn" data-tab="news" data-title="News Feed">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
-          <path d="M18 14h-8"></path>
-          <path d="M15 18h-5"></path>
-          <path d="M10 6h8v4h-8V6Z"></path>
-        </svg>
-        <span class="nav-item-label">News Feed</span>
-        <span class="nav-badge" id="badgeNews">0</span>
-      </button>
-
-      <button class="nav-item-btn" data-tab="opportunities" data-title="Opportunities">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-        </svg>
-        <span class="nav-item-label">Opportunities</span>
-        <span class="nav-badge" id="badgeOpps">0</span>
-      </button>
-
-      <button class="nav-item-btn" data-tab="contacts" data-title="Contacts">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-        <span class="nav-item-label">Contacts</span>
-        <span class="nav-badge" id="badgeContacts">0</span>
-      </button>
-
-      <button class="nav-item-btn" data-tab="competitors" data-title="Competitor Watch">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-          <circle cx="12" cy="12" r="3"></circle>
-        </svg>
-        <span class="nav-item-label">Competitor Watch</span>
-        <span class="nav-badge" id="badgeCompetitors">0</span>
-      </button>
-    </div>
-
-    <div class="sidebar-footer">
-      <button class="btn secondary tiny" id="sidebarAddBrandBtn" style="width:100%;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        <span class="nav-item-label">+ Add Brand</span>
-      </button>
-    </div>
-  </aside>
-
-  <!-- Main Content Wrapper -->
-  <div class="main-wrapper">
-    <header class="top-header">
-      <div class="header-left">
-        <div class="header-title-container">
-          <h1 class="page-title">
-            <span>Consumer Electronics Brand’s Research</span>
-            <span class="sync-badge" id="syncBadge" title="Google Sheets live data sync status">
-              <span class="status-dot locked" id="syncDot"></span>
-              <span id="syncStatus">Locked</span>
-            </span>
-            <span class="sync-badge gemini-badge" id="geminiBadge" title="Google Gemini AI API status">
-              <svg class="gemini-sparkle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <defs>
-                  <linearGradient id="geminiGradHeader" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#1BA1E3" />
-                    <stop offset="45%" stop-color="#5471EF" />
-                    <stop offset="100%" stop-color="#D96570" />
-                  </linearGradient>
-                </defs>
-                <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#geminiGradHeader)" />
-              </svg>
-              <span class="status-dot locked" id="geminiDot"></span>
-              <span id="geminiStatus">Gemini · Locked</span>
-            </span>
-          </h1>
-          <div class="header-credits-subtitle">Developed by Bikash Roy | Contact @ 8509950431</div>
-        </div>
-      </div>
-
-      <div class="header-actions">
-        <button class="btn secondary" id="refreshBtn" style="display:none;" title="Refresh live Google Sheets data">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-          <span>Refresh</span>
-        </button>
-
-        <button class="btn" id="addBrandBtn" style="display:none;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          <span>Add Brand</span>
-        </button>
-
-        <div class="theme-switcher" id="themeSwitcher" style="display:none;">
-          <button class="icon-btn" id="themeBtn" title="Theme & Color Settings">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          </button>
-          <div class="theme-menu" id="themeMenu">
-            <div class="row-label">Theme Mode</div>
-            <div class="mode-toggle">
-              <button data-mode="dark">Dark</button>
-              <button data-mode="light">Light</button>
-            </div>
-            <div class="row-label">Accent Color</div>
-            <div class="accent-dots">
-              <div class="accent-dot" data-accent="indigo" style="background:#6366f1;" title="Indigo"></div>
-              <div class="accent-dot" data-accent="teal" style="background:#0d9488;" title="Teal"></div>
-              <div class="accent-dot" data-accent="emerald" style="background:#059669;" title="Emerald"></div>
-              <div class="accent-dot" data-accent="rose" style="background:#e11d48;" title="Rose"></div>
-              <div class="accent-dot" data-accent="amber" style="background:#d97706;" title="Amber"></div>
-            </div>
-          </div>
-        </div>
-
-        <button class="icon-btn" id="lockBtn" style="display:none;" title="Lock Session">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        </button>
-      </div>
-    </header>
-
-    <main class="main-content">
-      <div id="content">
-        <!-- Password Gate Screen -->
-        <div class="gate">
-          <div class="gate-card">
-            <div class="gate-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            </div>
-            <h2>Protected CRM Dashboard</h2>
-            <p>Enter the dashboard access password to unlock Consumer Electronics research data.</p>
-            <input type="password" id="pwInput" placeholder="Enter password..." style="width:100%;margin-bottom:12px;" />
-            <button class="btn" id="unlockBtn" style="width:100%;">
-              <span>Unlock Dashboard</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            </button>
-            <div class="error-text" id="pwError"></div>
-          </div>
-        </div>
-      </div>
-    </main>
+<header>
+  <div>
+    <h1>CDIT Sales Intelligence Dashboard</h1>
+    <div class="sub" id="syncStatus">Locked</div>
   </div>
-</div>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <button class="btn secondary" id="addBrandBtn" style="display:none;">+ Add Brand</button>
+    <button class="btn secondary" id="refreshBtn" style="display:none;">Refresh</button>
+    <div class="theme-switcher" id="themeSwitcher" style="display:none;">
+      <button class="theme-btn" id="themeBtn" title="Appearance">&#9788;</button>
+      <div class="theme-menu" id="themeMenu">
+        <div class="row-label">Mode</div>
+        <div class="mode-toggle">
+          <button data-mode="dark">Dark</button>
+          <button data-mode="light">Light</button>
+        </div>
+        <div class="row-label">Accent</div>
+        <div class="accent-dots">
+          <div class="accent-dot" data-accent="indigo" style="background:#6366f1;"></div>
+          <div class="accent-dot" data-accent="teal" style="background:#0d9488;"></div>
+          <div class="accent-dot" data-accent="rose" style="background:#e11d48;"></div>
+          <div class="accent-dot" data-accent="amber" style="background:#d97706;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav id="tabs" style="display:none;">
+  <button data-tab="overview" class="active">Overview</button>
+  <button data-tab="news">News Feed</button>
+  <button data-tab="opportunities">Opportunities</button>
+  <button data-tab="contacts">Contacts</button>
+  <button data-tab="competitors">Competitor Watch</button>
+  <button data-tab="emails">Email Drafts</button>
+</nav>
+
+<main>
+  <div id="content">
+    <div class="gate">
+      <div class="box">
+        <div style="margin-bottom:14px;font-weight:600;">Enter dashboard password</div>
+        <input type="password" id="pwInput" placeholder="Password" style="width:100%;margin-bottom:10px;" />
+        <button class="btn" id="unlockBtn" style="width:100%;">Unlock</button>
+        <div class="error-text" id="pwError"></div>
+      </div>
+    </div>
+  </div>
+</main>
 
 <script>
 let workbookData = {};
 let currentTab = "overview";
 
-// State filters and sorting per tab
-let tabState = {
-  overview: { kpiFilter: null, sortCol: "latestResearch", sortDir: "desc", filters: {}, query: "" },
-  news: { kpiFilter: null, sortCol: "Date", sortDir: "desc", filters: {}, query: "" },
-  opportunities: { kpiFilter: null, sortCol: "Priority Score (1-5)", sortDir: "desc", filters: {}, query: "" },
-  contacts: { kpiFilter: null, sortCol: "Brand", sortDir: "asc", filters: {}, query: "" },
-  competitors: { kpiFilter: null, sortCol: "Date", sortDir: "desc", filterCompetitor: "", filterCategory: "", viewMode: "table", query: "" },
-  emails: { kpiFilter: null, filters: {}, query: "" }
-};
-
 function saveSessionPassword(pw){ sessionStorage.setItem("cdit_pw", pw); }
 function getSessionPassword(){ return sessionStorage.getItem("cdit_pw") || ""; }
-function clearSessionPassword(){ sessionStorage.removeItem("cdit_pw"); }
 
-/* ---------------- Theme & Sidebar Controls ---------------- */
+/* ---------------- Theme switcher ---------------- */
 function applyTheme(){
   const mode = localStorage.getItem("cdit_theme") || "dark";
   const accent = localStorage.getItem("cdit_accent") || "indigo";
@@ -209,7 +202,6 @@ function applyTheme(){
   document.querySelectorAll(".mode-toggle button").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
   document.querySelectorAll(".accent-dot").forEach(d => d.classList.toggle("active", d.dataset.accent === accent));
 }
-
 function initThemeControls(){
   document.querySelectorAll(".mode-toggle button").forEach(b => {
     b.addEventListener("click", () => { localStorage.setItem("cdit_theme", b.dataset.mode); applyTheme(); });
@@ -223,22 +215,6 @@ function initThemeControls(){
   });
   document.addEventListener("click", () => document.getElementById("themeMenu").classList.remove("open"));
   applyTheme();
-
-  // Sidebar toggle
-  const sidebar = document.getElementById("appSidebar");
-  const isCollapsed = localStorage.getItem("sidebar_collapsed") === "true";
-  if (isCollapsed) sidebar.classList.add("collapsed");
-
-  document.getElementById("sidebarCollapseBtn").addEventListener("click", () => {
-    sidebar.classList.toggle("collapsed");
-    localStorage.setItem("sidebar_collapsed", sidebar.classList.contains("collapsed"));
-  });
-
-  // Lock button
-  document.getElementById("lockBtn").addEventListener("click", () => {
-    clearSessionPassword();
-    location.reload();
-  });
 }
 
 async function unlock(){
@@ -248,90 +224,37 @@ async function unlock(){
   if (ok) {
     saveSessionPassword(pw);
     revealChrome();
-    const routed = checkUrlHashRoute();
-    if (!routed) renderTab(currentTab);
+    renderTab(currentTab);
   } else {
     document.getElementById("pwError").textContent = "Incorrect password or sync failed.";
   }
 }
 
 function revealChrome(){
-  document.getElementById("appSidebar").style.display = "flex";
-  document.getElementById("refreshBtn").style.display = "inline-flex";
-  document.getElementById("addBrandBtn").style.display = "inline-flex";
+  document.getElementById("tabs").style.display = "flex";
+  document.getElementById("refreshBtn").style.display = "inline-block";
+  document.getElementById("addBrandBtn").style.display = "inline-block";
   document.getElementById("themeSwitcher").style.display = "block";
-  document.getElementById("lockBtn").style.display = "inline-flex";
-  updateSidebarBadges();
-}
-
-function updateSidebarBadges(){
-  const brands = workbookData["Brands Master"] || [];
-  const news = workbookData["News feed"] || [];
-  const opps = workbookData["Opportunities"] || [];
-  const contacts = workbookData["Contacts"] || [];
-  const competitors = workbookData["Competitor Watch"] || [];
-  const emails = workbookData["Email Drafts"] || [];
-
-  document.getElementById("badgeOverview").textContent = brands.length;
-  document.getElementById("badgeNews").textContent = news.length;
-  document.getElementById("badgeOpps").textContent = opps.length;
-  document.getElementById("badgeContacts").textContent = contacts.length;
-  document.getElementById("badgeCompetitors").textContent = competitors.length;
-  if (document.getElementById("badgeEmails")) document.getElementById("badgeEmails").textContent = emails.length;
 }
 
 async function loadWorkbook(pw){
-  const dot = document.getElementById("syncDot");
-  const status = document.getElementById("syncStatus");
-  const geminiDot = document.getElementById("geminiDot");
-  const geminiStatus = document.getElementById("geminiStatus");
-
-  dot.className = "status-dot loading";
-  status.textContent = "Syncing Sheets...";
-  if (geminiDot && geminiStatus) {
-    geminiDot.className = "status-dot loading";
-    geminiStatus.textContent = "Gemini · Connecting...";
-  }
-
+  document.getElementById("syncStatus").textContent = "Loading...";
   try {
     const resp = await fetch("/api/sheet-data", {
       headers: { "x-dashboard-password": pw }
     });
     if (resp.status === 401) {
-      dot.className = "status-dot locked";
-      status.textContent = "Locked";
-      if (geminiDot && geminiStatus) {
-        geminiDot.className = "status-dot locked";
-        geminiStatus.textContent = "Gemini · Locked";
-      }
+      document.getElementById("syncStatus").textContent = "Locked";
       return false;
     }
     if (!resp.ok) throw new Error("API error " + resp.status);
     const json = await resp.json();
     workbookData = json.sheets;
-    dot.className = "status-dot";
-    status.textContent = "Live · " + new Date(json.syncedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-    if (geminiDot && geminiStatus) {
-      if (json.geminiConnected !== false) {
-        geminiDot.className = "status-dot";
-        geminiStatus.textContent = "Gemini · Live";
-      } else {
-        geminiDot.className = "status-dot locked";
-        geminiStatus.textContent = "Gemini · Offline";
-      }
-    }
-
-    updateSidebarBadges();
+    document.getElementById("syncStatus").textContent = "Live — last synced " + new Date(json.syncedAt).toLocaleString();
     return true;
   } catch (e) {
     console.error(e);
-    dot.className = "status-dot locked";
-    status.textContent = "Sync failed";
-    if (geminiDot && geminiStatus) {
-      geminiDot.className = "status-dot locked";
-      geminiStatus.textContent = "Gemini · Offline";
-    }
+    document.getElementById("syncStatus").textContent = "Sync failed: " + e.message;
     return false;
   }
 }
@@ -341,446 +264,30 @@ async function refresh(){
   const ok = await loadWorkbook(pw);
   if (ok) {
     if (window.__viewingBrand) renderBrandDetail(window.__viewingBrand);
-    else if (window.__viewingCompetitor !== null && window.__viewingCompetitor !== undefined) showCompetitorDetail(window.__viewingCompetitor);
     else renderTab(currentTab);
   }
 }
 
-/* ---------------- Strategic Briefing Sharing ---------------- */
-function buildShareData(type, target){
-  if (type === "brand") {
-    const brandName = typeof target === "string" ? target : target["Brand"];
-    const brands = workbookData["Brands Master"] || [];
-    const allNews = workbookData["News feed"] || [];
-    const allOpps = workbookData["Opportunities"] || [];
-    const allContacts = workbookData["Contacts"] || [];
-    const allPipeline = workbookData["Pipeline"] || [];
-    const latestResearchMap = getBrandLatestResearchMap();
-
-    const brand = brands.find(b => b["Brand"] === brandName) || { "Brand": brandName };
-    const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandName), "Date");
-    const opps = allOpps.filter(o => o["Brand"] === brandName)
-      .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
-    const contact = allContacts.find(c => c["Brand"] === brandName);
-    const pipelineRow = allPipeline.find(p => p["Brand"] === brandName);
-    const topOpp = opps[0];
-    const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
-
-    const rawExecSummary = (buildExecSummary(brand, topOpp, news, pipelineRow) || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    const directLink = `${window.location.origin}${window.location.pathname}#brand=${encodeURIComponent(brandName)}`;
-
-    let plain = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `📊 STRATEGIC RESEARCH BRIEFING: ${brandName.toUpperCase()}\n`;
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-    plain += `📌 STRATEGIC PROFILE & METADATA:\n`;
-    plain += `• Brand: ${brandName}\n`;
-    plain += `• Sector / Segment: ${brand["Sector"] || "Consumer Electronics"}${brand["Segment"] ? ` · ${brand["Segment"]}` : ""}\n`;
-    plain += `• Priority Tier: ${brand["Priority Tier"] || "Unrated"} Priority (Score: ${topOpp ? `${topOpp["Priority Score (1-5)"]}/5` : "Unrated"})\n`;
-    plain += `• Pipeline Stage: ${pipelineRow ? pipelineRow["Stage"] : "Prospect"}\n`;
-    plain += `• Latest Research Date: ${latestResearch.date || "-"}\n`;
-    if (brand["Website"]) plain += `• Website: ${brand["Website"]}\n`;
-    plain += `• Direct Dashboard Link: ${directLink}\n\n`;
-
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `📝 EXECUTIVE BRIEFING:\n`;
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `${rawExecSummary}\n\n`;
-
-    if (opps.length) {
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      plain += `🎯 CHANNELPLAY OPPORTUNITY BREAKDOWN & PITCH ANGLE:\n`;
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      opps.forEach((o, i) => {
-        plain += `[${i+1}] ${o["Opportunity Type"]} (Score: ${o["Priority Score (1-5)"]}/5)\n`;
-        plain += `  • Business Impact: ${o["Business Impact"]}\n`;
-        plain += `  • Channelplay Pitch: ${o["Opportunity for Channelplay"]}\n`;
-        plain += `  • Recommended Service: ${o["Recommended Service"]} · Department: ${o["Recommended Contact Department"]}\n`;
-        plain += `  • Suggested Next Action: ${o["Suggested Next Action"]}\n\n`;
-      });
-    }
-
-    if (news.length) {
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      plain += `📰 RECENT STRATEGIC SIGNALS & LIVE NEWS:\n`;
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      news.slice(0, 5).forEach((n, i) => {
-        plain += `[${i+1}] ${n["Headline"]}\n`;
-        plain += `    Date: ${n["Date"]} | Source: ${n["Source"] || "News"}\n`;
-        if (n["AI Summary"] || n["Summary"]) plain += `    Summary: ${n["AI Summary"] || n["Summary"]}\n`;
-        if (n["URL"]) plain += `    Live Article: ${n["URL"]}\n`;
-        plain += `\n`;
-      });
-    }
-
-    if (contact) {
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      plain += `👤 KEY DECISION MAKER & CONTACT:\n`;
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      plain += `• Name: ${contact["Decision Maker Name"] || "Research Pending"}\n`;
-      plain += `• Designation: ${contact["Designation"] || "-"}\n`;
-      plain += `• Department: ${contact["Department"] || "Strategy / Sales"}\n`;
-      if (contact["Official Email (public only)"]) plain += `• Email: ${contact["Official Email (public only)"]}\n`;
-      if (contact["Official Contact Number (public only)"]) plain += `• Phone: ${contact["Official Contact Number (public only)"]}\n`;
-      if (contact["LinkedIn Profile"]) plain += `• LinkedIn: ${contact["LinkedIn Profile"]}\n`;
-      if (contact["Office Location"]) plain += `• Office Location: ${contact["Office Location"]}\n`;
-      plain += `\n`;
-    }
-
-    plain += `🚀 Open in Dashboard: ${directLink}\n`;
-
-    let richHtml = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.65;color:#1e293b;max-width:680px;background:#ffffff;padding:24px;border:1px solid #e2e8f0;border-radius:8px;">
-        <div style="border-bottom:2px solid #4f46e5;padding-bottom:12px;margin-bottom:18px;">
-          <div style="display:inline-block;background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;margin-bottom:6px;">Strategic Research Briefing</div>
-          <h1 style="margin:0 0 6px 0;font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">${escapeHtml(brandName)}</h1>
-          <div style="font-size:13px;color:#64748b;">
-            🏢 <strong>Sector:</strong> ${escapeHtml(brand["Sector"] || "Consumer Electronics")}${brand["Segment"] ? ` · ${escapeHtml(brand["Segment"])}` : ""} &nbsp;|&nbsp;
-            ⭐ <strong>Priority:</strong> <span style="color:#4338ca;font-weight:600;">${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</span> &nbsp;|&nbsp;
-            📊 <strong>Pipeline Stage:</strong> <span style="font-weight:600;color:#0f172a;">${escapeHtml(pipelineRow ? pipelineRow["Stage"] : "Prospect")}</span>
-          </div>
-        </div>
-
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 8px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">📝 Executive Summary</h3>
-          <div style="background:#f8fafc;border-left:4px solid #4f46e5;padding:14px 16px;border-radius:4px;font-size:14px;line-height:1.7;color:#334155;">
-            ${formatParagraphs(rawExecSummary)}
-          </div>
-        </div>
-
-        ${opps.length ? `
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 10px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">🎯 Channelplay Opportunity Breakdown & Pitch Angle</h3>
-          ${opps.map((o, i) => `
-            <div style="margin-bottom:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;">
-              <div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:6px;">[${i+1}] ${escapeHtml(o["Opportunity Type"])} <span style="background:#e0e7ff;color:#4338ca;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:6px;">Score: ${escapeHtml(o["Priority Score (1-5)"])}/5</span></div>
-              <div style="font-size:13.5px;line-height:1.6;color:#334155;margin-bottom:6px;"><strong>Business Impact:</strong> ${escapeHtml(o["Business Impact"])}</div>
-              <div style="font-size:13.5px;line-height:1.6;color:#0f172a;background:#ffffff;border:1px solid #e2e8f0;padding:10px 12px;border-radius:4px;margin-bottom:6px;"><strong>Channelplay Pitch:</strong> ${escapeHtml(o["Opportunity for Channelplay"])}</div>
-              <div style="font-size:12.5px;color:#64748b;">
-                <strong>Recommended Service:</strong> ${escapeHtml(o["Recommended Service"])} &nbsp;·&nbsp;
-                <strong>Department:</strong> ${escapeHtml(o["Recommended Contact Department"])} &nbsp;·&nbsp;
-                <span style="color:#059669;font-weight:600;"><strong>Next Action:</strong> ${escapeHtml(o["Suggested Next Action"])}</span>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-        ` : ""}
-
-        ${news.length ? `
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 10px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">📰 Recent Strategic Signals & Live News</h3>
-          ${news.slice(0, 5).map((n, i) => `
-            <div style="margin-bottom:12px;padding:12px 14px;background:#ffffff;border:1px solid #e2e8f0;border-radius:6px;">
-              <div style="font-weight:700;font-size:14px;color:#0f172a;margin-bottom:4px;">
-                ${escapeHtml(n["Headline"])} 
-                <span style="font-size:12px;color:#64748b;font-weight:normal;">(${escapeHtml(n["Date"])} · ${escapeHtml(n["Source"] || "Source")})</span>
-              </div>
-              <div style="font-size:13px;line-height:1.6;color:#475569;margin-bottom:6px;">
-                ${escapeHtml(n["AI Summary"] || n["Summary"] || "")}
-              </div>
-              ${n["URL"] ? `<div><a href="${escapeAttr(n["URL"])}" target="_blank" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:underline;">View Live Source Article &#8599;</a></div>` : ""}
-            </div>
-          `).join("")}
-        </div>
-        ` : ""}
-
-        ${contact ? `
-        <div style="margin-bottom:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:14px 16px;">
-          <div style="font-size:11px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">👤 Key Decision Maker & Contact</div>
-          <div style="font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(contact["Decision Maker Name"] || "Research Pending")}</div>
-          <div style="font-size:13px;color:#64748b;margin-top:2px;">
-            ${escapeHtml(contact["Designation"] || "-")} · ${escapeHtml(contact["Department"] || "Strategy / Sales")}
-          </div>
-          <div style="font-size:12.5px;color:#475569;margin-top:4px;">
-            ${contact["Official Email (public only)"] ? `✉️ ${escapeHtml(contact["Official Email (public only)"])} &nbsp;|&nbsp; ` : ""}
-            ${contact["Official Contact Number (public only)"] ? `📞 ${escapeHtml(contact["Official Contact Number (public only)"])} &nbsp;|&nbsp; ` : ""}
-            ${contact["Office Location"] ? `📍 ${escapeHtml(contact["Office Location"])}` : ""}
-          </div>
-          ${contact["LinkedIn Profile"] ? `<div style="margin-top:4px;"><a href="${escapeAttr(contact["LinkedIn Profile"])}" target="_blank" style="color:#4f46e5;font-size:12px;font-weight:600;text-decoration:underline;">LinkedIn Profile &#8599;</a></div>` : ""}
-        </div>
-        ` : ""}
-
-        <div style="padding-top:14px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;text-align:center;">
-          Shared via Consumer Electronics Brand Research Dashboard · <a href="${escapeAttr(directLink)}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">Open in Dashboard</a>
-        </div>
-      </div>
-    `;
-
-    return {
-      title: `${brandName} — Strategic Research Briefing & Opportunities`,
-      brandName: brandName,
-      type: "brand",
-      directLink,
-      plainText: plain,
-      richHtml: richHtml,
-      subject: `Strategic Briefing & Channelplay Pitch: ${brandName}`,
-    };
-  } else if (type === "competitor") {
-    let r = target;
-    if (typeof target === "string") {
-      const compList = workbookData["Competitor Watch"] || [];
-      r = compList.find(c => c["Competitor"] === target) || { "Competitor": target };
-    }
-    const competitorName = r["Competitor"] || "Competitor";
-    const related = r["Related Tracked Brand"] || "-";
-    const headline = r["Headline"] || "Competitor Market Move";
-    const summary = r["Summary"] || "";
-    const fullAnalysis = r["Full Analysis"] || r["Summary"] || "";
-    const directLink = `${window.location.origin}${window.location.pathname}#competitor=${encodeURIComponent(competitorName)}`;
-
-    let plain = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `🚨 COMPETITOR INTELLIGENCE BRIEFING: ${competitorName.toUpperCase()}\n`;
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-    plain += `⚡ STRATEGIC HEADLINE:\n"${headline}"\n\n`;
-
-    plain += `📌 SIGNAL PROFILE:\n`;
-    plain += `• Competitor: ${competitorName}\n`;
-    plain += `• Category: ${r["Category"] || "Market Move"}\n`;
-    plain += `• Date: ${r["Date"] || "-"}${r["Source"] ? ` (${r["Source"]})` : ""}\n`;
-    if (related !== "-") plain += `• Related Tracked Account: ${related}\n`;
-    if (r["URL"]) plain += `• Live News Link: ${r["URL"]}\n`;
-    plain += `• Dashboard Deep Link: ${directLink}\n\n`;
-
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `📝 EXECUTIVE BRIEFING & SUMMARY:\n`;
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `${summary || "No executive summary provided."}\n\n`;
-
-    if (fullAnalysis && fullAnalysis !== summary) {
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      plain += `🔍 FULL STRATEGIC ANALYSIS:\n`;
-      plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      plain += `${fullAnalysis}\n\n`;
-    }
-
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `🎯 CHANNELPLAY MARKET OPPORTUNITY & PITCH ANGLE:\n`;
-    plain += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    plain += `This market movement by ${competitorName} creates a direct conversational hook. Use this signal to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.\n\n`;
-
-    if (r["URL"]) {
-      plain += `🔗 Live Source Article: ${r["URL"]}\n`;
-    }
-    plain += `🚀 Dashboard Deep Link: ${directLink}\n`;
-
-    let richHtml = `
-      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;line-height:1.65;color:#1e293b;max-width:680px;background:#ffffff;padding:24px;border:1px solid #e2e8f0;border-radius:8px;">
-        <div style="border-bottom:2px solid #4f46e5;padding-bottom:12px;margin-bottom:18px;">
-          <div style="display:inline-block;background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:4px;letter-spacing:0.5px;margin-bottom:6px;">Competitor Market Alert</div>
-          <h1 style="margin:0 0 6px 0;font-size:22px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">Competitor Intelligence: ${escapeHtml(competitorName)}</h1>
-          <div style="font-size:13px;color:#64748b;">
-            📅 <strong>Date:</strong> ${escapeHtml(r["Date"] || "-")} &nbsp;|&nbsp;
-            🏷️ <strong>Category:</strong> <span style="color:#4338ca;font-weight:600;">${escapeHtml(r["Category"] || "Market Move")}</span>
-            ${related !== "-" ? ` &nbsp;|&nbsp; 🎯 <strong>Related Account:</strong> ${escapeHtml(related)}` : ""}
-            ${r["Source"] ? ` &nbsp;|&nbsp; 📰 <strong>Source:</strong> ${escapeHtml(r["Source"])}` : ""}
-          </div>
-        </div>
-
-        <div style="background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #ef4444;padding:14px 16px;border-radius:6px;margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;color:#b91c1c;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">⚡ Strategic Headline</div>
-          <div style="font-size:15px;font-weight:700;color:#0f172a;line-height:1.5;">"${escapeHtml(headline)}"</div>
-        </div>
-
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 8px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">📝 Executive Briefing & Summary</h3>
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:14px 16px;border-radius:6px;font-size:14px;line-height:1.7;color:#334155;">
-            ${formatParagraphs(summary || "No executive summary available.")}
-          </div>
-        </div>
-
-        ${fullAnalysis && fullAnalysis !== summary ? `
-        <div style="margin-bottom:20px;">
-          <h3 style="margin:0 0 8px 0;font-size:13.5px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">🔍 Full Strategic Analysis</h3>
-          <div style="background:#ffffff;border:1px solid #e2e8f0;padding:14px 16px;border-radius:6px;font-size:14px;line-height:1.7;color:#1e293b;">
-            ${formatParagraphs(fullAnalysis)}
-          </div>
-        </div>
-        ` : ""}
-
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #10b981;padding:14px 16px;border-radius:6px;margin-bottom:20px;">
-          <div style="font-size:11px;font-weight:700;color:#047857;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🎯 Channelplay Market Opportunity & Pitch Angle</div>
-          <div style="font-size:13.5px;line-height:1.65;color:#065f46;">
-            This market movement by <strong>${escapeHtml(competitorName)}</strong> creates a direct conversational hook. Use this signal to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.
-          </div>
-        </div>
-
-        <div style="padding-top:14px;border-top:1px solid #e2e8f0;font-size:12.5px;color:#64748b;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-          ${r["URL"] ? `<div>🔗 <a href="${escapeAttr(r["URL"])}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">View Live Source Article &#8599;</a></div>` : `<div></div>`}
-          <div>🚀 Shared via <a href="${escapeAttr(directLink)}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">Competitor Watch Dashboard</a></div>
-        </div>
-      </div>
-    `;
-
-    return {
-      title: `Competitor Alert: ${competitorName} — ${headline}`,
-      brandName: competitorName,
-      type: "competitor",
-      directLink,
-      plainText: plain,
-      richHtml: richHtml,
-      subject: `Competitor Intelligence Alert: ${competitorName} - ${headline}`,
-    };
-  }
-}
-
-function openShareModal(type, target){
-  const data = buildShareData(type, target);
-  if (!data) return;
-
-  const overlay = document.createElement("div");
-  overlay.className = "modal-overlay";
-  overlay.id = "shareModalOverlay";
-
-  const hasNativeShare = typeof navigator !== "undefined" && !!navigator.share;
-
-  overlay.innerHTML = `
-    <div class="modal share-modal">
-      <div class="share-modal-header">
-        <h3>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-          <span>Share Strategic Briefing — ${escapeHtml(data.brandName)}</span>
-        </h3>
-        <button class="share-modal-close" id="closeShareModalBtn" title="Close">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-      </div>
-
-      <div class="share-channel-grid">
-        <button class="share-channel-btn" id="shareCopyRichBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-          <span>Copy Rich Briefing<br><small style="font-weight:normal;opacity:0.8;">Outlook / Gmail / Docs</small></span>
-        </button>
-
-        <button class="share-channel-btn" id="shareCopyPlainBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-          <span>Copy Plain Text<br><small style="font-weight:normal;opacity:0.8;">Slack / Teams / WhatsApp</small></span>
-        </button>
-
-        <button class="share-channel-btn" id="shareCopyLinkBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-          <span>Copy Direct Link<br><small style="font-weight:normal;opacity:0.8;">One-click Deep Link</small></span>
-        </button>
-
-        <button class="share-channel-btn" id="shareMailtoBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          <span>Open in Mail App<br><small style="font-weight:normal;opacity:0.8;">Draft New Email</small></span>
-        </button>
-
-        ${hasNativeShare ? `
-          <button class="share-channel-btn" id="shareNativeDeviceBtn" style="background:var(--accent-soft);border-color:var(--accent);color:var(--accent);">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            <span>Device Share Sheet<br><small style="font-weight:normal;opacity:0.8;">Native Mobile/Mac</small></span>
-          </button>
-        ` : ""}
-      </div>
-
-      <div class="share-preview-wrap">
-        <div class="share-preview-header">
-          <span>Briefing Preview (Includes Headline, Summary, Channelplay Pitch & Live News)</span>
-          <span style="font-size:10.5px;color:var(--accent);">Ready to Export</span>
-        </div>
-        <div class="share-preview-content" id="sharePreviewBox">${escapeHtml(data.plainText)}</div>
-      </div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;">
-        <span id="shareStatusNote" style="font-size:12px;color:var(--accent);font-weight:600;"></span>
-        <button class="btn secondary tiny" id="shareCloseBottomBtn">Close</button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  const statusNote = document.getElementById("shareStatusNote");
-  const flashNote = (msg) => {
-    statusNote.textContent = msg;
-    setTimeout(() => { if (statusNote) statusNote.textContent = ""; }, 3000);
-  };
-
-  document.getElementById("closeShareModalBtn").addEventListener("click", () => overlay.remove());
-  document.getElementById("shareCloseBottomBtn").addEventListener("click", () => overlay.remove());
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-
-  document.getElementById("shareCopyRichBtn").addEventListener("click", (e) => {
-    copyRichShareText(data.plainText, data.richHtml, e.currentTarget);
-    flashNote("Copied rich formatted briefing to clipboard! ✓");
-  });
-
-  document.getElementById("shareCopyPlainBtn").addEventListener("click", (e) => {
-    copyToClipboard(data.plainText, e.currentTarget);
-    flashNote("Copied plain text briefing to clipboard! ✓");
-  });
-
-  document.getElementById("shareCopyLinkBtn").addEventListener("click", (e) => {
-    copyToClipboard(data.directLink, e.currentTarget);
-    flashNote("Copied direct link to clipboard! ✓");
-  });
-
-  document.getElementById("shareMailtoBtn").addEventListener("click", () => {
-    const subject = encodeURIComponent(data.subject);
-    const body = encodeURIComponent(data.plainText);
-    window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
-    flashNote("Opened mail client! ✓");
-  });
-
-  if (hasNativeShare) {
-    const nativeBtn = document.getElementById("shareNativeDeviceBtn");
-    if (nativeBtn) {
-      nativeBtn.addEventListener("click", () => {
-        navigator.share({
-          title: data.title,
-          text: data.plainText,
-          url: data.directLink
-        }).then(() => flashNote("Shared successfully! ✓"))
-          .catch(() => {});
-      });
-    }
-  }
-}
-
-function copyRichShareText(plainText, htmlText, btnEl){
-  try {
-    const item = new ClipboardItem({
-      "text/plain": new Blob([plainText], { type: "text/plain" }),
-      "text/html": new Blob([htmlText], { type: "text/html" }),
-    });
-    navigator.clipboard.write([item]).then(() => flashBtnText(btnEl, "Copied Rich Text ✓"));
-  } catch (e) {
-    copyToClipboard(plainText, btnEl);
-  }
-}
-
-function flashBtnText(btnEl, msg){
-  if (!btnEl) return;
-  const original = btnEl.innerHTML;
-  btnEl.style.borderColor = "var(--accent)";
-  btnEl.style.background = "var(--accent-soft)";
-  setTimeout(() => {
-    btnEl.innerHTML = original;
-  }, 2000);
-}
-
-/* ---------------- Add Brand Modal ---------------- */
+/* ---------------- Add Brand ---------------- */
 function openAddBrandModal(){
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay";
   overlay.id = "addBrandOverlay";
   overlay.innerHTML = `
     <div class="modal">
-      <h3>Add New Consumer Electronics Brand</h3>
-      <div class="field"><label>Brand name</label><input id="fBrand" type="text" placeholder="e.g. Fire-Boltt, Boat, Noise"></div>
+      <h3>Add a brand to track</h3>
+      <div class="field"><label>Brand name</label><input id="fBrand" type="text" placeholder="e.g. Fire-Boltt"></div>
       <div class="field"><label>Sector</label><input id="fSector" type="text" placeholder="e.g. Consumer Electronics"></div>
-      <div class="field"><label>Segment</label><input id="fSegment" type="text" placeholder="e.g. Wearables, Audio, Smart Home"></div>
+      <div class="field"><label>Segment</label><input id="fSegment" type="text" placeholder="e.g. Wearables, Audio"></div>
       <div class="field"><label>Priority Tier</label>
         <select id="fTier"><option>High</option><option>Medium</option><option selected>Low</option></select>
       </div>
-      <div class="field"><label>Website</label><input id="fWebsite" type="text" placeholder="e.g. fireboltt.com"></div>
+      <div class="field"><label>Website</label><input id="fWebsite" type="text" placeholder="e.g. fire-boltt.com"></div>
       <div class="field"><label>HQ / India Office</label><input id="fHQ" type="text" placeholder="e.g. Gurugram, Haryana"></div>
       <div class="error-text" id="addBrandError"></div>
       <div class="modal-actions">
         <button class="btn secondary" id="cancelAddBrand">Cancel</button>
-        <button class="btn" id="submitAddBrand">Add & Save</button>
+        <button class="btn" id="submitAddBrand">Add Brand</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -796,7 +303,7 @@ async function submitAddBrand(){
   const today = new Date().toISOString().slice(0, 10);
   const brandRow = {
     "Brand": brandName,
-    "Sector": document.getElementById("fSector").value.trim() || "Consumer Electronics",
+    "Sector": document.getElementById("fSector").value.trim(),
     "Segment": document.getElementById("fSegment").value.trim(),
     "Priority Tier": document.getElementById("fTier").value,
     "Website": document.getElementById("fWebsite").value.trim(),
@@ -820,7 +327,7 @@ async function submitAddBrand(){
     await refresh();
   } catch (e) {
     errEl.textContent = e.message;
-    btn.disabled = false; btn.textContent = "Add & Save";
+    btn.disabled = false; btn.textContent = "Add Brand";
   }
 }
 
@@ -846,8 +353,6 @@ async function updatePipelineStage(brandName, newStage, btnEl, noteEl){
     if (!resp.ok || data.error) throw new Error(data.error || "Failed to update stage");
     noteEl.textContent = "Saved.";
     noteEl.style.display = "block";
-    const heroBadge = document.getElementById("heroStageBadge");
-    if (heroBadge) heroBadge.textContent = newStage;
     await refresh();
   } catch (e) {
     noteEl.textContent = "Failed: " + e.message;
@@ -859,7 +364,7 @@ async function updatePipelineStage(brandName, newStage, btnEl, noteEl){
   }
 }
 
-/* ---------------- Shared Helpers ---------------- */
+/* ---------------- Shared helpers ---------------- */
 function priorityLabel(score){
   score = Number(score) || 0;
   if (score >= 4) return "High";
@@ -867,154 +372,32 @@ function priorityLabel(score){
   return "Low";
 }
 function escapeHtml(s){
-  if (s === null || s === undefined) return "";
-  // Decode common HTML entities first to prevent double-encoding (e.g. &#39; -> &amp;#39;)
-  let str = String(s)
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-
-  return str.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-function formatParagraphs(text){
-  if (!text) return "<p style=\"margin:0 0 10px 0;line-height:1.65;\">No detailed analysis available.</p>";
-  return String(text)
-    .trim()
-    .split(/\n{2,}/)
-    .map(p => `<p style="margin:0 0 10px 0;line-height:1.65;">${escapeHtml(p.trim()).replace(/\n/g, "<br>")}</p>`)
-    .join("");
+  return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function escapeAttr(s){ return escapeHtml(s).replace(/`/g, "&#96;"); }
-function starRow(score, max = 5){
+function starRow(score, max){
+  max = max || 5;
   score = Math.round(Number(score) || 0);
   let out = "";
   for (let i = 1; i <= max; i++) out += i <= score ? "&#9733;" : `<span class="empty-star">&#9733;</span>`;
   return `<span class="stars">${out}</span>`;
 }
-function brandLink(name, subtitle = ""){
-  if (!name) return "-";
-  return `
-    <div class="brand-cell">
-      <a class="brand-title-link" href="#" onclick="showBrandDetail('${escapeAttr(name).replace(/'/g,"&#39;")}');return false;">${escapeHtml(name)}</a>
-      ${subtitle ? `<span class="brand-subtitle">${escapeHtml(subtitle)}</span>` : ""}
-    </div>
-  `;
-}
-function formatRelativeDate(dateStr){
-  if (!dateStr) return "-";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const now = new Date();
-  const diffDays = Math.round((now - d) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays > 0 && diffDays < 30) return `${diffDays}d ago`;
-  return d.toISOString().slice(0, 10);
+function brandLink(name){
+  if (!name) return "";
+  return `<a class="brand-link" href="#" onclick="showBrandDetail('${escapeAttr(name).replace(/'/g,"&#39;")}');return false;">${escapeHtml(name)}</a>`;
 }
 function sortByDateDesc(rows, field){
   return rows.slice().sort((a, b) => String(b[field] || "").localeCompare(String(a[field] || "")));
 }
 
-function getBrandLatestResearchMap(){
-  const news = workbookData["News feed"] || [];
-  const pipeline = workbookData["Pipeline"] || [];
-  const brands = workbookData["Brands Master"] || [];
-  const map = {};
-
-  brands.forEach(b => {
-    map[b["Brand"]] = { date: b["Date Added"] || "2000-01-01", snippet: "Brand record added" };
-  });
-
-  pipeline.forEach(p => {
-    const b = p["Brand"];
-    const d = p["Last Update"];
-    if (d && (!map[b] || String(d).localeCompare(String(map[b].date)) > 0)) {
-      map[b] = { date: d, snippet: `Pipeline: ${p["Stage"] || "Updated"}` };
-    }
-  });
-
-  news.forEach(n => {
-    const b = n["Brand"];
-    const d = n["Date"];
-    if (d && (!map[b] || String(d).localeCompare(String(map[b].date)) > 0)) {
-      map[b] = { date: d, snippet: n["Headline"] || "News research updated" };
-    }
-  });
-
-  return map;
-}
-
-function sortIndicator(tabName, col){
-  const st = tabState[tabName];
-  if (st.sortCol !== col) return `<span class="sort-icon">⇅</span>`;
-  return st.sortDir === "asc" ? `<span class="sort-icon">▲</span>` : `<span class="sort-icon">▼</span>`;
-}
-
-function handleTabSort(tabName, colKey, defaultDesc = false){
-  const st = tabState[tabName];
-  if (st.sortCol === colKey) {
-    st.sortDir = st.sortDir === "asc" ? "desc" : "asc";
-  } else {
-    st.sortCol = colKey;
-    st.sortDir = defaultDesc ? "desc" : "asc";
-  }
-  renderTab(tabName);
-}
-
-function handleTabKpiFilter(tabName, filterKey){
-  const st = tabState[tabName];
-  st.kpiFilter = (st.kpiFilter === filterKey) ? null : filterKey;
-  renderTab(tabName);
-}
-
-function setTabFilter(tabName, key, value){
-  const st = tabState[tabName];
-  if (!value) delete st.filters[key];
-  else st.filters[key] = value;
-  renderTab(tabName);
-}
-
-function clearTabFilters(tabName){
-  tabState[tabName].kpiFilter = null;
-  tabState[tabName].filters = {};
-  tabState[tabName].query = "";
-  renderTab(tabName);
-}
-
-function wireSearchForTab(tabName){
-  const box = document.getElementById("searchBox");
-  if (!box) return;
-  box.value = tabState[tabName].query || "";
-  box.addEventListener("input", (e) => {
-    tabState[tabName].query = e.target.value;
-    const q = e.target.value.toLowerCase().trim();
-    document.querySelectorAll("#dataTable tbody tr, .news-item, .competitor-card").forEach(tr => {
-      tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? "" : "none";
-    });
-  });
-}
-
-/* ==========================================================================
-   TAB 1: OVERVIEW
-   ========================================================================== */
+/* ---------------- Overview / generic tabs ---------------- */
 function renderOverview(){
   window.__viewingBrand = null;
-  window.__viewingCompetitor = null;
-  const st = tabState.overview;
   const brands = workbookData["Brands Master"] || [];
   const opps = workbookData["Opportunities"] || [];
   const pipeline = workbookData["Pipeline"] || [];
-  const latestResearchMap = getBrandLatestResearchMap();
-
-  const highOpps = opps.filter(o => Number(o["Priority Score (1-5)"]) >= 4).length;
-  const highBrands = brands.filter(b => b["Priority Tier"] === "High").length;
-  const dormantCount = pipeline.filter(p => p["Stage"] === "Dormant" || p["Stage"] === "Lost").length ||
-    opps.filter(o => Number(o["Priority Score (1-5)"]) <= 2).length;
-
+  const high = opps.filter(o => Number(o["Priority Score (1-5)"]) >= 4).length;
+  const dormant = opps.filter(o => Number(o["Priority Score (1-5)"]) <= 2).length;
   const pipelineByBrand = Object.fromEntries(pipeline.map(p => [p["Brand"], p["Stage"]]));
   const topOppByBrand = {};
   opps.forEach(o => {
@@ -1023,1221 +406,147 @@ function renderOverview(){
       topOppByBrand[b] = o;
     }
   });
-
-  let rowsData = brands.map(b => {
+  const rows = brands.map(b => {
     const top = topOppByBrand[b["Brand"]];
-    const latest = latestResearchMap[b["Brand"]] || { date: b["Date Added"] || "-", snippet: "" };
-    const summarySnippet = top
-      ? (top["Business Impact"] || top["Opportunity for Channelplay"] || `Tracked in ${b["Sector"] || "Consumer Electronics"} CRM portfolio.`)
-      : (b["Status Notes"] || `Tracked in ${b["Sector"] || "Consumer Electronics"} CRM portfolio · Ready for research and scoring.`);
-
-    return {
-      brand: b["Brand"],
-      sector: b["Sector"] || "",
-      segment: b["Segment"] || "",
-      priorityTier: b["Priority Tier"] || "Low",
-      topOpportunity: top ? top["Opportunity Type"] : "Research in Progress",
-      businessImpact: top ? top["Business Impact"] : "",
-      score: top ? Number(top["Priority Score (1-5)"]) || 0 : 0,
-      scoreText: top ? top["Priority Score (1-5)"] : "-",
-      pipelineStage: pipelineByBrand[b["Brand"]] || "Prospect",
-      dateAdded: b["Date Added"] || "-",
-      latestResearch: latest.date || "-",
-      latestResearchSnippet: latest.snippet || "",
-      summarySnippet: summarySnippet,
-      hasOpp: !!top
-    };
-  });
-
-  // KPI Filter
-  if (st.kpiFilter === "opps") rowsData = rowsData.filter(r => r.hasOpp);
-  else if (st.kpiFilter === "high") rowsData = rowsData.filter(r => r.priorityTier === "High" || r.score >= 4);
-  else if (st.kpiFilter === "dormant") rowsData = rowsData.filter(r => r.priorityTier === "Low" || r.pipelineStage === "Dormant" || r.score <= 2);
-
-  // Column Filters
-  Object.keys(st.filters).forEach(k => {
-    if (st.filters[k]) rowsData = rowsData.filter(r => String(r[k] || "").toLowerCase() === String(st.filters[k]).toLowerCase());
-  });
-
-  // Sorting
-  rowsData.sort((a, b) => {
-    let vA = a[st.sortCol];
-    let vB = b[st.sortCol];
-    if (st.sortCol === "score") {
-      vA = Number(vA) || 0;
-      vB = Number(vB) || 0;
-    } else {
-      vA = String(vA || "").toLowerCase();
-      vB = String(vB || "").toLowerCase();
-    }
-    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
-    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  const viewMode = st.viewMode || "grid";
-  const distinctTiers = [...new Set(brands.map(b => b["Priority Tier"]).filter(Boolean))];
-  const distinctStages = [...new Set(pipeline.map(p => p["Stage"]).filter(Boolean))];
-
-  // Card Grid rendering
-  const gridCards = rowsData.length ? rowsData.map(r => {
-    return `
-    <div class="brand-crm-card" onclick="showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')" title="Click to view full brand profile and intelligence">
-      <div>
-        <div class="brand-card-header">
-          <div class="brand-card-identity">
-            ${renderBrandLogoHtml(r.brand, 44)}
-            <div>
-              <div class="brand-card-title">${escapeHtml(r.brand)}</div>
-              <div class="brand-card-subtitle">${escapeHtml(r.sector)}${r.segment ? " · " + escapeHtml(r.segment) : ""}</div>
-            </div>
-          </div>
-          <span class="pill ${escapeHtml(r.priorityTier)}">${escapeHtml(r.priorityTier)} Priority</span>
-        </div>
-
-        <div class="brand-card-badges">
-          <span class="pill ${r.score >= 4 ? "High" : r.score === 3 ? "Medium" : "Low"}">
-            ★ Score: ${r.score ? `${r.score}/5` : "Unrated"}
-          </span>
-          <span class="pill Stage">${escapeHtml(r.pipelineStage)}</span>
-        </div>
-
-        <div class="brand-card-opp-box">
-          <div class="brand-card-opp-header">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            <span>Top Opportunity</span>
-          </div>
-          <div class="brand-card-opp-title">${escapeHtml(r.topOpportunity)}</div>
-        </div>
-
-        <div class="brand-card-summary-snippet">
-          ${escapeHtml(r.summarySnippet)}
-        </div>
-      </div>
-
-      <div class="brand-card-footer">
-        <button class="detail-cta-btn" onclick="event.stopPropagation(); showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">
-          <span>View Brand Profile</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <button class="btn secondary tiny" onclick="event.stopPropagation(); openShareModal('brand', '${escapeAttr(r.brand).replace(/'/g, "\\'")}')" title="Share strategic briefing">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-          <span>Share</span>
-        </button>
-      </div>
+    return `<tr>
+      <td>${brandLink(b["Brand"])}</td>
+      <td><span class="pill ${escapeHtml(b["Priority Tier"])}">${escapeHtml(b["Priority Tier"])}</span></td>
+      <td>${escapeHtml(top ? top["Opportunity Type"] : "-")}</td>
+      <td class="score">${top ? escapeHtml(top["Priority Score (1-5)"]) : "-"}</td>
+      <td>${escapeHtml(pipelineByBrand[b["Brand"]] || "-")}</td>
+      <td>${escapeHtml(b["Date Added"] || "-")}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("content").innerHTML = `
+    <div class="cards">
+      <div class="card"><div class="num">${brands.length}</div><div class="label">Brands Tracked</div></div>
+      <div class="card"><div class="num">${opps.length}</div><div class="label">Open Opportunities</div></div>
+      <div class="card"><div class="num" style="color:var(--high)">${high}</div><div class="label">High Priority (4-5)</div></div>
+      <div class="card"><div class="num" style="color:var(--low)">${dormant}</div><div class="label">Dormant / Low Priority</div></div>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Brand</th><th>Priority Tier</th><th>Top Opportunity</th><th>Score</th><th>Pipeline Stage</th><th>Date Added</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`;
-  }).join("") : `<div class="empty" style="grid-column:1/-1;">No brands matching the selected criteria.</div>`;
-
-  // Table rows rendering
-  const tableRows = rowsData.length ? rowsData.map(r => `
-    <tr>
-      <td>
-        <div style="display:flex;align-items:center;gap:10px;">
-          ${renderBrandLogoHtml(r.brand, 32)}
-          <div>
-            <div style="font-weight:700;color:var(--text-primary);cursor:pointer;" onclick="showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">${escapeHtml(r.brand)}</div>
-            <div style="font-size:11.5px;color:var(--text-secondary);">${escapeHtml(r.segment ? `${r.sector} · ${r.segment}` : r.sector)}</div>
-          </div>
-        </div>
-      </td>
-      <td><span class="pill ${escapeHtml(r.priorityTier)}">${escapeHtml(r.priorityTier)}</span></td>
-      <td>${escapeHtml(r.topOpportunity)}</td>
-      <td>
-        <span class="pill ${r.score >= 4 ? "High" : r.score === 3 ? "Medium" : "Low"}">
-          ${r.score ? `${r.score}/5` : "-"}
-        </span>
-      </td>
-      <td><span class="pill Stage">${escapeHtml(r.pipelineStage)}</span></td>
-      <td>
-        <div class="date-cell" title="${escapeAttr(r.latestResearchSnippet)}">
-          <span class="date-primary">${escapeHtml(r.latestResearch)}</span>
-          <span class="date-relative">${formatRelativeDate(r.latestResearch)}</span>
-        </div>
-      </td>
-      <td><span style="color:var(--text-muted);font-size:12px;">${escapeHtml(r.dateAdded)}</span></td>
-      <td>
-        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r.brand).replace(/'/g,"&#39;")}')">
-          View Profile &#8594;
-        </button>
-      </td>
-    </tr>
-  `).join("") : `<tr><td colspan="8" class="empty">No brands matching the selected criteria.</td></tr>`;
-
-  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
-  let activeFilterLabel = st.kpiFilter ? `Filter Active (${st.kpiFilter})` : "Active Filters";
-
-  document.getElementById("content").innerHTML = `
-    <!-- KPI Grid -->
-    <div class="kpi-grid">
-      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'all')" title="Click to view all brands">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Brands Tracked</span>
-          <div class="kpi-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9M14 17H5M17 12H3"/></svg>
-          </div>
-        </div>
-        <div class="kpi-value">${brands.length}</div>
-        <div class="kpi-hint"><span>Active accounts</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'opps' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'opps')" title="Click to filter brands with open opportunities">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Open Opportunities</span>
-          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--info)">${opps.length}</div>
-        <div class="kpi-hint"><span>Scored leads</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'high' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'high')" title="Click to filter high priority accounts">
-        <div class="kpi-card-top">
-          <span class="kpi-label">High Priority (4-5)</span>
-          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--high)">${highOpps || highBrands}</div>
-        <div class="kpi-hint"><span>Immediate outreach</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'dormant' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('overview', 'dormant')" title="Click to filter dormant & low priority accounts">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Dormant / Low Priority</span>
-          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--low)">${dormantCount}</div>
-        <div class="kpi-hint"><span>Nurturing tier</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-    </div>
-
-    <!-- Controls -->
-    <div class="table-controls-bar">
-      <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search any brand, segment, sector, stage, score, opportunity..." />
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${hasActiveFilters ? `
-          <div class="active-filter-banner">
-            <span>${escapeHtml(activeFilterLabel)} (${rowsData.length} brands)</span>
-            <button class="filter-clear-btn" onclick="clearTabFilters('overview')">Clear Filter</button>
-          </div>
-        ` : ""}
-
-        <select id="tierFilterSelect" onchange="setTabFilter('overview', 'priorityTier', this.value)" style="padding:8px 12px;">
-          <option value="">All Tiers</option>
-          ${distinctTiers.map(t => `<option value="${escapeAttr(t)}" ${st.filters.priorityTier === t ? "selected" : ""}>${escapeHtml(t)} Tier</option>`).join("")}
-        </select>
-
-        <select id="stageFilterSelect" onchange="setTabFilter('overview', 'pipelineStage', this.value)" style="padding:8px 12px;">
-          <option value="">All Stages</option>
-          ${distinctStages.map(s => `<option value="${escapeAttr(s)}" ${st.filters.pipelineStage === s ? "selected" : ""}>${escapeHtml(s)}</option>`).join("")}
-        </select>
-
-        <!-- View Mode Switcher -->
-        <div class="view-switcher">
-          <button class="view-switch-btn ${viewMode === 'grid' ? 'active' : ''}" onclick="setOverviewViewMode('grid')" title="Card View">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-            <span>Cards</span>
-          </button>
-          <button class="view-switch-btn ${viewMode === 'table' ? 'active' : ''}" onclick="setOverviewViewMode('table')" title="Table View">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-            <span>Table</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main View Content (Cards or Table) -->
-    ${viewMode === 'grid' ? `
-      <div class="overview-grid">${gridCards}</div>
-    ` : `
-      <div class="crm-panel">
-        <div class="table-responsive">
-          <table class="crm-table" id="dataTable">
-            <thead>
-              <tr>
-                <th class="sortable ${st.sortCol === 'brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'brand')">
-                  <div class="th-content">Brand & Sector ${sortIndicator('overview', 'brand')}</div>
-                </th>
-                <th class="sortable ${st.sortCol === 'priorityTier' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'priorityTier')">
-                  <div class="th-content">Priority Tier ${sortIndicator('overview', 'priorityTier')}</div>
-                </th>
-                <th class="sortable ${st.sortCol === 'topOpportunity' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'topOpportunity')">
-                  <div class="th-content">Top Opportunity ${sortIndicator('overview', 'topOpportunity')}</div>
-                </th>
-                <th class="sortable ${st.sortCol === 'score' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'score', true)">
-                  <div class="th-content">Score ${sortIndicator('overview', 'score')}</div>
-                </th>
-                <th class="sortable ${st.sortCol === 'pipelineStage' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'pipelineStage')">
-                  <div class="th-content">Pipeline Stage ${sortIndicator('overview', 'pipelineStage')}</div>
-                </th>
-                <th class="sortable ${st.sortCol === 'latestResearch' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'latestResearch', true)">
-                  <div class="th-content">Latest Research ${sortIndicator('overview', 'latestResearch')}</div>
-                </th>
-                <th class="sortable ${st.sortCol === 'dateAdded' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('overview', 'dateAdded', true)">
-                  <div class="th-content">Date Added ${sortIndicator('overview', 'dateAdded')}</div>
-                </th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>${tableRows}</tbody>
-          </table>
-        </div>
-      </div>
-    `}
-  `;
-
-  wireSearchForTab("overview");
 }
-
-function setOverviewViewMode(mode){
-  tabState.overview.viewMode = mode;
-  renderOverview();
-}
-
-/* ==========================================================================
-   TAB 2: NEWS FEED
-   ========================================================================== */
-function renderNews(){
+function genericTable(sheetName, opts){
   window.__viewingBrand = null;
-  const st = tabState.news;
-  let rows = (workbookData["News feed"] || []).slice();
-
-  const totalNews = rows.length;
-  const recent30Days = rows.filter(r => {
-    const d = new Date(r["Date"]);
-    if (isNaN(d.getTime())) return false;
-    const diff = (new Date() - d) / (1000 * 60 * 60 * 24);
-    return diff <= 30;
-  }).length;
-  const expansionNews = rows.filter(r => /retail|store|expansion|launch|market/i.test(r["Headline"] + " " + r["Category"])).length;
-  const leadershipNews = rows.filter(r => /fund|partner|leader|appoint|invest|growth/i.test(r["Headline"] + " " + r["Category"])).length;
-
-  // KPI Filter
-  if (st.kpiFilter === "recent") {
-    rows = rows.filter(r => {
-      const d = new Date(r["Date"]);
-      return !isNaN(d.getTime()) && (new Date() - d) / (1000 * 60 * 60 * 24) <= 30;
-    });
-  } else if (st.kpiFilter === "expansion") {
-    rows = rows.filter(r => /retail|store|expansion|launch|market/i.test(r["Headline"] + " " + r["Category"]));
-  } else if (st.kpiFilter === "leadership") {
-    rows = rows.filter(r => /fund|partner|leader|appoint|invest|growth/i.test(r["Headline"] + " " + r["Category"]));
-  }
-
-  // Dropdown Filters
-  if (st.filters.category) {
-    rows = rows.filter(r => String(r["Category"] || "").toLowerCase() === st.filters.category.toLowerCase());
-  }
-  if (st.filters.brand) {
-    rows = rows.filter(r => String(r["Brand"] || "").toLowerCase() === st.filters.brand.toLowerCase());
-  }
-
-  // Sorting
-  rows.sort((a, b) => {
-    const vA = String(a[st.sortCol] || "").toLowerCase();
-    const vB = String(b[st.sortCol] || "").toLowerCase();
-    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
-    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  const distinctCategories = [...new Set((workbookData["News feed"] || []).map(r => r["Category"]).filter(Boolean))].sort();
-  const distinctBrands = [...new Set((workbookData["News feed"] || []).map(r => r["Brand"]).filter(Boolean))].sort();
-
-  const tableRows = rows.length ? rows.map(r => `
-    <tr>
-      <td>
-        <div class="date-cell">
-          <span class="date-primary">${escapeHtml(r["Date"])}</span>
-          <span class="date-relative">${formatRelativeDate(r["Date"])}</span>
-        </div>
-      </td>
-      <td>${brandLink(r["Brand"])}</td>
-      <td><span class="pill Category">${escapeHtml(r["Category"] || "General")}</span></td>
-      <td style="max-width:440px;">
-        <div style="font-weight:700;margin-bottom:4px;color:var(--text-primary);">${escapeHtml(r["Headline"])}</div>
-        <div style="font-size:12px;color:var(--text-secondary);line-height:1.6;">${escapeHtml(r["AI Summary"] || r["Summary"] || "")}</div>
-      </td>
-      <td>
-        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;font-size:12px;">${escapeHtml(r["Source"] || "Source")} &#8599;</a>` : `<span style="color:var(--text-muted);font-size:12px;">${escapeHtml(r["Source"] || "-")}</span>`}
-      </td>
-      <td>
-        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
-          Brand Intel &#8594;
-        </button>
-      </td>
-    </tr>
-  `).join("") : `<tr><td colspan="6" class="empty">No news articles matching the filter criteria.</td></tr>`;
-
-  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
-
+  opts = opts || {};
+  let rows = workbookData[sheetName] || [];
+  if (opts.sortDateField) rows = sortByDateDesc(rows, opts.sortDateField);
+  const cols = rows[0] ? Object.keys(rows[0]) : [];
+  const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+  const tbody = rows.map(r => `<tr>${cols.map(c =>
+    `<td>${c === "Brand" ? brandLink(r[c]) : escapeHtml(r[c])}</td>`
+  ).join("")}</tr>`).join("");
   document.getElementById("content").innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'all')" title="Click to show all news articles">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Total Articles</span>
-          <div class="kpi-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
-          </div>
-        </div>
-        <div class="kpi-value">${totalNews}</div>
-        <div class="kpi-hint"><span>Monitored items</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'recent' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'recent')" title="Click to filter articles in the last 30 days">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Last 30 Days</span>
-          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--info)">${recent30Days}</div>
-        <div class="kpi-hint"><span>Fresh signals</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'expansion' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'expansion')" title="Click to filter retail & product launches">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Launches & Retail Expansion</span>
-          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--high)">${expansionNews}</div>
-        <div class="kpi-hint"><span>High intent moves</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'leadership' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('news', 'leadership')" title="Click to filter funding & strategic partnerships">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Strategic & Funding</span>
-          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--low)">${leadershipNews}</div>
-        <div class="kpi-hint"><span>Ecosystem shifts</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="table-controls-bar">
-      <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search news headlines, summaries, sources..." />
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${hasActiveFilters ? `
-          <div class="active-filter-banner">
-            <span>Active Filters (${rows.length} articles)</span>
-            <button class="filter-clear-btn" onclick="clearTabFilters('news')">Clear Filter</button>
-          </div>
-        ` : ""}
-
-        <select id="newsCatSelect" onchange="setTabFilter('news', 'category', this.value)" style="padding:8px 12px;">
-          <option value="">All Categories</option>
-          ${distinctCategories.map(c => `<option value="${escapeAttr(c)}" ${st.filters.category === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
-        </select>
-
-        <select id="newsBrandSelect" onchange="setTabFilter('news', 'brand', this.value)" style="padding:8px 12px;">
-          <option value="">All Brands</option>
-          ${distinctBrands.map(b => `<option value="${escapeAttr(b)}" ${st.filters.brand === b ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="crm-panel">
-      <div class="table-responsive">
-        <table class="crm-table" id="dataTable">
-          <thead>
-            <tr>
-              <th class="sortable ${st.sortCol === 'Date' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Date', true)" style="width:140px;">
-                <div class="th-content">Date ${sortIndicator('news', 'Date')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Brand')">
-                <div class="th-content">Brand ${sortIndicator('news', 'Brand')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Category' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Category')">
-                <div class="th-content">Category ${sortIndicator('news', 'Category')}</div>
-              </th>
-              <th>Headline & AI Summary</th>
-              <th class="sortable ${st.sortCol === 'Source' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('news', 'Source')">
-                <div class="th-content">Source ${sortIndicator('news', 'Source')}</div>
-              </th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  wireSearchForTab("news");
+    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search ${escapeHtml(sheetName)}..."></div>
+    <div class="panel"><table id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  wireSearch();
 }
-
-/* ==========================================================================
-   TAB 3: OPPORTUNITIES
-   ========================================================================== */
 function renderOpportunities(){
   window.__viewingBrand = null;
-  const st = tabState.opportunities;
-  let rows = (workbookData["Opportunities"] || []).slice();
-
-  const totalOpps = rows.length;
-  const highPriority = rows.filter(r => Number(r["Priority Score (1-5)"]) >= 4).length;
-  const medPriority = rows.filter(r => Number(r["Priority Score (1-5)"]) === 3).length;
-  const highConfidence = rows.filter(r => Number(r["Confidence Score (1-5)"]) >= 4).length;
-
-  // KPI Filter
-  if (st.kpiFilter === "high") rows = rows.filter(r => Number(r["Priority Score (1-5)"]) >= 4);
-  else if (st.kpiFilter === "med") rows = rows.filter(r => Number(r["Priority Score (1-5)"]) === 3);
-  else if (st.kpiFilter === "confidence") rows = rows.filter(r => Number(r["Confidence Score (1-5)"]) >= 4);
-
-  // Dropdown Filter
-  if (st.filters.type) {
-    rows = rows.filter(r => String(r["Opportunity Type"] || "").toLowerCase() === st.filters.type.toLowerCase());
-  }
-
-  // Sorting
-  rows.sort((a, b) => {
-    let vA = a[st.sortCol];
-    let vB = b[st.sortCol];
-    if (st.sortCol.includes("Score")) {
-      vA = Number(vA) || 0;
-      vB = Number(vB) || 0;
-    } else {
-      vA = String(vA || "").toLowerCase();
-      vB = String(vB || "").toLowerCase();
-    }
-    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
-    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  const distinctTypes = [...new Set((workbookData["Opportunities"] || []).map(r => r["Opportunity Type"]).filter(Boolean))].sort();
-
-  const tableRows = rows.length ? rows.map(r => {
-    const pScore = Number(r["Priority Score (1-5)"]) || 0;
-    const cScore = Number(r["Confidence Score (1-5)"]) || 0;
-    const label = priorityLabel(pScore);
-    return `
-    <tr>
-      <td>${brandLink(r["Brand"])}</td>
-      <td><span class="pill Category">${escapeHtml(r["Opportunity Type"])}</span></td>
-      <td>
-        <span class="pill ${label}" style="margin-bottom:4px;">${pScore}/5 · ${label}</span>
-        <div>${starRow(pScore)}</div>
-      </td>
-      <td>
-        <span class="pill Neutral" style="margin-bottom:4px;">${cScore}/5</span>
-        <div>${starRow(cScore)}</div>
-      </td>
-      <td style="max-width:320px;font-size:12.5px;color:var(--text-secondary);">${escapeHtml(r["Business Impact"] || "-")}</td>
-      <td style="max-width:280px;">
-        <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(r["Recommended Service"] || "-")}</div>
-        <div style="font-size:11px;color:var(--text-muted);">Dept: ${escapeHtml(r["Recommended Contact Department"] || "-")}</div>
-      </td>
-      <td>
-        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
-          View Outreach &#8594;
-        </button>
-      </td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="7" class="empty">No opportunities matching the selected criteria.</td></tr>`;
-
-  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
-
+  const rows = workbookData["Opportunities"] || [];
+  const cols = rows[0] ? Object.keys(rows[0]) : [];
+  const thead = `<tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr>`;
+  const tbody = rows.slice()
+    .sort((a,b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]))
+    .map(r => {
+      const label = priorityLabel(r["Priority Score (1-5)"]);
+      return `<tr>${cols.map(c => {
+        if (c === "Priority Score (1-5)") return `<td><span class="pill ${label}">${escapeHtml(r[c])} · ${label}</span></td>`;
+        if (c === "Brand") return `<td>${brandLink(r[c])}</td>`;
+        return `<td>${escapeHtml(r[c])}</td>`;
+      }).join("")}</tr>`;
+    }).join("");
   document.getElementById("content").innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'all')" title="Click to view all opportunities">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Total Opportunities</span>
-          <div class="kpi-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          </div>
-        </div>
-        <div class="kpi-value">${totalOpps}</div>
-        <div class="kpi-hint"><span>Qualified leads</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'high' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'high')" title="Click to filter high priority opportunities (4-5)">
-        <div class="kpi-card-top">
-          <span class="kpi-label">High Priority (4-5)</span>
-          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--high)">${highPriority}</div>
-        <div class="kpi-hint"><span>Immediate action</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'med' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'med')" title="Click to filter medium priority opportunities (3)">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Medium Priority (3)</span>
-          <div class="kpi-icon-wrap" style="color:var(--med);background:var(--med-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--med)">${medPriority}</div>
-        <div class="kpi-hint"><span>Nurture queue</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'confidence' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('opportunities', 'confidence')" title="Click to filter high confidence opportunities">
-        <div class="kpi-card-top">
-          <span class="kpi-label">High Confidence</span>
-          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--low)">${highConfidence}</div>
-        <div class="kpi-hint"><span>Strong verified signals</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="table-controls-bar">
-      <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search opportunity types, impacts, recommended services..." />
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${hasActiveFilters ? `
-          <div class="active-filter-banner">
-            <span>Active Filters (${rows.length} opportunities)</span>
-            <button class="filter-clear-btn" onclick="clearTabFilters('opportunities')">Clear Filter</button>
-          </div>
-        ` : ""}
-
-        <select id="oppTypeSelect" onchange="setTabFilter('opportunities', 'type', this.value)" style="padding:8px 12px;">
-          <option value="">All Opportunity Types</option>
-          ${distinctTypes.map(t => `<option value="${escapeAttr(t)}" ${st.filters.type === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="crm-panel">
-      <div class="table-responsive">
-        <table class="crm-table" id="dataTable">
-          <thead>
-            <tr>
-              <th class="sortable ${st.sortCol === 'Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Brand')">
-                <div class="th-content">Brand ${sortIndicator('opportunities', 'Brand')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Opportunity Type' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Opportunity Type')">
-                <div class="th-content">Opportunity Type ${sortIndicator('opportunities', 'Opportunity Type')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Priority Score (1-5)' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Priority Score (1-5)', true)">
-                <div class="th-content">Priority Score ${sortIndicator('opportunities', 'Priority Score (1-5)')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Confidence Score (1-5)' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('opportunities', 'Confidence Score (1-5)', true)">
-                <div class="th-content">Confidence ${sortIndicator('opportunities', 'Confidence Score (1-5)')}</div>
-              </th>
-              <th>Business Impact</th>
-              <th>Recommended Service & Dept</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  wireSearchForTab("opportunities");
+    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search opportunities..."></div>
+    <div class="panel"><table id="dataTable"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+  wireSearch();
 }
 
-/* ==========================================================================
-   TAB 4: CONTACTS
-   ========================================================================== */
-function renderContacts(){
-  window.__viewingBrand = null;
-  const st = tabState.contacts;
-  let rows = (workbookData["Contacts"] || []).slice();
-
-  const totalContacts = rows.length;
-  const emailsAvailable = rows.filter(r => r["Official Email (public only)"] && !/not found|pending/i.test(r["Official Email (public only)"])).length;
-  const phonesAvailable = rows.filter(r => r["Official Contact Number (public only)"] && !/not found|pending/i.test(r["Official Contact Number (public only)"])).length;
-  const linkedinAvailable = rows.filter(r => r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"])).length;
-
-  // KPI Filter
-  if (st.kpiFilter === "email") rows = rows.filter(r => r["Official Email (public only)"] && !/not found|pending/i.test(r["Official Email (public only)"]));
-  else if (st.kpiFilter === "phone") rows = rows.filter(r => r["Official Contact Number (public only)"] && !/not found|pending/i.test(r["Official Contact Number (public only)"]));
-  else if (st.kpiFilter === "linkedin") rows = rows.filter(r => r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"]));
-
-  // Dropdown Filter
-  if (st.filters.department) {
-    rows = rows.filter(r => String(r["Department"] || "").toLowerCase() === st.filters.department.toLowerCase());
-  }
-
-  // Sorting
-  rows.sort((a, b) => {
-    const vA = String(a[st.sortCol] || "").toLowerCase();
-    const vB = String(b[st.sortCol] || "").toLowerCase();
-    if (vA < vB) return st.sortDir === "asc" ? -1 : 1;
-    if (vA > vB) return st.sortDir === "asc" ? 1 : -1;
-    return 0;
-  });
-
-  const distinctDepts = [...new Set((workbookData["Contacts"] || []).map(r => r["Department"]).filter(Boolean))].sort();
-
-  const tableRows = rows.length ? rows.map(r => {
-    const email = r["Official Email (public only)"];
-    const phone = r["Official Contact Number (public only)"];
-    const hasLinkedIn = r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"]);
-
-    return `
-    <tr>
-      <td>${brandLink(r["Brand"])}</td>
-      <td>
-        <div style="font-weight:700;color:var(--text-primary);">${escapeHtml(r["Decision Maker Name"] || "Executive Leadership")}</div>
-        <div style="font-size:11.5px;color:var(--text-secondary);">${escapeHtml(r["Designation"] || "-")}</div>
-      </td>
-      <td><span class="pill Category">${escapeHtml(r["Department"] || "Leadership")}</span></td>
-      <td>
-        ${email ? `
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;">${escapeHtml(email)}</span>
-            <button class="copy-btn" onclick="copyToClipboard('${escapeAttr(email)}', this)">Copy</button>
-          </div>
-        ` : `<span style="color:var(--text-muted);font-size:12px;">Pending</span>`}
-      </td>
-      <td>
-        ${phone ? `
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;">${escapeHtml(phone)}</span>
-            <button class="copy-btn" onclick="copyToClipboard('${escapeAttr(phone)}', this)">Copy</button>
-          </div>
-        ` : `<span style="color:var(--text-muted);font-size:12px;">-</span>`}
-      </td>
-      <td><span style="font-size:12px;color:var(--text-secondary);">${escapeHtml(r["Office Location"] || "-")}</span></td>
-      <td>
-        ${hasLinkedIn ? `
-          <a href="${escapeAttr(r["LinkedIn Profile"])}" target="_blank" rel="noopener" class="btn secondary tiny" style="color:var(--accent);">
-            LinkedIn &#8599;
-          </a>
-        ` : `<span style="color:var(--text-muted);font-size:11px;">-</span>`}
-      </td>
-      <td>
-        <button class="btn secondary tiny" onclick="showBrandDetail('${escapeAttr(r["Brand"]).replace(/'/g,"&#39;")}')">
-          Profile &#8594;
-        </button>
-      </td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="8" class="empty">No contacts matching the selected criteria.</td></tr>`;
-
-  const hasActiveFilters = st.kpiFilter || Object.keys(st.filters).length > 0;
-
-  document.getElementById("content").innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'all')" title="Click to view all contacts">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Decision Makers</span>
-          <div class="kpi-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-          </div>
-        </div>
-        <div class="kpi-value">${totalContacts}</div>
-        <div class="kpi-hint"><span>Mapped contacts</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'email' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'email')" title="Click to filter contacts with verified email">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Email Available</span>
-          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--info)">${emailsAvailable}</div>
-        <div class="kpi-hint"><span>Direct outreach ready</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'linkedin' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'linkedin')" title="Click to filter contacts with LinkedIn profile">
-        <div class="kpi-card-top">
-          <span class="kpi-label">LinkedIn Connected</span>
-          <div class="kpi-icon-wrap" style="color:var(--accent);background:var(--accent-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--accent)">${linkedinAvailable}</div>
-        <div class="kpi-hint"><span>Social selling</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'phone' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('contacts', 'phone')" title="Click to filter contacts with phone numbers">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Phone Available</span>
-          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--low)">${phonesAvailable}</div>
-        <div class="kpi-hint"><span>Phone outreach</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="table-controls-bar">
-      <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search contacts by name, role, email, brand, location..." />
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${hasActiveFilters ? `
-          <div class="active-filter-banner">
-            <span>Active Filters (${rows.length} contacts)</span>
-            <button class="filter-clear-btn" onclick="clearTabFilters('contacts')">Clear Filter</button>
-          </div>
-        ` : ""}
-
-        <select id="contactDeptSelect" onchange="setTabFilter('contacts', 'department', this.value)" style="padding:8px 12px;">
-          <option value="">All Departments</option>
-          ${distinctDepts.map(d => `<option value="${escapeAttr(d)}" ${st.filters.department === d ? "selected" : ""}>${escapeHtml(d)}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="crm-panel">
-      <div class="table-responsive">
-        <table class="crm-table" id="dataTable">
-          <thead>
-            <tr>
-              <th class="sortable ${st.sortCol === 'Brand' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Brand')">
-                <div class="th-content">Brand ${sortIndicator('contacts', 'Brand')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Decision Maker Name' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Decision Maker Name')">
-                <div class="th-content">Decision Maker ${sortIndicator('contacts', 'Decision Maker Name')}</div>
-              </th>
-              <th class="sortable ${st.sortCol === 'Department' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Department')">
-                <div class="th-content">Department ${sortIndicator('contacts', 'Department')}</div>
-              </th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th class="sortable ${st.sortCol === 'Office Location' ? 'sorted-' + st.sortDir : ''}" onclick="handleTabSort('contacts', 'Office Location')">
-                <div class="th-content">Location ${sortIndicator('contacts', 'Office Location')}</div>
-              </th>
-              <th>LinkedIn</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  wireSearchForTab("contacts");
-}
-
-/* Brand Domain Mapping & Realtime Online Logo Resolver */
-const BRAND_DOMAINS = {
-  "apple": "apple.com",
-  "samsung": "samsung.com",
-  "boat": "boat-lifestyle.com",
-  "noise": "gonoise.com",
-  "fire-boltt": "fireboltt.com",
-  "fireboltt": "fireboltt.com",
-  "boult": "boultaudio.com",
-  "oneplus": "oneplus.com",
-  "xiaomi": "mi.com",
-  "mi": "mi.com",
-  "realme": "realme.com",
-  "sony": "sony.com",
-  "jbl": "jbl.com",
-  "zebronics": "zebronics.com",
-  "ptron": "ptron.in",
-  "mivi": "mivi.in",
-  "dizo": "dizo.net",
-  "crossbeats": "crossbeats.com",
-  "hammer": "hammeronline.in",
-  "ambrane": "ambraneindia.com",
-  "pebble": "pebblecart.com",
-  "truke": "truke.in",
-  "wings": "wingslifestyle.com",
-  "oppo": "oppo.com",
-  "vivo": "vivo.com",
-  "google": "google.com",
-  "lg": "lg.com",
-  "fitbit": "fitbit.com",
-  "garmin": "garmin.com",
-  "amazfit": "amazfit.com",
-  "cmf": "nothing.tech",
-  "nothing": "nothing.tech",
-  "fastrack": "fastrack.in",
-  "titan": "titan.co.in",
-  "noisefit": "gonoise.com"
-};
-
-function getBrandDomain(brandName){
-  if (!brandName) return "google.com";
-  const clean = String(brandName).toLowerCase().trim();
-  if (BRAND_DOMAINS[clean]) return BRAND_DOMAINS[clean];
-  const bm = (workbookData["Brands Master"] || []).find(b => String(b["Brand"]).toLowerCase() === clean);
-  if (bm && bm["Website"]) {
-    try {
-      const parsed = new URL(bm["Website"].startsWith("http") ? bm["Website"] : "https://" + bm["Website"]);
-      return parsed.hostname.replace(/^www\./, "");
-    } catch(e){}
-  }
-  const stripped = clean.replace(/[^a-z0-9]/g, "");
-  return stripped ? `${stripped}.com` : "google.com";
-}
-
-function renderBrandLogoHtml(brandName, size = 44, customClass = ""){
-  const name = brandName || "Brand";
-  const domain = getBrandDomain(name);
-  const logoUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
-  const initial = name.charAt(0).toUpperCase();
-
-  return `
-    <div class="competitor-logo-wrap ${customClass}" style="${size !== 44 ? `width:${size}px;height:${size}px;` : ''}">
-      <img src="${logoUrl}" alt="${escapeAttr(name)}" class="competitor-logo-img" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" loading="lazy" />
-      <div class="competitor-avatar" style="display:none;width:100%;height:100%;font-size:${Math.round(size*0.42)}px;border:none;background:transparent;">
-        ${escapeHtml(initial)}
-      </div>
-    </div>
-  `;
-}
-
-/* ==========================================================================
-   TAB 5: COMPETITOR WATCH
-   ========================================================================== */
+/* ---------------- Competitor Watch ---------------- */
 function renderCompetitors(){
   window.__viewingBrand = null;
-  window.__viewingCompetitor = null;
-  const st = tabState.competitors;
-  let rows = (workbookData["Competitor Watch"] || []).slice();
-
-  const totalEntries = rows.length;
+  const rows = workbookData["Competitor Watch"] || [];
+  if (!rows.length) {
+    document.getElementById("content").innerHTML = `<div class="empty">No competitor/adjacent-player entries yet.</div>`;
+    return;
+  }
   const trackedBrands = new Set((workbookData["Brands Master"] || []).map(b => b["Brand"]));
-  const distinctCompetitors = [...new Set(rows.map(r => r["Competitor"]).filter(Boolean))].sort();
-  const distinctCategories = [...new Set(rows.map(r => r["Category"]).filter(Boolean))].sort();
-  const untrackedCount = distinctCompetitors.filter(c => !trackedBrands.has(c)).length;
-  const trackedCount = distinctCompetitors.filter(c => trackedBrands.has(c)).length;
-  const expansionCount = rows.filter(r => /retail|store|expansion|launch|flagship|market|fund/i.test(r["Headline"] + " " + r["Category"])).length;
-
-  // KPI Filter
-  if (st.kpiFilter === "untracked") {
-    rows = rows.filter(r => r["Competitor"] && !trackedBrands.has(r["Competitor"]));
-  } else if (st.kpiFilter === "tracked") {
-    rows = rows.filter(r => r["Competitor"] && trackedBrands.has(r["Competitor"]));
-  } else if (st.kpiFilter === "expansion") {
-    rows = rows.filter(r => /retail|store|expansion|launch|flagship|market|fund/i.test(r["Headline"] + " " + r["Category"]));
-  }
-
-  // Dropdown Filter
-  if (st.filterCompetitor) {
-    rows = rows.filter(r => String(r["Competitor"] || "").toLowerCase() === st.filterCompetitor.toLowerCase());
-  }
-  if (st.filterCategory && st.filterCategory !== "All") {
-    rows = rows.filter(r => String(r["Category"] || "").toLowerCase() === st.filterCategory.toLowerCase());
-  }
-
-  // Always sorted by latest date descending
-  rows = sortByDateDesc(rows, "Date");
-
-  // Filter search query if present
-  if (st.query) {
-    const q = st.query.toLowerCase().trim();
-    rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(q)));
-  }
-
-  // Pure Card Matrix rendering
-  const gridCards = rows.length ? rows.map((r, i) => {
-    const competitorName = r["Competitor"] || "Competitor";
-    const isTracked = trackedBrands.has(competitorName);
-    const related = r["Related Tracked Brand"] || "-";
-
+  const sorted = sortByDateDesc(rows, "Date");
+  const competitorNames = [...new Set(sorted.map(r => r["Competitor"]).filter(Boolean))].sort();
+  const activeFilter = window.__competitorFilter || "All";
+  const filterOptions = ["All", ...competitorNames];
+  const pills = filterOptions.map(c => `
+    <button class="filter-pill ${c === activeFilter ? "active" : ""}" onclick="setCompetitorFilter('${escapeAttr(c).replace(/'/g, "&#39;")}')">${escapeHtml(c)}</button>`).join("");
+  const visible = activeFilter === "All" ? sorted : sorted.filter(r => r["Competitor"] === activeFilter);
+  const list = visible.map((r, i) => {
+    const competitorName = r["Competitor"] || "";
+    const isTracked = competitorName && trackedBrands.has(competitorName);
+    const trackBtn = competitorName ? `
+      <div><button class="track-brand-btn" ${isTracked ? "disabled" : ""} onclick="event.stopPropagation(); addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">${isTracked ? "Already tracked &#10003;" : "+ Track this brand"}</button></div>` : "";
     return `
-    <div class="competitor-card" onclick="showCompetitorDetail(${i})" title="Click to view full strategic intelligence">
-      <div>
-        <div class="competitor-card-header">
-          <div class="competitor-identity">
-            ${renderBrandLogoHtml(competitorName, 44)}
-            <div>
-              <div class="competitor-title">${escapeHtml(competitorName)}</div>
-              <span class="pill ${isTracked ? "Low" : "High"}" style="font-size:10px;margin-top:3px;display:inline-block;">${isTracked ? "Tracked in CRM" : "New Adjacent Target"}</span>
-            </div>
-          </div>
-          <span class="pill Category">${escapeHtml(r["Category"] || "Market Signal")}</span>
-        </div>
-
-        <div class="competitor-meta-row">
-          <span>📅 ${escapeHtml(r["Date"])} (${formatRelativeDate(r["Date"])})</span>
-          ${r["Source"] ? `<span>· 📰 ${escapeHtml(r["Source"])}</span>` : ""}
-          ${related !== "-" ? `<span>· 🎯 Related to <strong>${escapeHtml(related)}</strong></span>` : ""}
-        </div>
-
-        <!-- Headline Only (No summary text on card) -->
-        <div class="competitor-headline">${escapeHtml(r["Headline"] || "-")}</div>
+    <div class="competitor-card" onclick="toggleCompetitorItem(${i})">
+      <div class="meta"><span class="cat-tag">${escapeHtml(r["Category"] || r["Related Tracked Brand"] || "")}</span><span>${escapeHtml(r["Date"])}</span><span>· ${escapeHtml(r["Source"])}</span></div>
+      <h4>${escapeHtml(r["Headline"])}</h4>
+      <p>${escapeHtml(r["Summary"])}</p>
+      <div id="competitor-expand-${i}" class="expand">
+        <p><strong>Competitor:</strong> ${escapeHtml(r["Competitor"])} &nbsp;·&nbsp; <strong>Related to your brand:</strong> ${escapeHtml(r["Related Tracked Brand"])}</p>
+        <p>${escapeHtml(r["Full Analysis"] || r["Summary"])}</p>
+        ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View source &#8594;</a>` : ""}
       </div>
-
-      <div class="competitor-card-footer">
-        <button class="detail-cta-btn" onclick="event.stopPropagation(); showCompetitorDetail(${i})">
-          <span>Expand Analysis</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        </button>
-        <div style="display:flex;gap:6px;align-items:center;">
-          ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="btn secondary tiny" style="color:var(--accent);font-weight:600;font-size:11.5px;">Article &#8599;</a>` : ""}
-          <button class="btn secondary tiny" onclick="event.stopPropagation(); openShareModal('competitor', ${i})" title="Share competitor briefing">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            <span>Share</span>
-          </button>
-        </div>
-      </div>
+      <div class="expand-hint" id="competitor-hint-${i}">Click to expand full analysis &#8595;</div>
+      ${trackBtn}
     </div>`;
-  }).join("") : `<div class="empty" style="grid-column:1/-1;">No competitor intelligence matching the selected criteria.</div>`;
-
-  const hasActiveFilters = st.kpiFilter || st.filterCompetitor || (st.filterCategory && st.filterCategory !== "All") || st.query;
-
-  // Save current filtered list in memory for detail page lookup
-  window.__currentCompetitorRows = rows;
-
+  }).join("");
   document.getElementById("content").innerHTML = `
-    <!-- KPI Grid -->
-    <div class="kpi-grid">
-      <div class="kpi-card ${st.kpiFilter === 'all' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'all')" title="Click to view all competitor market signals">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Market Signals</span>
-          <div class="kpi-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-          </div>
-        </div>
-        <div class="kpi-value">${totalEntries}</div>
-        <div class="kpi-hint"><span>All recorded signals</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'untracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'untracked')" title="Click to filter new untracked targets">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Adjacent Players (Untracked)</span>
-          <div class="kpi-icon-wrap" style="color:var(--high);background:var(--high-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--high)">${untrackedCount}</div>
-        <div class="kpi-hint"><span>New accounts to track</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'tracked' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'tracked')" title="Click to filter tracked competitors in CRM">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Tracked Competitors</span>
-          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--low)">${trackedCount}</div>
-        <div class="kpi-hint"><span>In active CRM tracking</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-
-      <div class="kpi-card ${st.kpiFilter === 'expansion' ? 'active-filter' : ''}" onclick="handleTabKpiFilter('competitors', 'expansion')" title="Click to filter retail expansion and product launches">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Expansions & Launches</span>
-          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--info)">${expansionCount}</div>
-        <div class="kpi-hint"><span>High impact moves</span><span class="kpi-filter-tag">Filter Active</span></div>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="table-controls-bar">
-      <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search competitor intel, headlines, categories..." />
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${hasActiveFilters ? `
-          <div class="active-filter-banner">
-            <span>Active Filters (${rows.length} signals)</span>
-            <button class="filter-clear-btn" onclick="clearTabFilters('competitors')">Clear Filter</button>
-          </div>
-        ` : ""}
-
-        <select id="competitorSelect" onchange="setCompetitorNameFilter(this.value)" style="padding:8px 12px;">
-          <option value="">All Competitors / Players</option>
-          ${distinctCompetitors.map(c => `<option value="${escapeAttr(c)}" ${st.filterCompetitor === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
-        </select>
-
-        <select id="competitorCategorySelect" onchange="setCompetitorCategoryFilter(this.value)" style="padding:8px 12px;">
-          <option value="">All Categories</option>
-          ${distinctCategories.map(c => `<option value="${escapeAttr(c)}" ${st.filterCategory === c ? "selected" : ""}>${escapeHtml(c)}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-
-    <!-- Pure Card Grid -->
-    <div class="competitor-grid">${gridCards}</div>
-  `;
-
-  wireSearchForTab("competitors");
+    <div class="toolbar"><input type="text" id="searchBox" placeholder="Search competitor watch..."></div>
+    <div class="filter-pills">${pills}</div>
+    <div class="competitor-grid">${list}</div>`;
+  wireSearch();
 }
-
-function setCompetitorNameFilter(c){
-  tabState.competitors.filterCompetitor = c;
+function setCompetitorFilter(c){
+  window.__competitorFilter = c;
   renderCompetitors();
 }
-
-function setCompetitorCategoryFilter(c){
-  tabState.competitors.filterCategory = c;
-  renderCompetitors();
+function toggleCompetitorItem(i){
+  const el = document.getElementById(`competitor-expand-${i}`);
+  const hint = document.getElementById(`competitor-hint-${i}`);
+  const open = el.style.display === "block";
+  el.style.display = open ? "none" : "block";
+  hint.innerHTML = open ? "Click to expand full analysis &#8595;" : "Click to collapse &#8593;";
 }
-
-/* ==========================================================================
-   COMPETITOR FULL-PAGE DETAIL VIEW
-   ========================================================================== */
-function showCompetitorDetail(indexOrObj){
-  window.__viewingBrand = null;
-  window.__viewingCompetitor = indexOrObj;
-
-  let r;
-  if (typeof indexOrObj === "number" && window.__currentCompetitorRows) {
-    r = window.__currentCompetitorRows[indexOrObj];
-  } else if (typeof indexOrObj === "object") {
-    r = indexOrObj;
-  } else if (typeof indexOrObj === "string") {
-    const list = workbookData["Competitor Watch"] || [];
-    r = list.find(c => c["Competitor"] === indexOrObj) || { "Competitor": indexOrObj };
-  }
-  if (!r) return renderCompetitors();
-
-  const competitorName = r["Competitor"] || "Competitor";
-  window.location.hash = "competitor=" + encodeURIComponent(competitorName);
-  const trackedBrands = new Set((workbookData["Brands Master"] || []).map(b => b["Brand"]));
-  const isTracked = trackedBrands.has(competitorName);
-  const related = r["Related Tracked Brand"] || "-";
-  const fullAnalysis = r["Full Analysis"] || r["Summary"] || "No extended analysis available.";
-  const summaryText = r["Summary"] || "";
-
-  const actionButtons = isTracked
-    ? `<button class="btn secondary" onclick="showBrandDetail('${escapeAttr(competitorName).replace(/'/g,"&#39;")}')">View Full CRM Profile &#8594;</button>`
-    : `<button class="btn" onclick="addCompetitorAsTrackedBrand('${escapeAttr(competitorName).replace(/'/g, "&#39;")}', this)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        <span>+ Track Brand with Gemini</span>
-      </button>`;
-
-  document.getElementById("content").innerHTML = `
-    <div class="competitor-detail-container">
-      <div class="detail-nav-bar">
-        <button class="back-btn" onclick="renderCompetitors()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          <span>Back to Competitor Watch</span>
-        </button>
-
-        <button class="share-briefing-btn" onclick="openShareModal('competitor', '${escapeAttr(competitorName).replace(/'/g, "\\'")}')" title="Share competitor intelligence briefing externally">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-          <span>Share Briefing</span>
-        </button>
-      </div>
-
-      <!-- Hero Card -->
-      <div class="competitor-hero-card">
-        <div class="competitor-hero-left">
-          ${renderBrandLogoHtml(competitorName, 64, "competitor-hero-logo")}
-          <div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap;">
-              <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:var(--text-primary);margin:0;">${escapeHtml(competitorName)}</h2>
-              <span class="pill ${isTracked ? "Low" : "High"}" style="font-size:11px;">${isTracked ? "Tracked in CRM" : "New Adjacent Target"}</span>
-              <span class="pill Category">${escapeHtml(r["Category"] || "Market Move")}</span>
-            </div>
-            <div class="competitor-meta-row" style="margin-bottom:0;font-size:12.5px;">
-              <span>📅 <strong>${escapeHtml(r["Date"])}</strong> (${formatRelativeDate(r["Date"])})</span>
-              ${r["Source"] ? `<span>· 📰 Source: <strong>${escapeHtml(r["Source"])}</strong></span>` : ""}
-              ${related !== "-" ? `<span>· 🎯 Related to: <strong>${brandLink(related)}</strong></span>` : ""}
-            </div>
-          </div>
-        </div>
-
-        <div class="competitor-hero-actions">
-          ${r["URL"] ? `<a href="${escapeAttr(r["URL"])}" target="_blank" rel="noopener" class="btn secondary" style="font-size:12px;">Visit Source Article &#8599;</a>` : ""}
-          ${actionButtons}
-        </div>
-      </div>
-
-      <!-- Headline Banner Card -->
-      <div class="crm-panel" style="padding:24px;">
-        <div class="row-label" style="font-size:11px;color:var(--accent);margin-bottom:8px;">STRATEGIC HEADLINE</div>
-        <h3 style="font-size:18px;font-weight:700;line-height:1.45;color:var(--text-primary);margin:0;">
-          ${escapeHtml(r["Headline"] || "-")}
-        </h3>
-      </div>
-
-      <!-- Two Column Layout: Summary & Opportunity Context -->
-      <div style="display:grid;grid-template-columns:1fr;gap:20px;">
-        <!-- Executive Briefing -->
-        <div class="crm-panel" style="padding:24px;">
-          <div class="row-label" style="font-size:11px;margin-bottom:12px;">EXECUTIVE BRIEFING & SUMMARY</div>
-          <div style="font-size:14px;line-height:1.75;color:var(--text-secondary);">
-            ${formatParagraphs(summaryText || "No executive summary available.")}
-          </div>
-        </div>
-
-        <!-- Deep Strategic Intelligence Analysis -->
-        <div class="crm-panel" style="padding:24px;">
-          <div class="row-label" style="font-size:11px;color:var(--accent);margin-bottom:14px;">FULL STRATEGIC ANALYSIS</div>
-          <div class="strategic-analysis-content">
-            ${formatParagraphs(fullAnalysis)}
-          </div>
-
-          <!-- Channelplay Opportunity Callout -->
-          <div class="opportunity-callout-box">
-            <div class="opportunity-callout-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-              <span>Channelplay Market Opportunity & Pitch Angle</span>
-            </div>
-            <div style="font-size:13px;line-height:1.65;color:var(--text-primary);">
-              This market movement by <strong>${escapeHtml(competitorName)}</strong> creates a direct conversational hook. Use this signal to engage decision-makers regarding retail shelf space defense, promoter staffing, field merchandising audit, and channel expansion support.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 async function addCompetitorAsTrackedBrand(brandName, btnEl){
   btnEl.disabled = true;
-  const originalText = btnEl.innerHTML;
   btnEl.textContent = "Researching (Gemini)...";
-
-  let compContext = null;
-  const compList = workbookData["Competitor Watch"] || [];
-  const found = compList.find(c => c["Competitor"] === brandName);
-  if (found) {
-    compContext = {
-      headline: found["Headline"] || "",
-      summary: found["Summary"] || "",
-      fullAnalysis: found["Full Analysis"] || "",
-      category: found["Category"] || "",
-      source: found["Source"] || "",
-      url: found["URL"] || "",
-      date: found["Date"] || ""
-    };
-  }
-
   try {
     const resp = await fetch("/api/research-brand", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
-      body: JSON.stringify({ brand: brandName, context: compContext })
+      body: JSON.stringify({ brand: brandName })
     });
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || "Research failed");
-    btnEl.textContent = "Added to CRM ✓";
+
+    btnEl.textContent = "Finding contact...";
+    try {
+      const recommendedDept = data.researched?.recommendedContactDept || "";
+      const cResp = await fetch("/api/research-contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
+        body: JSON.stringify({ brand: brandName, recommendedDept })
+      });
+      const cData = await cResp.json();
+      if (!cResp.ok || cData.error) console.warn("Contact research failed for " + brandName + ": " + (cData.error || "unknown error"));
+    } catch (ce) {
+      console.warn("Contact research failed for " + brandName + ":", ce);
+    }
+
+    btnEl.textContent = "Added ✓";
     await refresh();
-    showBrandDetail(brandName);
   } catch (e) {
     btnEl.textContent = "Failed — retry";
     btnEl.disabled = false;
@@ -2245,147 +554,39 @@ async function addCompetitorAsTrackedBrand(brandName, btnEl){
   }
 }
 
-/* ==========================================================================
-   TAB 6: EMAIL DRAFTS
-   ========================================================================== */
-function renderEmails(){
-  window.__viewingBrand = null;
-  const st = tabState.emails;
-  let rows = (workbookData["Email Drafts"] || []).slice();
-
-  const totalDrafts = rows.length;
-  const brandsCovered = [...new Set(rows.map(r => r["Brand"]).filter(Boolean))].length;
-
-  if (st.filters.brand) {
-    rows = rows.filter(r => String(r["Brand"] || "").toLowerCase() === st.filters.brand.toLowerCase());
-  }
-
-  const distinctBrands = [...new Set((workbookData["Email Drafts"] || []).map(r => r["Brand"]).filter(Boolean))].sort();
-
-  const cards = rows.length ? rows.map(r => {
-    const brand = r["Brand"] || "Brand";
-    const subject = r["Subject"] || "Outreach Proposal";
-    const body = r["Draft Body"] || "";
-    const preview = body.length > 220 ? body.slice(0, 220) + "..." : body;
-
-    return `
-    <div class="section-card" style="margin-bottom:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            ${brandLink(brand)}
-            <span class="pill Stage">Outreach Ready</span>
-          </div>
-          <h4 style="font-size:14px;color:var(--text-primary);margin-top:4px;">${escapeHtml(subject)}</h4>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn secondary tiny" onclick="copyEmailRich('${escapeAttr(subject)}', '${escapeAttr(body.replace(/\n/g,"<br>"))}', this)">
-            Copy Formatted Email
-          </button>
-          <button class="btn tiny" onclick="showBrandDetail('${escapeAttr(brand).replace(/'/g,"&#39;")}')">
-            View Brand Profile &#8594;
-          </button>
-        </div>
-      </div>
-      <div class="email-box" style="margin-top:10px;font-size:12.5px;line-height:1.7;">
-        ${escapeHtml(preview)}
-      </div>
-    </div>`;
-  }).join("") : `<div class="empty">No email drafts generated yet. Open a brand profile to draft with Gemini.</div>`;
-
-  const hasActiveFilters = Object.keys(st.filters).length > 0;
-
-  document.getElementById("content").innerHTML = `
-    <div class="kpi-grid">
-      <div class="kpi-card" style="cursor:default;">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Drafted Outreach</span>
-          <div class="kpi-icon-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value">${totalDrafts}</div>
-        <div class="kpi-hint"><span>Prepared emails</span></div>
-      </div>
-
-      <div class="kpi-card" style="cursor:default;">
-        <div class="kpi-card-top">
-          <span class="kpi-label">Accounts Covered</span>
-          <div class="kpi-icon-wrap" style="color:var(--info);background:var(--info-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--info)">${brandsCovered}</div>
-        <div class="kpi-hint"><span>Unique brands</span></div>
-      </div>
-
-      <div class="kpi-card" style="cursor:default;">
-        <div class="kpi-card-top">
-          <span class="kpi-label">AI Integration</span>
-          <div class="kpi-icon-wrap" style="color:var(--low);background:var(--low-soft);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-          </div>
-        </div>
-        <div class="kpi-value" style="color:var(--low)">Active</div>
-        <div class="kpi-hint"><span>Gemini grounding enabled</span></div>
-      </div>
-    </div>
-
-    <!-- Toolbar -->
-    <div class="table-controls-bar">
-      <div class="search-input-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <input type="text" id="searchBox" class="search-input" placeholder="Search drafted emails by brand, subject, contents..." />
-      </div>
-
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        ${hasActiveFilters ? `
-          <div class="active-filter-banner">
-            <span>Filtered (${rows.length} drafts)</span>
-            <button class="filter-clear-btn" onclick="clearTabFilters('emails')">Clear Filter</button>
-          </div>
-        ` : ""}
-
-        <select id="emailBrandSelect" onchange="setTabFilter('emails', 'brand', this.value)" style="padding:8px 12px;">
-          <option value="">All Brands</option>
-          ${distinctBrands.map(b => `<option value="${escapeAttr(b)}" ${st.filters.brand === b ? "selected" : ""}>${escapeHtml(b)}</option>`).join("")}
-        </select>
-      </div>
-    </div>
-
-    <div>${cards}</div>
-  `;
-
-  wireSearchForTab("emails");
+function wireSearch(){
+  const box = document.getElementById("searchBox");
+  if (!box) return;
+  box.addEventListener("input", (e) => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll("#dataTable tbody tr, .news-item, .competitor-card").forEach(tr => {
+      tr.style.display = tr.textContent.toLowerCase().includes(q) ? "" : "none";
+    });
+  });
 }
-
-/* ---------------- Master Tab Router ---------------- */
 function renderTab(tab){
   currentTab = tab;
   window.__viewingBrand = null;
-  document.querySelectorAll(".nav-item-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   if (!workbookData["Brands Master"]) return;
   if (tab === "overview") return renderOverview();
-  if (tab === "news") return renderNews();
+  if (tab === "news") return genericTable("News feed", { sortDateField: "Date" });
   if (tab === "opportunities") return renderOpportunities();
-  if (tab === "contacts") return renderContacts();
+  if (tab === "contacts") return genericTable("Contacts");
   if (tab === "competitors") return renderCompetitors();
-  if (tab === "emails") return renderEmails();
+  if (tab === "emails") return genericTable("Email Drafts");
 }
 
-/* ==========================================================================
-   BRAND DETAIL VIEW
-   ========================================================================== */
+/* ---------------- Brand detail page ---------------- */
 function copyToClipboard(text, btnEl){
   navigator.clipboard.writeText(text).then(() => {
     if (btnEl) {
       const old = btnEl.textContent;
-      btnEl.textContent = "Copied ✓";
+      btnEl.textContent = "Copied";
       setTimeout(() => { btnEl.textContent = old; }, 1500);
     }
   });
 }
-
 function copyEmailRich(subject, htmlBody, btnEl){
   const plain = subject + "\n\n" + htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n");
   const richHtml = `<p><strong>Subject: ${subject}</strong></p>${htmlBody}`;
@@ -2399,19 +600,16 @@ function copyEmailRich(subject, htmlBody, btnEl){
     copyToClipboard(plain, btnEl);
   }
 }
-
 function flashCopied(btnEl){
   if (!btnEl) return;
   const old = btnEl.textContent;
-  btnEl.textContent = "Copied — paste into Outlook/Gmail ✓";
+  btnEl.textContent = "Copied — paste into Outlook/Gmail";
   setTimeout(() => { btnEl.textContent = old; }, 2000);
 }
 
 function showBrandDetail(brandName){
   window.__viewingBrand = brandName;
-  window.__viewingCompetitor = null;
-  window.location.hash = "brand=" + encodeURIComponent(brandName);
-  document.querySelectorAll(".nav-item-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
   renderBrandDetail(brandName);
 }
 
@@ -2422,7 +620,6 @@ function renderBrandDetail(brandName){
   const allContacts = workbookData["Contacts"] || [];
   const allPipeline = workbookData["Pipeline"] || [];
   const allDrafts = workbookData["Email Drafts"] || [];
-  const latestResearchMap = getBrandLatestResearchMap();
 
   const brand = brands.find(b => b["Brand"] === brandName) || { "Brand": brandName };
   const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandName), "Date");
@@ -2432,15 +629,14 @@ function renderBrandDetail(brandName){
   const pipelineRow = allPipeline.find(p => p["Brand"] === brandName);
   const sheetDraft = allDrafts.find(d => d["Brand"] === brandName && d["Subject"]);
   const topOpp = opps[0];
-  const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
 
   const execSummary = buildExecSummary(brand, topOpp, news, pipelineRow);
   const newsHtml = news.length ? news.map(n => `
     <div class="news-item">
       <div class="meta"><span class="cat-tag">${escapeHtml(n["Category"])}</span><span>${escapeHtml(n["Date"])}</span><span>· ${escapeHtml(n["Source"])}</span></div>
       <h4>${escapeHtml(n["Headline"])}</h4>
-      <p>${escapeHtml(n["AI Summary"] || n["Summary"] || "")}</p>
-      ${n["URL"] ? `<a href="${escapeAttr(n["URL"])}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">View source &#8594;</a>` : ""}
+      <p>${escapeHtml(n["AI Summary"])}</p>
+      ${n["URL"] ? `<a href="${escapeAttr(n["URL"])}" target="_blank" rel="noopener">View source &#8594;</a>` : ""}
     </div>`).join("") : `<div class="empty">No news items tracked for this brand yet.</div>`;
 
   const oppsHtml = opps.length ? opps.map(o => `
@@ -2466,92 +662,44 @@ function renderBrandDetail(brandName){
   const stageOptions = stages.map(s => `<option value="${s}" ${s === currentStage ? "selected" : ""}>${s}</option>`).join("");
 
   document.getElementById("content").innerHTML = `
-    <div class="detail-nav-bar">
-      <button class="back-btn" onclick="renderTab('overview')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        <span>Back to Overview CRM</span>
-      </button>
-
-      <button class="share-briefing-btn" onclick="openShareModal('brand', '${escapeAttr(brandName).replace(/'/g, "\\'")}')" title="Share full strategic research briefing externally">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-        <span>Share Briefing</span>
-      </button>
+    <div class="back-link" onclick="renderTab('overview')">&#8592; Back to Overview</div>
+    <div class="detail-header">
+      <h2>${escapeHtml(brand["Brand"])}</h2>
+      <span class="pill ${escapeHtml(brand["Priority Tier"] || "Low")}">${escapeHtml(brand["Priority Tier"] || "Unrated")}</span>
+      ${pipelineRow ? `<span class="pill Medium">${escapeHtml(pipelineRow["Stage"])}</span>` : ""}
     </div>
-
-    <div class="detail-hero">
-      <div class="detail-hero-left">
-        ${renderBrandLogoHtml(brand["Brand"], 64, "brand-hero-logo")}
-        <div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
-            <h2 style="font-size:24px;font-weight:800;letter-spacing:-0.02em;margin:0;">${escapeHtml(brand["Brand"])}</h2>
-            <span class="pill ${escapeHtml(brand["Priority Tier"] || "Low")}">${escapeHtml(brand["Priority Tier"] || "Unrated")} Priority</span>
-            <span class="pill ${topOpp ? (Number(topOpp["Priority Score (1-5)"]) >= 4 ? "High" : "Medium") : "Low"}">★ Score: ${topOpp ? topOpp["Priority Score (1-5)"] : "-"}/5</span>
-            <span class="pill Stage" id="heroStageBadge">${escapeHtml(currentStage)}</span>
-          </div>
-          <div style="color:var(--text-secondary);font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span>${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}</span>
-            <span>· 📅 <strong>Added:</strong> ${escapeHtml(brand["Date Added"] || "-")}</span>
-            <span>· 🔍 <strong>Latest Research:</strong> ${escapeHtml(latestResearch.date || "-")} (${formatRelativeDate(latestResearch.date)})</span>
-            ${brand["Website"] ? ` · <a href="https://${escapeAttr(brand["Website"].replace(/^https?:\/\//,""))}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">${escapeHtml(brand["Website"])} &#8599;</a>` : ""}
-          </div>
-        </div>
-      </div>
-
-      <div class="detail-hero-pipeline">
-        <div class="pipeline-hero-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-          <span>Pipeline Stage</span>
-        </div>
-        <div class="pipeline-hero-controls">
-          <select id="stageSelect" class="pipeline-hero-select">${stageOptions}</select>
-          <button class="btn tiny" id="saveStageBtn">Save</button>
-        </div>
-        <div class="save-note" id="stageSaveNote" style="margin-top:2px;"></div>
-      </div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:20px;">
+      ${escapeHtml(brand["Sector"] || "")} ${brand["Segment"] ? "· " + escapeHtml(brand["Segment"]) : ""}
+      ${brand["Website"] ? ` · <a href="https://${escapeAttr(brand["Website"].replace(/^https?:\/\//,""))}" target="_blank" rel="noopener">${escapeHtml(brand["Website"])}</a>` : ""}
     </div>
 
     <div class="detail-grid">
       <div>
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            Executive Summary
-          </h3>
+        <div class="section">
+          <h3>Executive Summary</h3>
           <div class="exec-summary">${execSummary}</div>
         </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            Opportunity Breakdown
-          </h3>
+        <div class="section">
+          <h3>Opportunity Breakdown</h3>
           ${oppsHtml}
         </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
-            Detailed News Analysis (Most Recent First)
-          </h3>
+        <div class="section">
+          <h3>Detailed News Analysis (most recent first)</h3>
           ${newsHtml}
         </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            Drafted Outreach Email
-          </h3>
+        <div class="section">
+          <h3>Drafted Outreach Email</h3>
           <div class="ai-draft-bar">
-            <button class="btn tiny" id="aiDraftBtn">✨ Generate AI Email Draft</button>
-            <span class="spinner-text" id="aiDraftStatus" style="font-size:12px;color:var(--text-muted);">${hasSheetDraft ? "" : "No draft yet — click to generate one."}</span>
+            <button class="btn tiny" id="aiDraftBtn">&#10024; Generate AI Email draft</button>
+            <span class="spinner-text" id="aiDraftStatus">${hasSheetDraft ? "" : "No draft yet — click to generate one."}</span>
           </div>
           <div id="emailResultWrap" style="${hasSheetDraft ? "" : "display:none;"}">
             <div class="email-box" id="emailBoxContent">
               <div class="email-subject" id="emailSubjectLine">${hasSheetDraft ? escapeHtml(window.__emailDraftState.subject) : ""}</div>
               <div id="emailBodyContent">${hasSheetDraft ? window.__emailDraftState.bodyHtml : ""}</div>
             </div>
-            <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-              <button class="btn tiny" id="copyEmailBtn">Copy Formatted Email</button>
+            <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <button class="btn tiny" id="copyEmailBtn">Copy formatted email</button>
               <span class="draft-note" id="emailDraftNote">${hasSheetDraft ? "Sourced from Email Drafts sheet." : ""}</span>
             </div>
           </div>
@@ -2559,29 +707,34 @@ function renderBrandDetail(brandName){
       </div>
 
       <div>
-        <div class="section-card contact-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            Key Contact & Decision Maker
-          </h3>
+        <div class="section contact-card">
+          <h3>Key Contact</h3>
           ${contactHtml}
+          <div class="ai-draft-bar" style="margin-top:12px;">
+            <button class="btn tiny" id="researchContactBtn">&#128269; Research contact (Gemini)</button>
+            <span class="spinner-text" id="researchContactStatus"></span>
+          </div>
         </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-            Opportunity Score Breakdown
-          </h3>
+        <div class="section">
+          <h3>Opportunity Score</h3>
           ${topOpp ? `
             <div class="score-line">
               <div class="score-line-label">Priority Score — ${escapeHtml(topOpp["Priority Score (1-5)"])}/5</div>
               ${starRow(topOpp["Priority Score (1-5)"])}
             </div>
-            <div class="score-line" style="margin-top:16px;">
+            <div class="score-line" style="margin-top:14px;">
               <div class="score-line-label">Confidence Score — ${escapeHtml(topOpp["Confidence Score (1-5)"])}/5</div>
               ${starRow(topOpp["Confidence Score (1-5)"])}
             </div>
           ` : `<div class="empty" style="padding:10px 0;">Not yet scored</div>`}
+        </div>
+        <div class="section">
+          <h3>Pipeline Stage</h3>
+          <div class="pipeline-editor">
+            <select id="stageSelect">${stageOptions}</select>
+            <button class="btn tiny" id="saveStageBtn">Save</button>
+          </div>
+          <div class="save-note" id="stageSaveNote"></div>
         </div>
       </div>
     </div>
@@ -2589,7 +742,7 @@ function renderBrandDetail(brandName){
 
   document.getElementById("copyEmailBtn").addEventListener("click", (e) => {
     const state = window.__emailDraftState;
-    if (state) copyEmailRich(state.subject, state.bodyHtml, e.target);
+    copyEmailRich(state.subject, state.bodyHtml, e.target);
   });
   document.getElementById("aiDraftBtn").addEventListener("click", (e) => {
     generateAiEmailDraft(brandName, brand, topOpp, news, contact, e.target);
@@ -2601,50 +754,35 @@ function renderBrandDetail(brandName){
     const newStage = document.getElementById("stageSelect").value;
     updatePipelineStage(brandName, newStage, e.target, document.getElementById("stageSaveNote"));
   });
+  document.getElementById("researchContactBtn").addEventListener("click", (e) => {
+    researchContact(brandName, topOpp, e.target);
+  });
 }
 
-function renderContactCard(contact){
-  const name = contact ? contact["Decision Maker Name"] : "";
-  const designation = contact ? contact["Designation"] : "";
-  const dept = contact ? contact["Department"] : "";
-  const email = contact ? contact["Official Email (public only)"] : "";
-  const phone = contact ? contact["Official Contact Number (public only)"] : "";
-  const location = contact ? contact["Office Location"] : "";
-  const linkedin = contact ? contact["LinkedIn Profile"] : "";
-  const status = contact ? contact["Research Status"] : "";
-
-  const hasLinkedIn = linkedin && !/not yet|not researched|search /i.test(linkedin);
-
-  const fields = [
-    { label: "Decision Maker Name", value: name || "Leadership Research Pending", copyable: false },
-    { label: "Designation", value: designation || "Not Specified", copyable: false },
-    { label: "Department", value: dept || "Leadership & Strategy", copyable: false },
-    { label: "Official Email", value: email || "Pending / Not Public", copyable: !!email },
-    { label: "Official Contact Number", value: phone || "Pending / Not Public", copyable: !!phone },
-    { label: "Office Location", value: location || "India Headquarters", copyable: false },
-    { label: "Research Status", value: status || (name ? "Verified Lead" : "In Research Queue"), copyable: false }
-  ];
-
-  let html = fields.map(f => `
-    <div class="cf">
-      <div>
-        <div class="cf-label">${escapeHtml(f.label)}</div>
-        <div class="cf-value">${escapeHtml(f.value)}</div>
-      </div>
-      ${f.copyable ? `<button class="copy-btn" onclick="copyToClipboard('${escapeAttr(f.value)}', this)">Copy</button>` : ""}
-    </div>`).join("");
-
-  html += `
-    <div class="cf">
-      <div>
-        <div class="cf-label">LinkedIn Profile</div>
-        <div class="cf-value">
-          ${hasLinkedIn ? `<a href="${escapeAttr(linkedin)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">View Profile &#8599;</a>` : `<span style="color:var(--text-muted);">Search Pending</span>`}
-        </div>
-      </div>
-    </div>`;
-
-  return html;
+async function researchContact(brandName, topOpp, btnEl){
+  const statusEl = document.getElementById("researchContactStatus");
+  btnEl.disabled = true;
+  statusEl.textContent = "Searching for a verifiable contact via Gemini...";
+  try {
+    const resp = await fetch("/api/research-contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
+      body: JSON.stringify({
+        brand: brandName,
+        recommendedDept: topOpp ? topOpp["Recommended Contact Department"] : ""
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || "Contact research failed");
+    statusEl.textContent = data.contact?.decisionMakerName
+      ? "Found a contact — refreshing..."
+      : "No publicly verifiable contact found. " + (data.contact?.researchStatus || "");
+    await refresh();
+  } catch (e) {
+    statusEl.textContent = "Failed: " + e.message;
+  } finally {
+    btnEl.disabled = false;
+  }
 }
 
 async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, btnEl){
@@ -2693,6 +831,7 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
     document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news and live channelplay.in content.";
     statusEl.textContent = "Draft ready.";
 
+    // Best-effort: log the generated draft to the Email Drafts sheet for a record.
     fetch("/api/sheet-write", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
@@ -2747,56 +886,54 @@ function buildEmailDraft(brand, topOpp, news, sheetDraft){
   return { subject, bodyHtml, isTemplate: true };
 }
 
-/* ---------------- Event Listeners & Bootstrapping ---------------- */
-function checkUrlHashRoute(){
-  const hash = (window.location.hash || "").replace(/^#/, "");
-  if (!hash) return false;
-  if (hash.startsWith("brand=")) {
-    const brandName = decodeURIComponent(hash.slice(6));
-    if (brandName && workbookData["Brands Master"]) {
-      showBrandDetail(brandName);
-      return true;
-    }
-  } else if (hash.startsWith("competitor=")) {
-    const compName = decodeURIComponent(hash.slice(11));
-    if (compName && workbookData["Competitor Watch"]) {
-      showCompetitorDetail(compName);
-      return true;
-    }
-  } else if (["overview","news","opportunities","contacts","competitors"].includes(hash)) {
-    renderTab(hash);
-    return true;
+function renderContactCard(contact){
+  if (!contact || (!contact["Decision Maker Name"] && !contact["Official Email (public only)"])) {
+    return `<div class="empty" style="padding:10px 0;">Contact research pending${contact && contact["Research Status"] ? " — " + escapeHtml(contact["Research Status"]) : ""}.</div>`;
   }
-  return false;
+  const rows = [
+    ["Name", contact["Decision Maker Name"]],
+    ["Designation", contact["Designation"]],
+    ["Department", contact["Department"]],
+    ["Email", contact["Official Email (public only)"]],
+    ["Phone", contact["Official Contact Number (public only)"]],
+    ["Location", contact["Office Location"]],
+  ].filter(([, v]) => v);
+  let html = rows.map(([label, val]) => `
+    <div class="cf">
+      <div><div class="cf-label">${label}</div><div class="cf-value">${escapeHtml(val)}</div></div>
+      <button class="copy-btn" data-copy="${escapeAttr(val)}">Copy</button>
+    </div>`).join("");
+  if (contact["LinkedIn Profile"] && !/not yet|not researched|search /i.test(contact["LinkedIn Profile"])) {
+    html += `<div class="cf"><div><div class="cf-label">LinkedIn</div><div class="cf-value"><a href="${escapeAttr(contact["LinkedIn Profile"])}" target="_blank" rel="noopener">Profile &#8594;</a></div></div></div>`;
+  }
+  if (!html) return `<div class="empty" style="padding:10px 0;">Contact research pending.</div>`;
+  if (contact["Research Status"]) {
+    html += `<div class="draft-note" style="margin-top:10px;">${escapeHtml(contact["Research Status"])}</div>`;
+  }
+  return html;
 }
 
+/* ---------------- Wiring ---------------- */
 document.getElementById("unlockBtn").addEventListener("click", unlock);
 document.getElementById("pwInput").addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
 document.getElementById("refreshBtn").addEventListener("click", refresh);
 document.getElementById("addBrandBtn").addEventListener("click", openAddBrandModal);
-document.getElementById("sidebarAddBrandBtn").addEventListener("click", openAddBrandModal);
 initThemeControls();
 
-document.querySelectorAll(".nav-item-btn").forEach(btn => {
+document.querySelectorAll("nav button").forEach(btn => {
   btn.addEventListener("click", () => renderTab(btn.dataset.tab));
 });
 
-// Auto-unlock if password exists in session
+// Auto-unlock if a password is already stored in this browser session
 (async () => {
   const pw = getSessionPassword();
   if (pw) {
     const ok = await loadWorkbook(pw);
     if (ok) {
       revealChrome();
-      const routed = checkUrlHashRoute();
-      if (!routed) renderTab(currentTab);
+      renderTab(currentTab);
     }
   }
-  window.addEventListener("hashchange", () => {
-    if (workbookData["Brands Master"]) {
-      checkUrlHashRoute();
-    }
-  });
 })();
 </script>
 </body>
