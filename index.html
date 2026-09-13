@@ -2839,15 +2839,13 @@ function renderEmails(){
 function getEmailSettings(){
   const defaults = {
     senderName: "Bikash Roy",
-    senderDesignation: "Group Program Manager",
-    senderCompany: "Channelplay Limited",
+    senderDesignation: "Business Manager - Consumer Electronics",
+    companyName: "Channelplay Limited",
     senderEmail: "bikash.roy1@channelplay.in",
     defaultCc: "bikash.roy1@channelplay.in",
-    senderPhone: "+91 8509950431",
-    companyWebsite: "https://www.channelplay.in",
-    signature: ""
+    phoneNumber: "+91 8509950431",
+    companyWebsite: "https://www.channelplay.in"
   };
-  defaults.signature = `Warm regards,\n\n${defaults.senderName}\n${defaults.senderDesignation} | ${defaults.senderCompany}\nEmail: ${defaults.senderEmail} | Phone: ${defaults.senderPhone}\nWeb: ${defaults.companyWebsite}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
 
   let localSettings = {};
   try {
@@ -2855,166 +2853,136 @@ function getEmailSettings(){
     if (raw) localSettings = JSON.parse(raw);
   } catch (e) {}
 
-  const sheetSettings = workbookData["Email Settings"] || [];
+  const sheetRows = workbookData["Email Settings"] || [];
   const fromSheet = {};
 
-  if (Array.isArray(sheetSettings) && sheetSettings.length > 0) {
-    sheetSettings.forEach(r => {
-      const k = (r["Setting"] || r["Key"] || r["Field"] || r["Name"] || "").toLowerCase().trim();
-      const v = (r["Value"] !== undefined && r["Value"] !== null) ? String(r["Value"]).trim() : (r["Setting Value"] || "");
-      if (!k || !v) return;
-      if (k.includes("sender name") || k === "name") fromSheet.senderName = v;
-      else if (k.includes("designation") || k.includes("role") || k.includes("title")) fromSheet.senderDesignation = v;
-      else if (k.includes("company")) fromSheet.senderCompany = v;
-      else if (k.includes("sender email") || k === "email") fromSheet.senderEmail = v;
-      else if (k.includes("default cc") || k === "cc") fromSheet.defaultCc = v;
-      else if (k.includes("phone") || k.includes("mobile") || k.includes("contact")) fromSheet.senderPhone = v;
-      else if (k.includes("website") || k.includes("web") || k.includes("url")) fromSheet.companyWebsite = v;
-      else if (k.includes("signature")) fromSheet.signature = v;
-    });
-
-    if (Object.keys(fromSheet).length === 0 && sheetSettings[0]) {
-      const first = sheetSettings[0];
-      Object.keys(first).forEach(col => {
+  if (Array.isArray(sheetRows) && sheetRows.length > 0) {
+    const r = sheetRows[0];
+    if (r && typeof r === "object") {
+      Object.keys(r).forEach(col => {
         const k = col.toLowerCase().trim();
-        const v = String(first[col] || "").trim();
+        const v = String(r[col] || "").trim();
         if (!v) return;
-        if (k.includes("name") && !k.includes("company")) fromSheet.senderName = v;
-        else if (k.includes("designation") || k.includes("role")) fromSheet.senderDesignation = v;
-        else if (k.includes("company")) fromSheet.senderCompany = v;
-        else if (k.includes("email") && !k.includes("cc")) fromSheet.senderEmail = v;
-        else if (k.includes("cc")) fromSheet.defaultCc = v;
-        else if (k.includes("phone")) fromSheet.senderPhone = v;
-        else if (k.includes("website") || k.includes("web")) fromSheet.companyWebsite = v;
-        else if (k.includes("signature")) fromSheet.signature = v;
+        if (k === "sender name" || k === "name") fromSheet.senderName = v;
+        else if (k === "sender designation" || k === "designation" || k === "role" || k === "title") fromSheet.senderDesignation = v;
+        else if (k === "company name" || k === "company") fromSheet.companyName = v;
+        else if (k === "sender email" || k === "official sender email" || k === "email") fromSheet.senderEmail = v;
+        else if (k === "default cc" || k === "default cc address" || k === "cc") fromSheet.defaultCc = v;
+        else if (k === "phone number" || k === "phone" || k === "contact phone number" || k === "mobile") fromSheet.phoneNumber = v;
+        else if (k === "company website" || k === "website" || k === "url") fromSheet.companyWebsite = v;
       });
     }
   }
 
   const merged = { ...defaults, ...localSettings, ...fromSheet };
-  if (!merged.signature || !merged.signature.trim()) {
-    merged.signature = `Warm regards,\n\n${merged.senderName}\n${merged.senderDesignation} | ${merged.senderCompany}\nEmail: ${merged.senderEmail} | Phone: ${merged.senderPhone}\nWeb: ${merged.companyWebsite || "https://www.channelplay.in"}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
-  }
+  // Keep aliases synchronized
+  merged.senderCompany = merged.companyName;
+  merged.senderPhone = merged.phoneNumber;
+
+  merged.signatureHtml = buildSignatureHtml(merged);
+  merged.signaturePlain = buildSignaturePlain(merged);
+  merged.signature = merged.signaturePlain;
+
   return merged;
+}
+
+function buildSignatureHtml(p){
+  const name = p.senderName || "Bikash Roy";
+  const desig = p.senderDesignation || "Business Manager - Consumer Electronics";
+  const comp = p.companyName || p.senderCompany || "Channelplay Limited";
+  const email = p.senderEmail || "bikash.roy1@channelplay.in";
+  const phone = p.phoneNumber || p.senderPhone || "+91 8509950431";
+  const web = p.companyWebsite || "https://www.channelplay.in";
+
+  return `
+<div class="email-signature-rendered" style="font-family: Arial, -apple-system, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+  <p style="margin: 0 0 12px 0; color: #334155;">Warm regards,</p>
+  <p style="margin: 0 0 4px 0; font-weight: 700; font-size: 14px; color: #0f172a;">${escapeHtml(name)}</p>
+  <p style="margin: 0 0 8px 0; color: #475569; font-size: 13px;">${escapeHtml(desig)} &bull; <strong style="color: #0f172a;">${escapeHtml(comp)}</strong></p>
+  <div style="margin: 0 0 6px 0; font-size: 12px; color: #64748b; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+    <span>&#128231; <a href="mailto:${escapeHtml(email)}" style="color: #4f46e5; text-decoration: none;">${escapeHtml(email)}</a></span>
+    <span>&#128222; ${escapeHtml(phone)}</span>
+    <span>&#127760; <a href="${escapeAttr(web)}" target="_blank" rel="noopener" style="color: #4f46e5; text-decoration: none;">${escapeHtml(web)}</a></span>
+  </div>
+  <div style="margin-top: 8px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 6px; letter-spacing: 0.3px;">
+    Retail Execution &bull; Field Force Outsourcing &bull; Visual Merchandising &bull; Tech Audits
+  </div>
+</div>`;
+}
+
+function buildSignaturePlain(p){
+  const name = p.senderName || "Bikash Roy";
+  const desig = p.senderDesignation || "Business Manager - Consumer Electronics";
+  const comp = p.companyName || p.senderCompany || "Channelplay Limited";
+  const email = p.senderEmail || "bikash.roy1@channelplay.in";
+  const phone = p.phoneNumber || p.senderPhone || "+91 8509950431";
+  const web = p.companyWebsite || "https://www.channelplay.in";
+
+  return `Warm regards,\n\n${name}\n${desig} | ${comp}\nEmail: ${email} | Phone: ${phone}\nWeb: ${web}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
 }
 
 async function saveEmailSettings(newSettings, btnEl){
   if (btnEl) {
     btnEl.disabled = true;
-    btnEl.textContent = "Saving...";
+    btnEl.textContent = "Saving to Google Sheet...";
   }
 
+  // 1. Save locally in localStorage
   try {
     localStorage.setItem("ce_dashboard_email_settings", JSON.stringify(newSettings));
   } catch (e) {}
 
-  const rowsToSave = [
-    { "Setting": "Sender Name", "Value": newSettings.senderName, "Notes": "Outreach email sender display name" },
-    { "Setting": "Sender Designation", "Value": newSettings.senderDesignation, "Notes": "Job title / role" },
-    { "Setting": "Company Name", "Value": newSettings.senderCompany, "Notes": "Company organization" },
-    { "Setting": "Sender Email", "Value": newSettings.senderEmail, "Notes": "Official sender email" },
-    { "Setting": "Default CC", "Value": newSettings.defaultCc, "Notes": "Mandatory CC for outreach" },
-    { "Setting": "Phone Number", "Value": newSettings.senderPhone, "Notes": "Direct contact number" },
-    { "Setting": "Company Website", "Value": newSettings.companyWebsite, "Notes": "Official portal URL" },
-    { "Setting": "Custom Signature", "Value": newSettings.signature, "Notes": "Email signature block" }
-  ];
+  // 2. Format exact 7 headers from Screenshot 1
+  const sheetRow = {
+    "Sender Name": newSettings.senderName,
+    "Sender Designation": newSettings.senderDesignation,
+    "Company Name": newSettings.companyName,
+    "Sender Email": newSettings.senderEmail,
+    "Default CC": newSettings.defaultCc,
+    "Phone Number": newSettings.phoneNumber,
+    "Company Website": newSettings.companyWebsite
+  };
 
-  const existingSheet = workbookData["Email Settings"] || [];
-  existingSheet.forEach(ex => {
-    const k = (ex["Setting"] || ex["Key"] || "").toLowerCase().trim();
-    if (k && !rowsToSave.some(r => r["Setting"].toLowerCase() === k)) {
-      rowsToSave.push(ex);
-    }
-  });
-
-  workbookData["Email Settings"] = rowsToSave;
+  // Update in-memory workbookData["Email Settings"]
+  workbookData["Email Settings"] = [sheetRow];
 
   let sheetSuccess = false;
+  let errMsg = "";
   try {
     const resp = await fetch("/api/sheet-write", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
       body: JSON.stringify({
-        action: "appendRows",
+        action: "saveEmailSettings",
         sheet: "Email Settings",
-        rows: rowsToSave
+        settings: sheetRow,
+        previousSenderName: newSettings.previousSenderName || newSettings.senderName,
+        previousCompanyName: newSettings.previousCompanyName || newSettings.companyName,
+        previousSenderEmail: newSettings.previousSenderEmail || newSettings.senderEmail
       })
     });
     const data = await resp.json();
-    if (resp.ok && !data.error) sheetSuccess = true;
-  } catch (e) {}
+    if (resp.ok && !data.error) {
+      sheetSuccess = true;
+    } else {
+      errMsg = data.error || "Sheet sync failed";
+    }
+  } catch (err) {
+    errMsg = err.message;
+  }
+
+  if (sheetSuccess) {
+    showGlobalToast("Email Settings saved & synced to workbook 'Email Settings' tab! ✓");
+  } else {
+    showGlobalToast("Saved locally (Sheet notice: " + (errMsg || "connection error") + ")", true);
+  }
 
   if (btnEl) {
     btnEl.disabled = false;
-    btnEl.textContent = sheetSuccess ? "Saved & Synced to Sheet ✓" : "Saved Locally ✓";
-    setTimeout(() => { btnEl.textContent = "Save Settings & Sync to Sheet"; }, 2500);
-  }
-
-  renderEmailSettingsTableBody();
-}
-
-function renderEmailSettingsTableBody(){
-  const tbody = document.getElementById("emailSettingsTableBody");
-  if (!tbody) return;
-  const currentSettings = getEmailSettings();
-  let rows = workbookData["Email Settings"];
-  if (!rows || rows.length === 0) {
-    rows = [
-      { "Setting": "Sender Name", "Value": currentSettings.senderName, "Notes": "Outreach sender full name" },
-      { "Setting": "Sender Designation", "Value": currentSettings.senderDesignation, "Notes": "Job title / role" },
-      { "Setting": "Company Name", "Value": currentSettings.senderCompany, "Notes": "Company organization" },
-      { "Setting": "Sender Email", "Value": currentSettings.senderEmail, "Notes": "Sender official email" },
-      { "Setting": "Default CC", "Value": currentSettings.defaultCc, "Notes": "Mandatory CC recipient" },
-      { "Setting": "Phone Number", "Value": currentSettings.senderPhone, "Notes": "Contact phone number" },
-      { "Setting": "Company Website", "Value": currentSettings.companyWebsite, "Notes": "Official company website" },
-      { "Setting": "Custom Signature", "Value": currentSettings.signature, "Notes": "Outreach signature block" }
-    ];
-    workbookData["Email Settings"] = rows;
-  }
-
-  tbody.innerHTML = rows.map((r, idx) => {
-    const key = r["Setting"] || r["Key"] || r["Field"] || ("Setting #" + (idx + 1));
-    const val = r["Value"] !== undefined ? r["Value"] : (r["Setting Value"] || "");
-    const notes = r["Notes"] || "";
-    return `
-      <tr>
-        <td style="font-weight:600;color:var(--text-primary);">${escapeHtml(key)}</td>
-        <td>
-          <input type="text" value="${escapeAttr(val)}" onchange="updateEmailSettingRowVal(${idx}, this.value)">
-        </td>
-        <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(notes)}</td>
-        <td style="text-align:center;">
-          <button class="btn secondary tiny" onclick="deleteEmailSettingRow(${idx})" title="Delete record" style="color:var(--high);padding:3px 8px;font-size:11px;">✕</button>
-        </td>
-      </tr>
-    `;
-  }).join("");
-}
-
-function updateEmailSettingRowVal(idx, newVal){
-  const rows = workbookData["Email Settings"] || [];
-  if (rows[idx]) {
-    rows[idx]["Value"] = newVal;
-    const key = (rows[idx]["Setting"] || rows[idx]["Key"] || "").toLowerCase();
-    if (key.includes("name") && document.getElementById("settingSenderName")) document.getElementById("settingSenderName").value = newVal;
-    if (key.includes("designation") && document.getElementById("settingSenderDesignation")) document.getElementById("settingSenderDesignation").value = newVal;
-    if (key.includes("company") && document.getElementById("settingSenderCompany")) document.getElementById("settingSenderCompany").value = newVal;
-    if (key.includes("sender email") && document.getElementById("settingSenderEmail")) document.getElementById("settingSenderEmail").value = newVal;
-    if (key.includes("cc") && document.getElementById("settingDefaultCc")) document.getElementById("settingDefaultCc").value = newVal;
-    if (key.includes("phone") && document.getElementById("settingSenderPhone")) document.getElementById("settingSenderPhone").value = newVal;
-    if (key.includes("signature") && document.getElementById("settingSignature")) {
-      document.getElementById("settingSignature").value = newVal;
-      const previewEl = document.getElementById("signatureLivePreview");
-      if (previewEl) previewEl.innerHTML = newVal.includes("<") ? newVal : `<div style="white-space:pre-wrap;">${escapeHtml(newVal)}</div>`;
-    }
-  }
-}
-
-function deleteEmailSettingRow(idx){
-  const rows = workbookData["Email Settings"] || [];
-  if (rows[idx]) {
-    rows.splice(idx, 1);
-    renderEmailSettingsTableBody();
+    btnEl.innerHTML = `<span>Saved ✓</span>`;
+    setTimeout(() => {
+      renderEmailSettings();
+    }, 1200);
   }
 }
 
@@ -3023,107 +2991,78 @@ function renderEmailSettings(){
   window.__viewingCompetitor = null;
   const settings = getEmailSettings();
   const rawSheetRows = workbookData["Email Settings"] || [];
+  const isSheetSynced = rawSheetRows.length > 0 && !!rawSheetRows[0]["Sender Name"];
+
+  const fieldsConfig = [
+    { key: "senderName", label: "Sender Name", notes: "Outreach email sender display name", placeholder: "e.g. Bikash Roy" },
+    { key: "senderDesignation", label: "Sender Designation", notes: "Job title / role", placeholder: "e.g. Business Manager - Consumer Electronics" },
+    { key: "companyName", label: "Company Name", notes: "Company organization", placeholder: "e.g. Channelplay Limited" },
+    { key: "senderEmail", label: "Sender Email", notes: "Official sender email", placeholder: "e.g. bikash.roy1@channelplay.in" },
+    { key: "defaultCc", label: "Default CC", notes: "Mandatory CC for outreach", placeholder: "e.g. bikash.roy1@channelplay.in" },
+    { key: "phoneNumber", label: "Phone Number", notes: "Direct contact number", placeholder: "e.g. +91 8509950431" },
+    { key: "companyWebsite", label: "Company Website", notes: "Official portal URL", placeholder: "e.g. https://www.channelplay.in" },
+  ];
 
   document.getElementById("content").innerHTML = `
-    <div class="settings-container">
-      <div class="settings-header-card">
+    <div class="settings-container" style="max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:20px;">
+      <!-- Header Card -->
+      <div class="settings-header-card" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
         <div class="settings-title-group">
-          <h2>
+          <h2 style="font-size:18px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
               <polyline points="22,6 12,13 2,6"></polyline>
             </svg>
-            Email &amp; Outreach Settings
+            Email Settings &amp; Outreach Signature
           </h2>
-          <p>Manage your sender identity, default CC recipients, outreach signatures, and sync directly with Google Sheets.</p>
+          <p style="font-size:13px;color:var(--text-muted);margin:0;">
+            Manage your sender profile and outreach signature. Values are synced directly with the workbook's <strong>Email Settings</strong> tab.
+          </p>
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-          <span class="sync-badge" id="settingsSyncBadge" style="display:inline-flex;padding:4px 10px;font-size:12px;">
-            <span class="status-dot ${rawSheetRows.length ? 'live' : 'locked'}"></span>
-            <span>${rawSheetRows.length ? 'Sheet Synced (' + rawSheetRows.length + ' records)' : 'Local Configuration'}</span>
+          <span class="sync-badge" id="settingsSyncBadge" style="display:inline-flex;padding:5px 12px;font-size:12px;">
+            <span class="status-dot ${isSheetSynced ? 'live' : 'locked'}"></span>
+            <span>${isSheetSynced ? 'Sheet Synced' : 'Local Configuration'}</span>
           </span>
-          <button class="btn tiny" id="saveEmailSettingsBtn" style="padding:7px 14px;font-size:12.5px;">
-            Save Settings &amp; Sync to Sheet
+          <button class="btn tiny" id="editEmailSettingsBtn" style="padding:7px 14px;font-size:12.5px;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            <span>Edit Settings</span>
           </button>
-          <button class="btn secondary tiny" id="resetEmailSettingsBtn" style="padding:7px 14px;font-size:12.5px;">
-            Reset to Default
+          <button class="btn tiny" id="saveEmailSettingsBtn" style="display:none;padding:7px 16px;font-size:12.5px;background:var(--success,#10b981);border-color:var(--success,#10b981);color:#fff;">
+            💾 Save Settings &amp; Sync to Sheet
+          </button>
+          <button class="btn secondary tiny" id="cancelEmailSettingsBtn" style="display:none;padding:7px 14px;font-size:12.5px;">
+            Cancel
           </button>
         </div>
       </div>
 
-      <div class="settings-grid">
-        <div class="settings-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-              <circle cx="12" cy="7" r="4"></circle>
-            </svg>
-            Sender Profile &amp; Outreach Defaults
-          </h3>
-          <div class="settings-form-group">
-            <label>Sender Full Name</label>
-            <input type="text" id="settingSenderName" value="${escapeAttr(settings.senderName)}" placeholder="e.g. Bikash Roy">
-          </div>
-          <div class="settings-form-group">
-            <label>Designation / Role</label>
-            <input type="text" id="settingSenderDesignation" value="${escapeAttr(settings.senderDesignation)}" placeholder="e.g. Group Program Manager">
-          </div>
-          <div class="settings-form-group">
-            <label>Company Name</label>
-            <input type="text" id="settingSenderCompany" value="${escapeAttr(settings.senderCompany)}" placeholder="e.g. Channelplay Limited">
-          </div>
-          <div class="settings-form-group">
-            <label>Official Sender Email</label>
-            <input type="email" id="settingSenderEmail" value="${escapeAttr(settings.senderEmail)}" placeholder="e.g. bikash.roy1@channelplay.in">
-          </div>
-          <div class="settings-form-group">
-            <label>Default CC Address</label>
-            <input type="email" id="settingDefaultCc" value="${escapeAttr(settings.defaultCc)}" placeholder="e.g. bikash.roy1@channelplay.in">
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Automatically marked as CC in Outlook Web drafts</div>
-          </div>
-          <div class="settings-form-group">
-            <label>Contact Phone Number</label>
-            <input type="text" id="settingSenderPhone" value="${escapeAttr(settings.senderPhone)}" placeholder="e.g. +91 8509950431">
-          </div>
-          <div class="settings-form-group">
-            <label>Company Website</label>
-            <input type="text" id="settingCompanyWebsite" value="${escapeAttr(settings.companyWebsite || 'https://www.channelplay.in')}" placeholder="https://www.channelplay.in">
-          </div>
-          <div style="margin-top:8px;">
-            <button class="btn secondary tiny" id="generateSigFromProfileBtn" style="font-size:11.5px;">
-              ✨ Auto-Generate Signature from Profile
-            </button>
-          </div>
-        </div>
-
-        <div class="settings-card">
-          <h3>
+      <!-- Top Card: Live Signature Preview in HTML -->
+      <div class="settings-card" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <h3 style="font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 20h9"></path>
               <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
             </svg>
-            Email Signature (Appended to Outreach Drafts)
+            Live Signature Preview (HTML)
           </h3>
-          <div class="settings-form-group" style="flex:1;display:flex;flex-direction:column;">
-            <label>Signature Text / HTML</label>
-            <textarea id="settingSignature" rows="7" style="resize:vertical;min-height:140px;font-family:monospace;font-size:12px;">${escapeHtml(settings.signature)}</textarea>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
-              Taken into AI drafts and Outlook Web compose links.
-            </div>
-          </div>
-
-          <div style="margin-top:16px;">
-            <label style="display:block;font-size:11.5px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
-              Live Signature Preview
-            </label>
-            <div class="settings-preview-box" id="signatureLivePreview"></div>
-          </div>
+          <button class="btn secondary tiny" id="generateSigFromProfileBtn" style="font-size:11.5px;">
+            ✨ Auto-Generate Signature from Profile
+          </button>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+          This signature is automatically used for outreach email drafting and copied when opening Outlook Web.
+        </p>
+        <div class="settings-preview-box" id="signatureLivePreview" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px 20px;">
+          ${settings.signatureHtml}
         </div>
       </div>
 
-      <div class="settings-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
-          <h3 style="margin-bottom:0;">
+      <!-- Bottom Card: Google Sheets "Email Settings" Records (The 7 Sheet Fields) -->
+      <div class="settings-card" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;">
+        <div style="margin-bottom:14px;">
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
               <line x1="3" y1="9" x2="21" y2="9"></line>
@@ -3131,105 +3070,106 @@ function renderEmailSettings(){
             </svg>
             Google Sheets "Email Settings" Records
           </h3>
-          <div style="display:flex;gap:8px;">
-            <button class="btn secondary tiny" id="addSettingRowBtn" style="font-size:11.5px;">
-              + Add Setting Record
-            </button>
-          </div>
+          <p style="font-size:12px;color:var(--text-muted);margin:0;" id="settingsTableSubtitle">
+            These 7 fields map 1-to-1 to the columns in the <strong>Email Settings</strong> sheet tab. Click <strong>Edit Settings</strong> above to modify.
+          </p>
         </div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
-          These are the records retrieved from or prepared for the <strong>Email Settings</strong> sheet tab. You can add new custom key-value pairs or edit values directly.
-        </p>
 
         <div class="settings-table-wrap">
-          <table class="settings-table" id="emailSettingsTable">
+          <table class="settings-table" id="emailSettingsTable" style="width:100%;border-collapse:collapse;">
             <thead>
               <tr>
-                <th style="width:28%;">Setting Key / Name</th>
-                <th style="width:44%;">Setting Value</th>
-                <th style="width:20%;">Notes</th>
-                <th style="width:8%;text-align:center;">Action</th>
+                <th style="width:30%;padding:10px 14px;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card);text-align:left;">Setting Key / Name</th>
+                <th style="width:45%;padding:10px 14px;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card);text-align:left;">Setting Value</th>
+                <th style="width:25%;padding:10px 14px;font-size:11px;text-transform:uppercase;color:var(--text-muted);border-bottom:1px solid var(--border);background:var(--bg-card);text-align:left;">Notes</th>
               </tr>
             </thead>
-            <tbody id="emailSettingsTableBody"></tbody>
+            <tbody id="emailSettingsTableBody">
+              ${fieldsConfig.map(f => {
+                const val = settings[f.key] || "";
+                return `
+                  <tr>
+                    <td style="padding:10px 14px;font-weight:600;color:var(--text-primary);border-bottom:1px solid var(--border);">${escapeHtml(f.label)}</td>
+                    <td style="padding:10px 14px;border-bottom:1px solid var(--border);">
+                      <input type="text" id="settingInput_${f.key}" data-key="${f.key}" value="${escapeAttr(val)}" placeholder="${escapeAttr(f.placeholder)}" disabled style="width:100%;padding:7px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;font-size:13px;color:var(--text-primary);transition:all 0.15s;opacity:0.85;">
+                    </td>
+                    <td style="padding:10px 14px;color:var(--text-muted);font-size:12px;border-bottom:1px solid var(--border);">${escapeHtml(f.notes)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
           </table>
         </div>
       </div>
     </div>
   `;
 
-  const nameInput = document.getElementById("settingSenderName");
-  const desigInput = document.getElementById("settingSenderDesignation");
-  const compInput = document.getElementById("settingSenderCompany");
-  const emailInput = document.getElementById("settingSenderEmail");
-  const ccInput = document.getElementById("settingDefaultCc");
-  const phoneInput = document.getElementById("settingSenderPhone");
-  const webInput = document.getElementById("settingCompanyWebsite");
-  const sigInput = document.getElementById("settingSignature");
+  // Grab element references
+  const editBtn = document.getElementById("editEmailSettingsBtn");
+  const saveBtn = document.getElementById("saveEmailSettingsBtn");
+  const cancelBtn = document.getElementById("cancelEmailSettingsBtn");
+  const tableSubtitle = document.getElementById("settingsTableSubtitle");
+  const previewEl = document.getElementById("signatureLivePreview");
+  const autoGenBtn = document.getElementById("generateSigFromProfileBtn");
 
-  function updateLivePreview(){
-    const sig = sigInput.value.trim();
-    const previewEl = document.getElementById("signatureLivePreview");
-    if (!previewEl) return;
-    if (sig.includes("<") && sig.includes(">")) {
-      previewEl.innerHTML = sig;
-    } else {
-      previewEl.innerHTML = sig ? `<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.6;color:var(--text-primary);">${escapeHtml(sig)}</div>` : `<span style="color:var(--text-muted);font-style:italic;">No signature provided yet.</span>`;
-    }
+  const inputs = fieldsConfig.map(f => document.getElementById(`settingInput_${f.key}`));
+
+  function getProfileFromInputs(){
+    const p = {};
+    fieldsConfig.forEach(f => {
+      const inp = document.getElementById(`settingInput_${f.key}`);
+      p[f.key] = inp ? inp.value.trim() : (settings[f.key] || "");
+    });
+    return p;
   }
 
-  [nameInput, desigInput, compInput, emailInput, ccInput, phoneInput, webInput, sigInput].forEach(inp => {
-    inp.addEventListener("input", updateLivePreview);
-  });
-  updateLivePreview();
+  function updateLiveSignaturePreview(){
+    const p = getProfileFromInputs();
+    previewEl.innerHTML = buildSignatureHtml(p);
+  }
 
-  document.getElementById("generateSigFromProfileBtn").addEventListener("click", () => {
-    const sName = nameInput.value.trim() || "Bikash Roy";
-    const sDesig = desigInput.value.trim() || "Group Program Manager";
-    const sComp = compInput.value.trim() || "Channelplay Limited";
-    const sEmail = emailInput.value.trim() || "bikash.roy1@channelplay.in";
-    const sPhone = phoneInput.value.trim() || "+91 8509950431";
-    const sWeb = webInput.value.trim() || "https://www.channelplay.in";
-    sigInput.value = `Warm regards,\n\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}\nWeb: ${sWeb}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
-    updateLivePreview();
+  // Update preview live as user edits any of the fields
+  inputs.forEach(inp => {
+    if (inp) inp.addEventListener("input", updateLiveSignaturePreview);
   });
 
-  document.getElementById("saveEmailSettingsBtn").addEventListener("click", (e) => {
-    const updated = {
-      senderName: nameInput.value.trim(),
-      senderDesignation: desigInput.value.trim(),
-      senderCompany: compInput.value.trim(),
-      senderEmail: emailInput.value.trim(),
-      defaultCc: ccInput.value.trim(),
-      senderPhone: phoneInput.value.trim(),
-      companyWebsite: webInput.value.trim(),
-      signature: sigInput.value.trim()
-    };
-    saveEmailSettings(updated, e.target);
+  autoGenBtn.addEventListener("click", () => {
+    updateLiveSignaturePreview();
+    showGlobalToast("Signature preview updated with current profile values! ✓");
   });
 
-  document.getElementById("resetEmailSettingsBtn").addEventListener("click", () => {
-    if (confirm("Reset email settings and signature back to Channelplay defaults?")) {
-      localStorage.removeItem("ce_dashboard_email_settings");
-      renderEmailSettings();
-    }
+  editBtn.addEventListener("click", () => {
+    // Enable all inputs
+    inputs.forEach(inp => {
+      if (inp) {
+        inp.disabled = false;
+        inp.style.background = "var(--bg-surface)";
+        inp.style.borderColor = "var(--accent)";
+        inp.style.opacity = "1";
+      }
+    });
+    tableSubtitle.innerHTML = `<span style="color:var(--accent);font-weight:600;">Editing enabled:</span> modify any field values below and click <strong>Save Settings &amp; Sync to Sheet</strong>.`;
+    editBtn.style.display = "none";
+    saveBtn.style.display = "inline-flex";
+    cancelBtn.style.display = "inline-flex";
+    const firstInput = document.getElementById("settingInput_senderName");
+    if (firstInput) firstInput.focus();
   });
 
-  renderEmailSettingsTableBody();
+  cancelBtn.addEventListener("click", () => {
+    renderEmailSettings();
+  });
 
-  document.getElementById("addSettingRowBtn").addEventListener("click", () => {
-    const key = prompt("Enter new Setting Key (e.g. 'Calendar Booking Link' or 'Regional Office'):");
-    if (!key || !key.trim()) return;
-    const val = prompt(`Enter value for "${key}":`) || "";
-    const notes = prompt("Enter optional notes / description:") || "";
-    const list = workbookData["Email Settings"] || [];
-    list.push({ "Setting": key.trim(), "Value": val.trim(), "Notes": notes.trim() });
-    workbookData["Email Settings"] = list;
-    renderEmailSettingsTableBody();
+  saveBtn.addEventListener("click", (e) => {
+    const updatedProfile = getProfileFromInputs();
+    updatedProfile.previousSenderName = settings.senderName;
+    updatedProfile.previousCompanyName = settings.companyName;
+    updatedProfile.previousSenderEmail = settings.senderEmail;
+    saveEmailSettings(updatedProfile, e.target);
   });
 }
 
-function openOutlookCompose(brandName, contact){
+async function openOutlookCompose(brandName, contact){
   const state = window.__emailDraftState;
   if (!state || !state.subject) {
     alert("Please generate or select an outreach email draft first.");
@@ -3237,6 +3177,7 @@ function openOutlookCompose(brandName, contact){
   }
   const emailSettings = getEmailSettings();
 
+  // 1. Resolve recipient official email from contact research
   let toEmail = "";
   if (contact) {
     toEmail = contact["Official Email (public only)"] || contact["Official Email"] || contact["Email"] || "";
@@ -3248,19 +3189,87 @@ function openOutlookCompose(brandName, contact){
       toEmail = found["Official Email (public only)"] || found["Official Email"] || found["Email"] || "";
     }
   }
+  // Sanitize toEmail if it contains placeholder text
+  if (toEmail.toLowerCase().includes("pending") || toEmail.toLowerCase().includes("not public") || !toEmail.includes("@")) {
+    toEmail = "";
+  }
 
   const ccEmail = emailSettings.defaultCc || "bikash.roy1@channelplay.in";
   const subject = state.subject || `Supporting ${brandName}'s retail execution with Channelplay`;
 
-  let body = state.plainBody;
-  if (!body) {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = state.bodyHtml || "";
-    body = tmp.innerText || tmp.textContent || "";
+  // 2. Ensure the rich HTML and plain text have the SAVED signature from Email Settings
+  let fullRichHtml = state.bodyHtml || "";
+  if (!fullRichHtml.includes("email-signature-rendered") && !fullRichHtml.includes("email-signature-card") && !fullRichHtml.includes(emailSettings.senderName)) {
+    fullRichHtml += "\n" + emailSettings.signatureHtml;
   }
 
-  const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(toEmail)}&cc=${encodeURIComponent(ccEmail)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  let fullPlainText = state.plainBody || "";
+  if (!fullPlainText.includes(emailSettings.senderName)) {
+    fullPlainText += "\n\n" + emailSettings.signaturePlain;
+  }
 
+  // 3. COPY FULL FORMATTED EMAIL (Rich HTML + Plain) TO CLIPBOARD IMMEDIATELY
+  let copied = false;
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      const typeHtml = "text/html";
+      const typePlain = "text/plain";
+      const blobHtml = new Blob([fullRichHtml], { type: typeHtml });
+      const blobPlain = new Blob([fullPlainText], { type: typePlain });
+      await navigator.clipboard.write([new ClipboardItem({ [typeHtml]: blobHtml, [typePlain]: blobPlain })]);
+      copied = true;
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(fullPlainText);
+      copied = true;
+    }
+  } catch (clipErr) {
+    try {
+      const div = document.createElement("div");
+      div.contentEditable = "true";
+      div.innerHTML = fullRichHtml;
+      div.style.position = "fixed";
+      div.style.left = "-9999px";
+      document.body.appendChild(div);
+      div.focus();
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      const range = document.createRange();
+      range.selectNodeContents(div);
+      sel.addRange(range);
+      document.execCommand("copy");
+      document.body.removeChild(div);
+      copied = true;
+    } catch (_) {}
+  }
+
+  // Visual feedback on the Outlook button
+  const outlookBtn = document.getElementById("openOutlookBtn");
+  if (outlookBtn) {
+    const origHtml = outlookBtn.innerHTML;
+    outlookBtn.innerHTML = `<span>Copied &amp; Opening Outlook... ✓</span>`;
+    setTimeout(() => { outlookBtn.innerHTML = origHtml; }, 2500);
+  }
+
+  // 4. Notify user that formatted email & saved signature are copied
+  showGlobalToast("Formatted outreach email & saved signature copied to clipboard! (Press Ctrl+V / Cmd+V in Outlook Web message body to paste rich format)");
+
+  // 5. Keep URL length safe from truncation while guaranteeing signature presence
+  let safeBody = fullPlainText;
+  if (encodeURIComponent(safeBody).length > 1500) {
+    const paragraphs = fullPlainText.split("\n\n").filter(p => p.trim());
+    if (paragraphs.length > 2) {
+      const intro = paragraphs.slice(0, 2).join("\n\n");
+      safeBody = `${intro}\n\n[Full rich-formatted email & signature copied to clipboard — press Ctrl+V / Cmd+V here in message body to paste]\n\n${emailSettings.signaturePlain}`;
+    }
+  }
+
+  const params = new URLSearchParams();
+  if (toEmail) params.append("to", toEmail);
+  if (ccEmail) params.append("cc", ccEmail);
+  if (subject) params.append("subject", subject);
+  if (safeBody) params.append("body", safeBody);
+
+  const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?${params.toString()}`;
   window.open(outlookUrl, "_blank", "noopener,noreferrer");
 }
 
@@ -3616,13 +3625,16 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
         } : null,
         recentNews,
         contactName: contact ? contact["Decision Maker Name"] : "",
-        contactDesignation: contact ? contact["Designation"] : "",
-        signature: emailSettings.signature,
+        signature: emailSettings.signaturePlain,
+        signatureHtml: emailSettings.signatureHtml,
         senderName: emailSettings.senderName,
         senderDesignation: emailSettings.senderDesignation,
-        senderCompany: emailSettings.senderCompany,
-        senderPhone: emailSettings.senderPhone,
-        senderEmail: emailSettings.senderEmail
+        senderCompany: emailSettings.companyName,
+        companyName: emailSettings.companyName,
+        senderPhone: emailSettings.phoneNumber,
+        phoneNumber: emailSettings.phoneNumber,
+        senderEmail: emailSettings.senderEmail,
+        companyWebsite: emailSettings.companyWebsite
       })
     });
     const data = await resp.json();
@@ -3666,20 +3678,16 @@ function buildExecSummary(brand, topOpp, news, pipelineRow){
 
 function buildEmailDraft(brand, topOpp, news, sheetDraft){
   const emailSettings = getEmailSettings();
-  const signature = emailSettings.signature;
-  const sName = emailSettings.senderName || "Bikash Roy";
-  const sDesig = emailSettings.senderDesignation || "Group Program Manager";
-  const sComp = emailSettings.senderCompany || "Channelplay Limited";
-  const sEmail = emailSettings.senderEmail || "bikash.roy1@channelplay.in";
-  const sPhone = emailSettings.senderPhone || "+91 8509950431";
+  const sigHtml = emailSettings.signatureHtml;
+  const sigPlain = emailSettings.signaturePlain;
 
   if (sheetDraft) {
     const rawBody = String(sheetDraft["Draft Body"] || "");
-    const bodyHtml = rawBody.split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join("");
+    const bodyHtml = rawBody.split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join("") + "\n" + sigHtml;
     return {
       subject: sheetDraft["Subject"],
       bodyHtml,
-      plainBody: rawBody,
+      plainBody: rawBody + "\n\n" + sigPlain,
       isTemplate: false
     };
   }
@@ -3697,24 +3705,6 @@ function buildEmailDraft(brand, topOpp, news, sheetDraft){
   ];
   const strategicClosing = `With festive retail footfalls and counter competition climbing, having agile in-store execution ensures your marketing investments translate directly to counter sales.`;
   const softHook = `Would you be open to a brief 10–15 minute introductory call next week to explore retail synergies for ${brand["Brand"]}?`;
-
-  let sigHtml = "";
-  if (signature && signature.includes("<")) {
-    sigHtml = signature;
-  } else if (signature) {
-    sigHtml = `<div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);white-space:pre-wrap;font-family:inherit;">${escapeHtml(signature)}</div>`;
-  } else {
-    sigHtml = `
-      <div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-family:inherit;">
-        <div style="font-weight:700;font-size:14px;color:var(--text-primary);">${escapeHtml(sName)}</div>
-        <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px;">${escapeHtml(sDesig)} &bull; <strong style="color:var(--text-primary);">${escapeHtml(sComp)}</strong></div>
-        <div style="margin-top:8px;font-size:12px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-          <span>&#128231; <a href="mailto:${escapeHtml(sEmail)}" style="color:var(--accent);text-decoration:none;">${escapeHtml(sEmail)}</a></span>
-          <span>&#128222; ${escapeHtml(sPhone)}</span>
-          <span>&#127760; <a href="https://www.channelplay.in" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">www.channelplay.in</a></span>
-        </div>
-      </div>`;
-  }
 
   const bodyHtml = `
 <div class="email-rich-wrap">
@@ -3742,7 +3732,7 @@ function buildEmailDraft(brand, topOpp, news, sheetDraft){
     ...capabilities.map(c => `• ${c}`),
     strategicClosing,
     softHook,
-    signature || `Best regards,\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}`
+    sigPlain
   ].join("\n\n");
 
   return { subject, bodyHtml, plainBody, isTemplate: true };

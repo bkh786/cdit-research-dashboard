@@ -43,11 +43,15 @@ module.exports = async (req, res) => {
       contactName,
       contactDesignation,
       signature,
+      signatureHtml: customSignatureHtml,
       senderName,
       senderDesignation,
       senderCompany,
+      companyName,
       senderPhone,
-      senderEmail
+      phoneNumber,
+      senderEmail,
+      companyWebsite
     } = req.body || {};
 
     if (!brand) {
@@ -155,36 +159,38 @@ CRITICAL DRAFTING INSTRUCTIONS:
     }
 
     const sName = senderName || "Bikash Roy";
-    const sDesig = senderDesignation || "Group Program Manager";
-    const sComp = senderCompany || "Channelplay Limited";
+    const sDesig = senderDesignation || "Business Manager - Consumer Electronics";
+    const sComp = companyName || senderCompany || "Channelplay Limited";
     const sEmail = senderEmail || "bikash.roy1@channelplay.in";
-    const sPhone = senderPhone || "+91 8509950431";
+    const sPhone = phoneNumber || senderPhone || "+91 8509950431";
+    const sWeb = companyWebsite || "https://www.channelplay.in";
 
-    let signaturePlain = "";
-    let signatureHtml = "";
+    let signaturePlain = signature || "";
+    let signatureHtml = customSignatureHtml || "";
 
-    if (signature && signature.trim()) {
-      signaturePlain = signature.trim();
-      if (signature.includes("<") && signature.includes(">")) {
+    if (!signaturePlain) {
+      signaturePlain = `Warm regards,\n\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}\nWeb: ${sWeb}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
+    }
+
+    if (!signatureHtml) {
+      if (signature && signature.includes("<") && signature.includes(">")) {
         signatureHtml = signature;
       } else {
-        signatureHtml = signature.trim().replace(/\n/g, "<br>");
-      }
-    } else {
-      signaturePlain = `Best regards,\n\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}\nWeb: https://www.channelplay.in\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
-      signatureHtml = `
-<div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border,#e2e8f0);font-family:inherit;">
-  <div style="font-weight:700;font-size:14px;color:var(--text-primary,#0f172a);">${escapeHtmlServer(sName)}</div>
-  <div style="font-size:12.5px;color:var(--text-secondary,#475569);margin-top:2px;">${escapeHtmlServer(sDesig)} &bull; <strong style="color:var(--text-primary,#1e293b);">${escapeHtmlServer(sComp)}</strong></div>
-  <div style="margin-top:8px;font-size:12px;color:var(--text-muted,#64748b);display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-    <span>&#128231; <a href="mailto:${escapeHtmlServer(sEmail)}" style="color:var(--accent,#4f46e5);text-decoration:none;">${escapeHtmlServer(sEmail)}</a></span>
+        signatureHtml = `
+<div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;font-family:Arial,-apple-system,sans-serif;font-size:13px;line-height:1.6;color:#1e293b;">
+  <p style="margin:0 0 12px 0;color:#334155;">Warm regards,</p>
+  <p style="margin:0 0 4px 0;font-weight:700;font-size:14px;color:#0f172a;">${escapeHtmlServer(sName)}</p>
+  <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">${escapeHtmlServer(sDesig)} &bull; <strong style="color:#0f172a;">${escapeHtmlServer(sComp)}</strong></p>
+  <div style="margin:0 0 6px 0;font-size:12px;color:#64748b;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+    <span>&#128231; <a href="mailto:${escapeHtmlServer(sEmail)}" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sEmail)}</a></span>
     <span>&#128222; ${escapeHtmlServer(sPhone)}</span>
-    <span>&#127760; <a href="https://www.channelplay.in" target="_blank" rel="noopener" style="color:var(--accent,#4f46e5);text-decoration:none;">www.channelplay.in</a></span>
+    <span>&#127760; <a href="${escapeHtmlServer(sWeb)}" target="_blank" rel="noopener" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sWeb)}</a></span>
   </div>
-  <div style="margin-top:6px;font-size:11px;color:var(--text-muted,#94a3b8);letter-spacing:0.3px;">
-    Retail Execution &bull; In-Store Promoters &bull; Visual Merchandising &bull; 1Channel Tech Platform
+  <div style="margin-top:8px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:6px;letter-spacing:0.3px;">
+    Retail Execution &bull; Field Force Outsourcing &bull; Visual Merchandising &bull; Tech Audits
   </div>
 </div>`;
+      }
     }
 
     if (!parsed) {

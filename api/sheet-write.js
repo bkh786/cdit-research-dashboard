@@ -22,6 +22,79 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const { action, sheet, settings } = req.body || {};
+    const previousSenderName = req.body?.previousSenderName || settings?.previousSenderName;
+    const previousCompanyName = req.body?.previousCompanyName || settings?.previousCompanyName;
+    const previousSenderEmail = req.body?.previousSenderEmail || settings?.previousSenderEmail;
+
+    // Special handler to accommodate the 'Email Settings' tab with the exact 7 sheet columns
+    if (sheet === "Email Settings" || action === "saveEmailSettings") {
+      const src = settings || req.body.row || (Array.isArray(req.body.rows) ? req.body.rows[0] : null) || req.body;
+      const normalizedRow = {
+        "Sender Name": String(src["Sender Name"] ?? src.senderName ?? "Bikash Roy").trim(),
+        "Sender Designation": String(src["Sender Designation"] ?? src.senderDesignation ?? "Business Manager - Consumer Electronics").trim(),
+        "Company Name": String(src["Company Name"] ?? src.companyName ?? src.senderCompany ?? "Channelplay Limited").trim(),
+        "Sender Email": String(src["Sender Email"] ?? src.senderEmail ?? "bikash.roy1@channelplay.in").trim(),
+        "Default CC": String(src["Default CC"] ?? src.defaultCc ?? "bikash.roy1@channelplay.in").trim(),
+        "Phone Number": String(src["Phone Number"] ?? src.phoneNumber ?? src.senderPhone ?? "+91 8509950431").trim(),
+        "Company Website": String(src["Company Website"] ?? src.companyWebsite ?? "https://www.channelplay.in").trim(),
+      };
+
+      // 1. Try updateRow first if an existing record is in the sheet
+      const matchCandidates = [
+        { col: "Sender Name", val: previousSenderName || normalizedRow["Sender Name"] },
+        { col: "Company Name", val: previousCompanyName || normalizedRow["Company Name"] },
+        { col: "Sender Email", val: previousSenderEmail || normalizedRow["Sender Email"] },
+        { col: "Company Website", val: normalizedRow["Company Website"] }
+      ].filter(c => !!c.val);
+
+      for (const candidate of matchCandidates) {
+        try {
+          const updateResp = await fetch(process.env.APPS_SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              secret: process.env.APPS_SCRIPT_SECRET,
+              action: "updateRow",
+              sheet: "Email Settings",
+              matchColumn: candidate.col,
+              matchValue: candidate.val,
+              updates: normalizedRow
+            }),
+            redirect: "follow",
+          });
+          const updateData = await updateResp.json();
+          if (updateData && !updateData.error && updateData.updated !== 0 && updateData.updated !== false) {
+            res.status(200).json({ ok: true, action: "updateRow", updated: true, row: normalizedRow, data: updateData });
+            return;
+          }
+        } catch (_) {
+          // continue to next candidate or fallback to appendRows
+        }
+      }
+
+      // 2. If row was empty (like in screenshot 1) or updateRow matched 0 rows, append the record
+      const appendResp = await fetch(process.env.APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: process.env.APPS_SCRIPT_SECRET,
+          action: "appendRows",
+          sheet: "Email Settings",
+          rows: [normalizedRow]
+        }),
+        redirect: "follow",
+      });
+      const appendData = await appendResp.json();
+      if (appendData.error) {
+        res.status(400).json(appendData);
+        return;
+      }
+      res.status(200).json({ ok: true, action: "appendRows", row: normalizedRow, data: appendData });
+      return;
+    }
+
+    // Default passthrough for all other sheets/actions
     const body = { ...req.body, secret: process.env.APPS_SCRIPT_SECRET };
     const response = await fetch(process.env.APPS_SCRIPT_URL, {
       method: "POST",
