@@ -12,9 +12,8 @@
 
 const FALLBACK_MODELS = [
   process.env.GEMINI_MODEL || "gemini-2.0-flash",
-  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
   "gemini-1.5-flash",
-  "gemini-2.0-flash-lite",
 ];
 
 module.exports = async (req, res) => {
@@ -139,6 +138,9 @@ async function callGeminiWithFallbacks(prompt) {
     } catch (err) {
       lastErr = err;
       console.warn(`Gemini (${model}) with search failed: ${err.message}`);
+      if (err.message.includes("404") || err.message.includes("not found") || err.message.includes("no longer available")) {
+        continue;
+      }
     }
 
     // 2. Try without Search Grounding (higher rate limits / less quota usage)
@@ -147,6 +149,7 @@ async function callGeminiWithFallbacks(prompt) {
     } catch (err) {
       lastErr = err;
       console.warn(`Gemini (${model}) direct failed: ${err.message}`);
+      if (err.message.includes("404")) continue;
       if (err.message.includes("429") || err.message.includes("quota") || err.message.includes("RESOURCE_EXHAUSTED")) {
         await new Promise(r => setTimeout(r, 1200));
       }
@@ -162,7 +165,11 @@ async function callGeminiModel(model, prompt, useSearch) {
     generationConfig: { temperature: 0.3, maxOutputTokens: 3000 },
   };
   if (useSearch) {
-    body.tools = [{ google_search: {} }];
+    if (model.startsWith("gemini-1.5")) {
+      body.tools = [{ googleSearchRetrieval: {} }];
+    } else {
+      body.tools = [{ google_search: {} }];
+    }
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;

@@ -63,9 +63,8 @@ TASK: Write the email content -- subject, hook line, 3-4 short paragraphs (2-3 s
 
     const FALLBACK_MODELS = [
       process.env.GEMINI_MODEL || "gemini-2.0-flash",
-      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite",
       "gemini-1.5-flash",
-      "gemini-2.0-flash-lite",
     ];
 
     let parsed = null;
@@ -117,6 +116,7 @@ TASK: Write the email content -- subject, hook line, 3-4 short paragraphs (2-3 s
       } catch (err) {
         lastErr = err;
         console.warn(`Email generation on ${model} failed: ${err.message}`);
+        if (err.message.includes("404")) continue;
         if (err.message.includes("429") || err.message.includes("RESOURCE_EXHAUSTED")) {
           await new Promise(r => setTimeout(r, 1200));
         }
