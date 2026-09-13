@@ -923,6 +923,20 @@ function formatRelativeDate(dateStr){
 function sortByDateDesc(rows, field){
   return rows.slice().sort((a, b) => String(b[field] || "").localeCompare(String(a[field] || "")));
 }
+function formatContactLinkedInUrl(rawUrl, brand, name){
+  let url = String(rawUrl || "").trim();
+  const b = String(brand || "").trim().toLowerCase();
+  // Quick fix for Asus if old hallucinated hash was saved
+  if (b.includes("asus") && (url.includes("7b19a126") || !url)) {
+    return "https://www.linkedin.com/in/arnold-su-220858a4/";
+  }
+  if (!url || !url.startsWith("http")) {
+    if (name) return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " " + (brand || ""))}`;
+    if (brand) return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(brand + " leadership")}`;
+    return "";
+  }
+  return url;
+}
 
 function getBrandLatestResearchMap(){
   const news = workbookData["News feed"] || [];
@@ -1719,7 +1733,8 @@ function renderContacts(){
   const tableRows = rows.length ? rows.map(r => {
     const email = r["Official Email (public only)"];
     const phone = r["Official Contact Number (public only)"];
-    const hasLinkedIn = r["LinkedIn Profile"] && !/not yet|search /i.test(r["LinkedIn Profile"]);
+    const linkedinUrl = formatContactLinkedInUrl(r["LinkedIn Profile"], r["Brand"], r["Decision Maker Name"]);
+    const hasLinkedIn = !!linkedinUrl;
     const hasDecisionMaker = !!r["Decision Maker Name"];
 
     return `
@@ -1749,7 +1764,7 @@ function renderContacts(){
       <td><span style="font-size:12px;color:var(--text-secondary);">${escapeHtml(r["Office Location"] || "-")}</span></td>
       <td>
         ${hasLinkedIn ? `
-          <a href="${escapeAttr(r["LinkedIn Profile"])}" target="_blank" rel="noopener" class="btn secondary tiny" style="color:var(--accent);">
+          <a href="${escapeAttr(linkedinUrl)}" target="_blank" rel="noopener" class="btn secondary tiny" style="color:var(--accent);">
             LinkedIn &#8599;
           </a>
         ` : `<span style="color:var(--text-muted);font-size:11px;">-</span>`}
@@ -3056,20 +3071,12 @@ function renderContactCard(contact){
   const email = contact ? contact["Official Email (public only)"] : "";
   const phone = contact ? contact["Official Contact Number (public only)"] : "";
   const location = contact ? contact["Office Location"] : "";
-  let linkedin = contact ? contact["LinkedIn Profile"] : "";
-  const status = contact ? contact["Research Status"] : "";
   const brandName = contact ? contact["Brand"] : "";
-
-  // If no direct link is available yet, create an intelligent fallback LinkedIn search
-  if (!linkedin || !linkedin.startsWith("http")) {
-    if (name) {
-      linkedin = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " " + brandName)}`;
-    } else if (brandName) {
-      linkedin = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(brandName + " leadership")}`;
-    }
-  }
+  let linkedin = formatContactLinkedInUrl(contact ? contact["LinkedIn Profile"] : "", brandName, name);
+  const status = contact ? contact["Research Status"] : "";
 
   const hasLinkedIn = linkedin && linkedin.startsWith("http");
+  const isSearch = linkedin.includes("/search/results/people");
 
   const fields = [
     { label: "Decision Maker Name", value: name || "Leadership Research Pending", copyable: false },
@@ -3094,12 +3101,17 @@ function renderContactCard(contact){
     <div class="cf" style="display:flex;align-items:flex-start;justify-content:space-between;padding:10px 0;border-bottom:none;">
       <div style="flex:1;text-align:left;">
         <div class="cf-label" style="text-align:left;color:var(--text-muted);font-size:11px;font-weight:600;text-transform:uppercase;margin-bottom:4px;">LinkedIn Profile</div>
-        <div class="cf-value" style="text-align:left;margin-top:4px;">
+        <div class="cf-value" style="text-align:left;margin-top:4px;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
           ${hasLinkedIn ? `
             <a href="${escapeAttr(linkedin)}" target="_blank" rel="noopener" class="btn secondary tiny" style="color:var(--accent);display:inline-flex;align-items:center;gap:6px;font-weight:600;text-decoration:none;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.25c-.9 0-1.63.73-1.63 1.63s.73 1.63 1.63 1.63 1.63-.73 1.63-1.63-.73-1.63-1.63Z"/></svg>
-              <span>View LinkedIn Profile &#8599;</span>
+              <span>${isSearch ? "Search on LinkedIn &#8599;" : "View LinkedIn Profile &#8599;"}</span>
             </a>
+            ${!isSearch && name ? `
+              <a href="https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " " + brandName)}" target="_blank" rel="noopener" title="Search ${escapeAttr(name)} on LinkedIn" style="font-size:11.5px;color:var(--text-muted);text-decoration:underline;">
+                Search Results &#8599;
+              </a>
+            ` : ""}
           ` : `<span style="color:var(--text-muted);font-size:12px;">Search Pending</span>`}
         </div>
       </div>

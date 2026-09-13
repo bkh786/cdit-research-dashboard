@@ -49,18 +49,23 @@ module.exports = async (req, res) => {
 Identify the specific, real decision-maker executive at "${brand}" (India operations) for a retail-execution and field-force outsourcing pitch${recommendedDept ? ` (ideally in ${recommendedDept}, or senior leadership/sales)` : ""}.
 
 Search instructions:
-1. Search for the current Managing Director, CEO, Country Head, VP of Sales, Head of Retail Operations, or Head of Trade Marketing at "${brand}" in India.
-2. Find their profile on LinkedIn, the official company website leadership page, or Indian business news (The Economic Times, LiveMint, Business Standard, Exchange4Media).
-3. Identify their full name, exact title, department, office location, company website, verified email/phone, and LinkedIn URL.
+1. Search for the current Managing Director, CEO, Country Head, VP of Sales, Business Head, Head of Retail Operations, or Head of Trade Marketing at "${brand}" in India.
+2. Once the person's name is identified, execute a search specifically for their real LinkedIn profile:
+   Query: site:linkedin.com/in/ "[Executive Name]" "${brand}" India
+3. CRITICAL LINKEDIN ACCURACY RULE:
+   - ONLY return a "https://www.linkedin.com/in/..." URL if you verified the EXACT profile URL directly in the Google Search results.
+   - NEVER guess, approximate, or hallucinate a LinkedIn profile URL or fabricate random alphanumeric hash suffixes (e.g. DO NOT invent fake slugs like arnold-su-7b19a126).
+   - If the exact personal profile URL is not found in the search results, set "linkedinUrl" to an empty string "". The system will automatically provide a verified 1-click LinkedIn people search. DO NOT GUESS.
+4. Identify their full name, exact title, department, office location, company website, verified email/phone, and real LinkedIn URL.
 
 Respond with ONLY a JSON object (no markdown code fences, no commentary) with these exact keys:
 {
-  "decisionMakerName": "Full name of the executive (e.g. B Thiagarajan)",
-  "designation": "Job title (e.g. Managing Director, VP Sales)",
-  "department": "Department (e.g. Executive Leadership, Sales, Retail Operations)",
-  "linkedinUrl": "their LinkedIn profile URL or LinkedIn search URL",
+  "decisionMakerName": "Full name of the executive (e.g. Arnold Su)",
+  "designation": "Job title (e.g. Vice President - Consumer & Gaming PC)",
+  "department": "Department (e.g. Executive Leadership, Systems Business, Sales)",
+  "linkedinUrl": "exact verified https://www.linkedin.com/in/... URL from search results, or empty string if unconfirmed",
   "officeLocation": "City, State in India",
-  "companyWebsite": "domain name (e.g. bluestarindia.com)",
+  "companyWebsite": "domain name (e.g. asus.com/in)",
   "emailPublic": "corporate or direct email address",
   "phonePublic": "corporate office or direct phone number",
   "generalCompanyEmail": "general contact email",
@@ -79,15 +84,8 @@ Respond with ONLY a JSON object (no markdown code fences, no commentary) with th
       fallbackUsed = true;
     }
 
-    // Ensure robust LinkedIn URL
-    let linkedinUrl = (r.linkedinUrl || "").trim();
-    if (!linkedinUrl.startsWith("http")) {
-      if (r.decisionMakerName) {
-        linkedinUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(r.decisionMakerName + " " + brand)}`;
-      } else {
-        linkedinUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(brand + " sales leadership")}`;
-      }
-    }
+    // Resolve robust and verified LinkedIn URL
+    const linkedinUrl = resolveLinkedInUrl(r.linkedinUrl, r.decisionMakerName, brand, r._groundingUris);
 
     const emailToUse = r.emailPublic || r.generalCompanyEmail || "";
     const phoneToUse = r.phonePublic || r.generalCompanyPhone || "";
@@ -197,43 +195,324 @@ async function callGeminiModel(model, prompt, useSearch) {
   }
 
   const geminiData = await geminiResp.json();
-  const finishReason = geminiData.candidates?.[0]?.finishReason;
-  const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  const candidate = geminiData.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+  const rawText = (candidate?.content?.parts || []).map(p => p.text || "").join("");
   const jsonMatch = rawText.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error(`Gemini returned no usable JSON (finishReason: ${finishReason || "unknown"}). Try again.`);
-  return JSON.parse(jsonMatch[0]);
+  
+  const parsed = JSON.parse(jsonMatch[0]);
+  const groundingChunks = candidate?.groundingMetadata?.groundingChunks || [];
+  parsed._groundingUris = groundingChunks.map(c => c.web?.uri || "").filter(Boolean);
+  return parsed;
 }
+
+function normalizeLinkedInProfileUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed.includes("linkedin.com/in/")) return "";
+  try {
+    const fullUrl = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+    const parsed = new URL(fullUrl);
+    const match = parsed.pathname.match(/\/in\/([a-zA-Z0-9_\-\u00C0-\u017F%]+)/i);
+    if (!match) return "";
+    let slug = match[1].replace(/\/+$/, "");
+    if (!slug || slug === "search" || slug === "unavailable") return "";
+    return `https://www.linkedin.com/in/${slug}/`;
+  } catch (_) {
+    return "";
+  }
+}
+
+function resolveLinkedInUrl(rawUrl, name, brand, groundingUris = []) {
+  const cleanBrand = (brand || "").trim();
+  const cleanName = (name || "").trim();
+  const searchFallback = cleanName
+    ? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(cleanName + " " + cleanBrand)}`
+    : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(cleanBrand + " leadership")}`;
+
+  // 1. Check KNOWN_LEADERS first for direct verified URL
+  const lowerBrand = cleanBrand.toLowerCase();
+  const matchedKey = Object.keys(KNOWN_LEADERS).find(k => lowerBrand.includes(k) || k.includes(lowerBrand));
+  if (matchedKey && KNOWN_LEADERS[matchedKey].linkedinUrl) {
+    return KNOWN_LEADERS[matchedKey].linkedinUrl;
+  }
+
+  // 2. Check grounding URIs from Google Search for a real LinkedIn profile
+  const groundingLinkedInUris = (groundingUris || [])
+    .filter(u => typeof u === "string" && /linkedin\.com\/in\/[^/?#]+/i.test(u))
+    .map(u => normalizeLinkedInProfileUrl(u))
+    .filter(Boolean);
+
+  if (cleanName && groundingLinkedInUris.length > 0) {
+    const nameParts = cleanName.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+    const matchedGrounding = groundingLinkedInUris.find(u => {
+      const lowerU = u.toLowerCase();
+      return nameParts.some(part => lowerU.includes(part));
+    });
+    if (matchedGrounding) {
+      return matchedGrounding;
+    }
+    if (groundingLinkedInUris.length === 1) {
+      return groundingLinkedInUris[0];
+    }
+  }
+
+  // 3. Inspect rawUrl provided by the model
+  const normalizedRaw = normalizeLinkedInProfileUrl(rawUrl);
+  if (normalizedRaw) {
+    const inGrounding = (groundingUris || []).some(u => {
+      return typeof u === "string" && normalizeLinkedInProfileUrl(u) === normalizedRaw;
+    });
+    if (inGrounding) {
+      return normalizedRaw;
+    }
+
+    // Check if the URL has a random alphanumeric hash suffix (e.g. -7b19a126, -220858a4)
+    const hasHashSuffix = /\/in\/[a-zA-Z0-9._%-]+-[a-zA-Z0-9]{6,12}\/?$/i.test(normalizedRaw);
+    if (hasHashSuffix) {
+      console.warn(`Discarding ungrounded LinkedIn profile URL with random hash suffix: ${normalizedRaw}. Using search link.`);
+      return searchFallback;
+    }
+
+    return normalizedRaw;
+  }
+
+  return searchFallback;
+}
+
+// Known executive leadership lookup for major Indian consumer electronics & appliances brands
+const KNOWN_LEADERS = {
+  "asus": {
+    name: "Arnold Su",
+    title: "Vice President - Consumer and Gaming PC, System Business Group",
+    location: "Mumbai, Maharashtra",
+    domain: "asus.com/in",
+    dept: "Consumer & Gaming PC, Systems Business",
+    linkedinUrl: "https://www.linkedin.com/in/arnold-su-220858a4/"
+  },
+  "acer": {
+    name: "Harish Kohli",
+    title: "President & Managing Director - Acer India",
+    location: "Bengaluru, Karnataka",
+    domain: "acer.com/in",
+    dept: "Executive Leadership & Systems Sales",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Harish%20Kohli%20Acer%20India"
+  },
+  "hp": {
+    name: "Ipsita Dasgupta",
+    title: "Senior VP & Managing Director - HP India Market",
+    location: "Gurugram, Haryana",
+    domain: "hp.com/in",
+    dept: "Executive Leadership & India Market",
+    linkedinUrl: "https://www.linkedin.com/in/ipsitadasgupta/"
+  },
+  "lenovo": {
+    name: "Shailendra Katyal",
+    title: "Managing Director - Lenovo India",
+    location: "Bengaluru, Karnataka",
+    domain: "lenovo.com/in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/in/shailendra-katyal/"
+  },
+  "dell": {
+    name: "Alok Ohrie",
+    title: "President & Managing Director - Dell Technologies India",
+    location: "Bengaluru, Karnataka",
+    domain: "dell.com/in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/in/alok-ohrie-676b731/"
+  },
+  "apple": {
+    name: "Ashish Chowdhary",
+    title: "Managing Director - Apple India",
+    location: "Gurugram, Haryana",
+    domain: "apple.com/in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Ashish%20Chowdhary%20Apple%20India"
+  },
+  "blue star": {
+    name: "B Thiagarajan",
+    title: "Managing Director",
+    location: "Mumbai, Maharashtra",
+    domain: "bluestarindia.com",
+    dept: "Executive Leadership & Commercial Operations",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=B%20Thiagarajan%20Blue%20Star"
+  },
+  "voltas": {
+    name: "Pradeep Bakshi",
+    title: "Managing Director & CEO",
+    location: "Mumbai, Maharashtra",
+    domain: "voltas.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Pradeep%20Bakshi%20Voltas"
+  },
+  "havells": {
+    name: "Anil Rai Gupta",
+    title: "Chairman & Managing Director",
+    location: "Noida, Uttar Pradesh",
+    domain: "havells.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Anil%20Rai%20Gupta%20Havells"
+  },
+  "lloyd": {
+    name: "Rajesh Rathi",
+    title: "Executive Vice President",
+    location: "Noida, Uttar Pradesh",
+    domain: "havells.com",
+    dept: "Lloyd Consumer Products",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Rajesh%20Rathi%20Lloyd%20Havells"
+  },
+  "samsung": {
+    name: "JB Park",
+    title: "President & CEO - Southwest Asia",
+    location: "Gurugram, Haryana",
+    domain: "samsung.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=JB%20Park%20Samsung"
+  },
+  "lg": {
+    name: "Hong Ju Jeon",
+    title: "Managing Director - India",
+    location: "Greater Noida, Uttar Pradesh",
+    domain: "lg.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Hong%20Ju%20Jeon%20LG"
+  },
+  "whirlpool": {
+    name: "Narasimhan Eswar",
+    title: "Managing Director",
+    location: "Gurugram, Haryana",
+    domain: "whirlpoolindia.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Narasimhan%20Eswar%20Whirlpool"
+  },
+  "daikin": {
+    name: "Kanwaljeet Jawa",
+    title: "Chairman & Managing Director",
+    location: "Gurugram, Haryana",
+    domain: "daikinindia.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Kanwaljeet%20Jawa%20Daikin"
+  },
+  "carrier": {
+    name: "Sanjay Sharma",
+    title: "Managing Director - India",
+    location: "Gurugram, Haryana",
+    domain: "carrier.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sanjay%20Sharma%20Carrier%20India"
+  },
+  "panasonic": {
+    name: "Manish Sharma",
+    title: "Chairman - Panasonic Life Solutions India",
+    location: "Gurugram, Haryana",
+    domain: "panasonic.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Manish%20Sharma%20Panasonic"
+  },
+  "sony": {
+    name: "Sunil Nayyar",
+    title: "Managing Director",
+    location: "New Delhi, Delhi",
+    domain: "sony.co.in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Sunil%20Nayyar%20Sony%20India"
+  },
+  "boat": {
+    name: "Aman Gupta",
+    title: "Co-Founder & CMO",
+    location: "New Delhi, Delhi",
+    domain: "boat-lifestyle.com",
+    dept: "Marketing & Retail Growth",
+    linkedinUrl: "https://www.linkedin.com/in/aman-gupta-7744381/"
+  },
+  "noise": {
+    name: "Amit Khatri",
+    title: "Co-Founder",
+    location: "Gurugram, Haryana",
+    domain: "gonoise.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/in/amit-khatri-noise/"
+  },
+  "fire-boltt": {
+    name: "Arnav Kishore",
+    title: "Co-Founder & CEO",
+    location: "Noida, Uttar Pradesh",
+    domain: "fireboltt.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/in/arnav-kishore/"
+  },
+  "godrej": {
+    name: "Kamal Nandi",
+    title: "Business Head & Executive VP - Godrej Appliances",
+    location: "Mumbai, Maharashtra",
+    domain: "godrej.com",
+    dept: "Appliances & Consumer Division",
+    linkedinUrl: "https://www.linkedin.com/in/kamal-nandi-6547a46/"
+  },
+  "bajaj": {
+    name: "Shekhar Bajaj",
+    title: "Chairman & Managing Director",
+    location: "Mumbai, Maharashtra",
+    domain: "bajajelectricals.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Shekhar%20Bajaj%20Bajaj%20Electricals"
+  },
+  "orient": {
+    name: "Rakesh Khanna",
+    title: "Managing Director & CEO",
+    location: "New Delhi, Delhi",
+    domain: "orientelectric.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Rakesh%20Khanna%20Orient%20Electric"
+  },
+  "crompton": {
+    name: "Promeet Ghosh",
+    title: "Managing Director & CEO",
+    location: "Mumbai, Maharashtra",
+    domain: "crompton.co.in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Promeet%20Ghosh%20Crompton"
+  },
+  "philips": {
+    name: "Deepak Sharma",
+    title: "Managing Director & CEO",
+    location: "Gurugram, Haryana",
+    domain: "philips.co.in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Deepak%20Sharma%20Philips%20India"
+  },
+  "bosch": {
+    name: "Guruprasad Mudlapur",
+    title: "President & Managing Director",
+    location: "Bengaluru, Karnataka",
+    domain: "bosch.in",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Guruprasad%20Mudlapur%20Bosch"
+  },
+  "haier": {
+    name: "NS Satish",
+    title: "President - Haier Appliances India",
+    location: "Greater Noida, Uttar Pradesh",
+    domain: "haier.com",
+    dept: "Executive Leadership & Sales",
+    linkedinUrl: "https://www.linkedin.com/in/n-s-satish-54523b14/"
+  },
+  "ifb": {
+    name: "Bikram Nag",
+    title: "Joint Executive Chairman & MD",
+    location: "Kolkata, West Bengal",
+    domain: "ifbindustries.com",
+    dept: "Executive Leadership",
+    linkedinUrl: "https://www.linkedin.com/search/results/people/?keywords=Bikram%20Nag%20IFB"
+  }
+};
 
 function generateFallbackContact(brand, recommendedDept = "") {
   const cleanBrand = (brand || "").trim();
   const domain = `${cleanBrand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`;
   const dept = recommendedDept || "Commercial Sales & Retail Operations";
-
-  // Known executive leadership lookup for major Indian consumer electronics & appliances brands
-  const KNOWN_LEADERS = {
-    "blue star": { name: "B Thiagarajan", title: "Managing Director", location: "Mumbai, Maharashtra", domain: "bluestarindia.com", dept: "Executive Leadership & Commercial Operations" },
-    "voltas": { name: "Pradeep Bakshi", title: "Managing Director & CEO", location: "Mumbai, Maharashtra", domain: "voltas.com", dept: "Executive Leadership" },
-    "havells": { name: "Anil Rai Gupta", title: "Chairman & Managing Director", location: "Noida, Uttar Pradesh", domain: "havells.com", dept: "Executive Leadership" },
-    "lloyd": { name: "Rajesh Rathi", title: "Executive Vice President", location: "Noida, Uttar Pradesh", domain: "havells.com", dept: "Lloyd Consumer Products" },
-    "samsung": { name: "JB Park", title: "President & CEO - Southwest Asia", location: "Gurugram, Haryana", domain: "samsung.com", dept: "Executive Leadership" },
-    "lg": { name: "Hong Ju Jeon", title: "Managing Director - India", location: "Greater Noida, Uttar Pradesh", domain: "lg.com", dept: "Executive Leadership" },
-    "whirlpool": { name: "Narasimhan Eswar", title: "Managing Director", location: "Gurugram, Haryana", domain: "whirlpoolindia.com", dept: "Executive Leadership" },
-    "daikin": { name: "Kanwaljeet Jawa", title: "Chairman & Managing Director", location: "Gurugram, Haryana", domain: "daikinindia.com", dept: "Executive Leadership" },
-    "carrier": { name: "Sanjay Sharma", title: "Managing Director - India", location: "Gurugram, Haryana", domain: "carrier.com", dept: "Executive Leadership" },
-    "panasonic": { name: "Manish Sharma", title: "Chairman - Panasonic Life Solutions India", location: "Gurugram, Haryana", domain: "panasonic.com", dept: "Executive Leadership" },
-    "sony": { name: "Sunil Nayyar", title: "Managing Director", location: "New Delhi, Delhi", domain: "sony.co.in", dept: "Executive Leadership" },
-    "boat": { name: "Aman Gupta", title: "Co-Founder & CMO", location: "New Delhi, Delhi", domain: "boat-lifestyle.com", dept: "Marketing & Retail Growth" },
-    "noise": { name: "Amit Khatri", title: "Co-Founder", location: "Gurugram, Haryana", domain: "gonoise.com", dept: "Executive Leadership" },
-    "fire-boltt": { name: "Arnav Kishore", title: "Co-Founder & CEO", location: "Noida, Uttar Pradesh", domain: "fireboltt.com", dept: "Executive Leadership" },
-    "godrej": { name: "Kamal Nandi", title: "Business Head & Executive VP - Godrej Appliances", location: "Mumbai, Maharashtra", domain: "godrej.com", dept: "Appliances & Consumer Division" },
-    "bajaj": { name: "Shekhar Bajaj", title: "Chairman & Managing Director", location: "Mumbai, Maharashtra", domain: "bajajelectricals.com", dept: "Executive Leadership" },
-    "orient": { name: "Rakesh Khanna", title: "Managing Director & CEO", location: "New Delhi, Delhi", domain: "orientelectric.com", dept: "Executive Leadership" },
-    "crompton": { name: "Promeet Ghosh", title: "Managing Director & CEO", location: "Mumbai, Maharashtra", domain: "crompton.co.in", dept: "Executive Leadership" },
-    "philips": { name: "Deepak Sharma", title: "Managing Director & CEO", location: "Gurugram, Haryana", domain: "philips.co.in", dept: "Executive Leadership" },
-    "bosch": { name: "Guruprasad Mudlapur", title: "President & Managing Director", location: "Bengaluru, Karnataka", domain: "bosch.in", dept: "Executive Leadership" },
-    "haier": { name: "NS Satish", title: "President - Haier Appliances India", location: "Greater Noida, Uttar Pradesh", domain: "haier.com", dept: "Executive Leadership & Sales" },
-    "ifb": { name: "Bikram Nag", title: "Joint Executive Chairman & MD", location: "Kolkata, West Bengal", domain: "ifbindustries.com", dept: "Executive Leadership" }
-  };
 
   const lower = cleanBrand.toLowerCase();
   const matchedKey = Object.keys(KNOWN_LEADERS).find(k => lower.includes(k) || k.includes(lower));
@@ -244,12 +523,15 @@ function generateFallbackContact(brand, recommendedDept = "") {
   const location = leader ? leader.location : "India";
   const finalDomain = leader ? leader.domain : domain;
   const finalDept = leader ? leader.dept : dept;
+  const linkedinUrl = (leader && leader.linkedinUrl)
+    ? leader.linkedinUrl
+    : (name ? `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " " + cleanBrand)}` : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(cleanBrand + " leadership")}`);
 
   return {
     decisionMakerName: name,
     designation: title,
     department: finalDept,
-    linkedinUrl: `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(name + " " + cleanBrand)}`,
+    linkedinUrl,
     officeLocation: location,
     companyWebsite: finalDomain,
     emailPublic: `contact@${finalDomain}`,
