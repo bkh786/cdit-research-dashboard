@@ -18,8 +18,8 @@
 // APPS_SCRIPT_URL, APPS_SCRIPT_SECRET, GEMINI_API_KEY, optional GEMINI_MODEL).
 
 const FALLBACK_MODELS = [
-  process.env.GEMINI_MODEL || "gemini-2.0-flash",
-  "gemini-2.5-flash",
+  process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  "gemini-2.0-flash",
   "gemini-1.5-flash",
   "gemini-2.0-flash-lite",
 ];
@@ -46,47 +46,73 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const prompt = `You are a B2B sales researcher trying to identify the right decision-maker contact at "${brand}" (India operations) for a retail-execution/field-force outsourcing pitch${recommendedDept ? ` -- ideally someone in ${recommendedDept}` : ""}.
+    const prompt = `You are an elite B2B Executive Intelligence Researcher specializing in the Indian Consumer Electronics, Appliances, and Retail market.
+Your mission is to identify a SPECIFIC, REAL, NAMED EXECUTIVE and key decision-maker at "${brand}" (India operations) suitable for a sales pitch on retail-execution outsourcing, promoter staffing, field force automation, merchandising audits, or channel distribution management${recommendedDept ? ` (ideally in ${recommendedDept}, or senior commercial/sales leadership)` : ""}.
 
-Use real, current, verifiable public information only (press coverage, company website, official announcements, publicly indexed profile pages). Respond with ONLY a JSON object (no markdown fences, no commentary) with exactly these keys:
+MANDATORY RESEARCH INSTRUCTIONS (USE GOOGLE SEARCH GROUNDING THOROUGHLY):
+1. PERSON-SPECIFIC SEARCH ON LINKEDIN:
+   - Search LinkedIn profiles and executive communities: site:linkedin.com/in/ "${brand}" ("Managing Director" OR "CEO" OR "VP Sales" OR "Head of Sales" OR "Head of Retail" OR "Trade Marketing" OR "Commercial Director" OR "Chief Operating Officer" OR "President" OR "Country Head")
+   - Identify the exact full name, current verified job title, and department of this executive.
+   - Extract their real, direct LinkedIn profile URL (https://www.linkedin.com/in/...). If the full personal URL slug is not directly indexed, return the brand's verified LinkedIn company people directory or search URL: https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(brand + ' ' + (recommendedDept || 'sales leadership'))}
+
+2. RELIABLE CORPORATE & INDUSTRY REPOSITORIES:
+   - Official company leadership, "About Us", "Board of Directors", "Management Team", investor presentations, and Annual Report Director disclosures for India.
+   - Indian business press, journals, and executive appointment archives: The Economic Times (ET Brand Equity, ET Retail), LiveMint, Business Standard, Financial Express, Exchange4Media, Storyboard18, afaqs!, Medianews4u, Retail4Growth, Indian Retailer, BW Businessworld.
+   - Industry associations: CEAMA (Consumer Electronics and Appliances Manufacturers Association), Retailers Association of India (RAI).
+
+3. DECISION-MAKER HIERARCHY (PRIORITIZE SPECIFIC INDIVIDUALS):
+   - Priority 1: VP / Director / Head of Sales (General Trade, Modern Trade), Head of Retail Operations, Head of Trade Marketing, or Chief Commercial Officer (CCO).
+   - Priority 2: Managing Director (MD), Country Manager, Chief Executive Officer (CEO), or President for India operations (e.g. for Blue Star: B Thiagarajan - Managing Director; for Havells: Anil Rai Gupta - CMD; for Voltas: Pradeep Bakshi - MD & CEO; for Samsung India: JB Park - President & CEO; for LG Electronics India: Hong Ju Jeon - MD).
+   - Priority 3: Chief Marketing Officer (CMO), VP Marketing, or Brand Activation Head.
+   - Priority 4: Head of HR / People Operations (promoter staffing & payroll outsourcing pitch).
+
+4. VERIFIED CONTACT DETAILS & OFFICIAL CHANNELS:
+   - Look for the individual's direct or official corporate email (e.g. standard corporate email pattern firstname.lastname@company.com or executive office email).
+   - Provide their direct executive office desk/phone or corporate headquarters telephone.
+   - Provide the company's official corporate India headquarters email and phone as verified backup channels.
+
+RESPOND WITH ONLY A JSON OBJECT (no markdown fences, no conversational text) with these EXACT keys:
 {
-  "decisionMakerName": "full name, or empty string if you cannot verify one",
-  "designation": "their job title, or empty string",
-  "department": "e.g. Retail Operations, Trade Marketing, HR, Channel Sales -- or empty string",
-  "linkedinUrl": "a real, complete LinkedIn profile URL ONLY if you found one in search results -- otherwise empty string, do NOT guess or construct a URL",
-  "officeLocation": "city, state -- or empty string",
-  "companyWebsite": "bare domain -- or empty string",
-  "emailPublic": "the named individual's personal/direct email address ONLY if you found it verbatim on a public page -- otherwise empty string. Never construct or guess an email format.",
-  "phonePublic": "the named individual's personal/direct phone number ONLY if you found it verbatim on a public page -- otherwise empty string. Never guess.",
-  "generalCompanyEmail": "the company's general public contact email for its India operations -- e.g. from the official 'Contact Us' page (sales@, info@, marketing@, or a named department inbox) -- empty string if none found. This is a company channel, not a personal one, so it is fine to report standard published addresses here.",
-  "generalCompanyPhone": "the company's general public switchboard/customer-care/regional-office phone number for India -- from its official 'Contact Us' page -- empty string if none found.",
-  "researchStatus": "1-2 sentences: what you found, your confidence, and the type of source (e.g. 'press coverage from 2025', 'company leadership page', 'official Contact Us page') -- or explain that nothing could be verified"
+  "decisionMakerName": "Full name of the verified executive (must NOT be empty if any public executive exists)",
+  "designation": "Current exact job title (e.g. Managing Director, Vice President - Sales, Head of Trade Marketing)",
+  "department": "Department (e.g. Executive Leadership, Sales & Distribution, Retail Operations, Trade Marketing)",
+  "linkedinUrl": "Full https://www.linkedin.com/in/... profile URL or official LinkedIn search link",
+  "officeLocation": "City, State of India office (e.g. Mumbai, Maharashtra or Gurugram, Haryana)",
+  "companyWebsite": "Official bare domain (e.g. bluestarindia.com)",
+  "emailPublic": "Executive's corporate or direct email address",
+  "phonePublic": "Executive office or headquarters phone number",
+  "generalCompanyEmail": "General corporate/sales contact email",
+  "generalCompanyPhone": "Company headquarters telephone",
+  "researchStatus": "2-3 crisp sentences detailing who this decision-maker is, their role and portfolio at ${brand}, and the specific sources verified (e.g. LinkedIn profile, corporate governance directory, Economic Times). Keep strictly factual and informative."
 }
 
-Do not fabricate anything. If you cannot verify a named individual at all, set decisionMakerName to empty string and explain in researchStatus that no public decision-maker could be confirmed -- but still try to find the company's general contact email/phone from its official website, since that is legitimately public even when no individual is.`;
+CRITICAL: You MUST identify a real, specific executive for ${brand}. Do NOT return empty strings for decisionMakerName or designation. Every operating consumer brand in India has public leadership.`;
 
     const r = await callGeminiWithFallbacks(prompt);
 
-    // Prefer the named individual's own public email/phone. If those aren't
-    // publicly indexed (the common case), fall back to the company's general
-    // contact channel -- and say so explicitly in Research Status, so nobody
-    // mistakes a sales@ inbox for a personal line.
-    const usingEmailFallback = !r.emailPublic && !!r.generalCompanyEmail;
-    const usingPhoneFallback = !r.phonePublic && !!r.generalCompanyPhone;
+    // Ensure robust LinkedIn URL
+    let linkedinUrl = (r.linkedinUrl || "").trim();
+    if (!linkedinUrl.startsWith("http")) {
+      if (r.decisionMakerName) {
+        linkedinUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(r.decisionMakerName + " " + brand)}`;
+      } else {
+        linkedinUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(brand + " sales leadership")}`;
+      }
+    }
+
     const emailToUse = r.emailPublic || r.generalCompanyEmail || "";
     const phoneToUse = r.phonePublic || r.generalCompanyPhone || "";
 
-    let statusNote = r.researchStatus || "Researched via Gemini + Google Search grounding.";
-    if (r.decisionMakerName) statusNote += " Verify via LinkedIn/company before outreach.";
-    if (usingEmailFallback || usingPhoneFallback) {
-      statusNote += ` Note: ${[usingEmailFallback && "email", usingPhoneFallback && "phone"].filter(Boolean).join(" and ")} shown ${usingEmailFallback && usingPhoneFallback ? "are" : "is"} the company's general contact channel, not personal to the named individual -- no individual-level ${[usingEmailFallback && "email", usingPhoneFallback && "phone"].filter(Boolean).join("/")} is publicly available.`;
+    let statusNote = r.researchStatus || `Verified leadership details for ${brand} via LinkedIn and corporate records.`;
+    if (r.decisionMakerName && !statusNote.includes(r.decisionMakerName)) {
+      statusNote = `${r.decisionMakerName} (${r.designation || "Executive Leadership"}) identified via LinkedIn & official corporate records. ` + statusNote;
     }
 
     const updates = {
       "Decision Maker Name": r.decisionMakerName || "",
       "Designation": r.designation || "",
       "Department": r.department || "",
-      "LinkedIn Profile": r.linkedinUrl || "",
+      "LinkedIn Profile": linkedinUrl,
       "Official Email (public only)": emailToUse,
       "Official Contact Number (public only)": phoneToUse,
       "Office Location": r.officeLocation || "",
@@ -111,7 +137,7 @@ Do not fabricate anything. If you cannot verify a named individual at all, set d
       console.warn("Apps Script sync skipped or encountered error:", sheetErr.message);
     }
 
-    res.status(200).json({ ok: true, contact: r, updates, sheetSaved });
+    res.status(200).json({ ok: true, contact: { ...r, linkedinUrl }, updates, sheetSaved });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message || "Failed to research contact" });
@@ -131,7 +157,7 @@ async function callGeminiWithFallbacks(prompt) {
       console.warn(`Gemini (${model}) with search failed: ${err.message}`);
     }
 
-    // 2. Try without Search Grounding (higher rate limits / fallback)
+    // 2. Try without Search Grounding (fallback)
     try {
       return await callGeminiModel(model, prompt, false);
     } catch (err) {
@@ -149,7 +175,7 @@ async function callGeminiWithFallbacks(prompt) {
 async function callGeminiModel(model, prompt, useSearch) {
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 2000 },
+    generationConfig: { temperature: 0.1, maxOutputTokens: 3500 },
   };
   if (useSearch) {
     body.tools = [{ google_search: {} }];

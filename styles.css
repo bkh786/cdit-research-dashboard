@@ -1254,15 +1254,15 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
 .contact-card .cf {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
   gap: 10px;
 }
 .contact-card .cf:last-child { border-bottom: none; }
-.contact-card .cf-label { color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
-.contact-card .cf-value { text-align: right; word-break: break-word; font-weight: 500; }
+.contact-card .cf-label { color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; text-align: left; }
+.contact-card .cf-value { text-align: left !important; word-break: break-word; font-weight: 500; line-height: 1.55; color: var(--text-primary); }
 .copy-btn {
   background: transparent;
   border: 1px solid var(--border);
