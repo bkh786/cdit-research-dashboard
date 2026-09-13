@@ -17,6 +17,7 @@ const TABS = [
   "Pipeline",
   "Email Drafts",
   "Competitor Watch",
+  "Email Settings",
 ];
 
 module.exports = async (req, res) => {
@@ -32,12 +33,28 @@ module.exports = async (req, res) => {
   try {
     const sheetId = process.env.GOOGLE_SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
+
+    // Resilient tab query: discover available sheet titles first or fall back gracefully
+    let availableTabs = [...TABS];
+    try {
+      const metaResp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title&key=${apiKey}`);
+      if (metaResp.ok) {
+        const metaData = await metaResp.json();
+        const existingTitles = (metaData.sheets || []).map(s => s.properties?.title || "");
+        availableTabs = TABS.map(tab => {
+          const match = existingTitles.find(t => t.trim().toLowerCase() === tab.trim().toLowerCase());
+          return match || null;
+        }).filter(Boolean);
+      }
+    } catch (_) {
+      // If metadata lookup fails, proceed with default TABS
+    }
+
+    if (!availableTabs.length) availableTabs = [...TABS];
+
     // Sheet names containing spaces must be single-quoted in A1 notation,
     // e.g. 'Brands Master', otherwise the Sheets API fails to parse the range.
-    const rangesQuery = TABS.map(t => `ranges=${encodeURIComponent(`'${t}'`)}`).join("&");
-    // FORMATTED_VALUE (not UNFORMATTED_VALUE) so date cells come back as the
-    // readable text shown in the sheet (e.g. "2026-08-07") instead of Sheets'
-    // internal date serial number (e.g. 46241).
+    const rangesQuery = availableTabs.map(t => `ranges=${encodeURIComponent(`'${t}'`)}`).join("&");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchGet?${rangesQuery}&valueRenderOption=FORMATTED_VALUE&key=${apiKey}`;
 
     const response = await fetch(url);
@@ -49,10 +66,16 @@ module.exports = async (req, res) => {
     const valueRanges = data.valueRanges || [];
 
     const result = {};
+    // Ensure all standard TABS exist in result
+    TABS.forEach(t => { result[t] = []; });
+
     valueRanges.forEach((vr, i) => {
+      const tabName = availableTabs[i];
+      // Normalize tab name back to our standard canonical key in TABS
+      const canonicalKey = TABS.find(t => t.trim().toLowerCase() === (tabName || "").trim().toLowerCase()) || tabName;
       const rows = vr.values || [];
       const headers = rows[0] || [];
-      result[TABS[i]] = rows.slice(1).map(row =>
+      result[canonicalKey] = rows.slice(1).map(row =>
         Object.fromEntries(headers.map((h, idx) => [h, row[idx] ?? ""]))
       );
     });

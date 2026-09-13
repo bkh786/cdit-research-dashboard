@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Consumer Electronics Brand’s Research — Sales Intelligence CRM</title>
+<title>Brand Research and Insights — Sales Intelligence CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,9 +16,9 @@
   <aside class="sidebar" id="appSidebar" style="display:none;">
     <div class="sidebar-header">
       <a href="javascript:void(0)" class="brand-logo-wrap" onclick="window.location.reload()" title="Click to reload & refresh dashboard">
-        <div class="brand-icon">CE</div>
+        <div class="brand-icon">BRI</div>
         <div class="brand-title-group">
-          <span class="brand-main-title">CE Research CRM</span>
+          <span class="brand-main-title">Brand Research &amp; Insights</span>
           <span class="brand-sub-title">Intelligence Hub</span>
         </div>
       </a>
@@ -75,11 +75,22 @@
 
       <button class="nav-item-btn" data-tab="competitors" data-title="Competitor Watch">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"></path>
           <circle cx="12" cy="12" r="3"></circle>
         </svg>
         <span class="nav-item-label">Competitor Watch</span>
         <span class="nav-badge" id="badgeCompetitors">0</span>
+      </button>
+
+      <div class="nav-section-label" style="margin-top:14px;">Settings &amp; Outreach</div>
+
+      <button class="nav-item-btn" data-tab="email-settings" data-title="Email Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+          <polyline points="22,6 12,13 2,6"></polyline>
+        </svg>
+        <span class="nav-item-label">Email Settings</span>
+        <span class="nav-badge" id="badgeEmailSettings" style="display:none;"></span>
       </button>
     </div>
 
@@ -97,7 +108,7 @@
       <div class="header-left">
         <div class="header-title-container">
           <h1 class="page-title">
-            <span>Consumer Electronics Brand’s Research</span>
+            <span>Brand Research and Insights</span>
             <span class="sync-badge" id="syncBadge" title="Google Sheets live data sync status">
               <span class="status-dot locked" id="syncDot"></span>
               <span id="syncStatus">Locked</span>
@@ -168,7 +179,7 @@
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             </div>
             <h2>Protected CRM Dashboard</h2>
-            <p>Enter the dashboard access password to unlock Consumer Electronics research data.</p>
+            <p>Enter the dashboard access password to unlock Brand Research and Insights data.</p>
             <input type="password" id="pwInput" placeholder="Enter password..." style="width:100%;margin-bottom:12px;" />
             <button class="btn" id="unlockBtn" style="width:100%;">
               <span>Unlock Dashboard</span>
@@ -506,7 +517,7 @@ function buildShareData(type, target){
         ` : ""}
 
         <div style="padding-top:14px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;text-align:center;">
-          Shared via Consumer Electronics Brand Research Dashboard · <a href="${escapeAttr(directLink)}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">Open in Dashboard</a>
+          Shared via Brand Research and Insights Dashboard · <a href="${escapeAttr(directLink)}" target="_blank" style="color:#4f46e5;font-weight:600;text-decoration:underline;">Open in Dashboard</a>
         </div>
       </div>
     `;
@@ -773,7 +784,7 @@ function openAddBrandModal(){
   overlay.id = "addBrandOverlay";
   overlay.innerHTML = `
     <div class="modal">
-      <h3>Add New Consumer Electronics Brand</h3>
+      <h3>Add New Brand to Research</h3>
       <div class="field"><label>Brand name</label><input id="fBrand" type="text" placeholder="e.g. Fire-Boltt, Boat, Noise"></div>
       <div class="field"><label>Sector</label><input id="fSector" type="text" placeholder="e.g. Consumer Electronics"></div>
       <div class="field"><label>Segment</label><input id="fSegment" type="text" placeholder="e.g. Wearables, Audio, Smart Home"></div>
@@ -2822,6 +2833,437 @@ function renderEmails(){
   wireSearchForTab("emails");
 }
 
+/* ==========================================================================
+   EMAIL SETTINGS & OUTREACH PROFILE
+   ========================================================================== */
+function getEmailSettings(){
+  const defaults = {
+    senderName: "Bikash Roy",
+    senderDesignation: "Group Program Manager",
+    senderCompany: "Channelplay Limited",
+    senderEmail: "bikash.roy1@channelplay.in",
+    defaultCc: "bikash.roy1@channelplay.in",
+    senderPhone: "+91 8509950431",
+    companyWebsite: "https://www.channelplay.in",
+    signature: ""
+  };
+  defaults.signature = `Warm regards,\n\n${defaults.senderName}\n${defaults.senderDesignation} | ${defaults.senderCompany}\nEmail: ${defaults.senderEmail} | Phone: ${defaults.senderPhone}\nWeb: ${defaults.companyWebsite}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
+
+  let localSettings = {};
+  try {
+    const raw = localStorage.getItem("ce_dashboard_email_settings");
+    if (raw) localSettings = JSON.parse(raw);
+  } catch (e) {}
+
+  const sheetSettings = workbookData["Email Settings"] || [];
+  const fromSheet = {};
+
+  if (Array.isArray(sheetSettings) && sheetSettings.length > 0) {
+    sheetSettings.forEach(r => {
+      const k = (r["Setting"] || r["Key"] || r["Field"] || r["Name"] || "").toLowerCase().trim();
+      const v = (r["Value"] !== undefined && r["Value"] !== null) ? String(r["Value"]).trim() : (r["Setting Value"] || "");
+      if (!k || !v) return;
+      if (k.includes("sender name") || k === "name") fromSheet.senderName = v;
+      else if (k.includes("designation") || k.includes("role") || k.includes("title")) fromSheet.senderDesignation = v;
+      else if (k.includes("company")) fromSheet.senderCompany = v;
+      else if (k.includes("sender email") || k === "email") fromSheet.senderEmail = v;
+      else if (k.includes("default cc") || k === "cc") fromSheet.defaultCc = v;
+      else if (k.includes("phone") || k.includes("mobile") || k.includes("contact")) fromSheet.senderPhone = v;
+      else if (k.includes("website") || k.includes("web") || k.includes("url")) fromSheet.companyWebsite = v;
+      else if (k.includes("signature")) fromSheet.signature = v;
+    });
+
+    if (Object.keys(fromSheet).length === 0 && sheetSettings[0]) {
+      const first = sheetSettings[0];
+      Object.keys(first).forEach(col => {
+        const k = col.toLowerCase().trim();
+        const v = String(first[col] || "").trim();
+        if (!v) return;
+        if (k.includes("name") && !k.includes("company")) fromSheet.senderName = v;
+        else if (k.includes("designation") || k.includes("role")) fromSheet.senderDesignation = v;
+        else if (k.includes("company")) fromSheet.senderCompany = v;
+        else if (k.includes("email") && !k.includes("cc")) fromSheet.senderEmail = v;
+        else if (k.includes("cc")) fromSheet.defaultCc = v;
+        else if (k.includes("phone")) fromSheet.senderPhone = v;
+        else if (k.includes("website") || k.includes("web")) fromSheet.companyWebsite = v;
+        else if (k.includes("signature")) fromSheet.signature = v;
+      });
+    }
+  }
+
+  const merged = { ...defaults, ...localSettings, ...fromSheet };
+  if (!merged.signature || !merged.signature.trim()) {
+    merged.signature = `Warm regards,\n\n${merged.senderName}\n${merged.senderDesignation} | ${merged.senderCompany}\nEmail: ${merged.senderEmail} | Phone: ${merged.senderPhone}\nWeb: ${merged.companyWebsite || "https://www.channelplay.in"}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
+  }
+  return merged;
+}
+
+async function saveEmailSettings(newSettings, btnEl){
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Saving...";
+  }
+
+  try {
+    localStorage.setItem("ce_dashboard_email_settings", JSON.stringify(newSettings));
+  } catch (e) {}
+
+  const rowsToSave = [
+    { "Setting": "Sender Name", "Value": newSettings.senderName, "Notes": "Outreach email sender display name" },
+    { "Setting": "Sender Designation", "Value": newSettings.senderDesignation, "Notes": "Job title / role" },
+    { "Setting": "Company Name", "Value": newSettings.senderCompany, "Notes": "Company organization" },
+    { "Setting": "Sender Email", "Value": newSettings.senderEmail, "Notes": "Official sender email" },
+    { "Setting": "Default CC", "Value": newSettings.defaultCc, "Notes": "Mandatory CC for outreach" },
+    { "Setting": "Phone Number", "Value": newSettings.senderPhone, "Notes": "Direct contact number" },
+    { "Setting": "Company Website", "Value": newSettings.companyWebsite, "Notes": "Official portal URL" },
+    { "Setting": "Custom Signature", "Value": newSettings.signature, "Notes": "Email signature block" }
+  ];
+
+  const existingSheet = workbookData["Email Settings"] || [];
+  existingSheet.forEach(ex => {
+    const k = (ex["Setting"] || ex["Key"] || "").toLowerCase().trim();
+    if (k && !rowsToSave.some(r => r["Setting"].toLowerCase() === k)) {
+      rowsToSave.push(ex);
+    }
+  });
+
+  workbookData["Email Settings"] = rowsToSave;
+
+  let sheetSuccess = false;
+  try {
+    const resp = await fetch("/api/sheet-write", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
+      body: JSON.stringify({
+        action: "appendRows",
+        sheet: "Email Settings",
+        rows: rowsToSave
+      })
+    });
+    const data = await resp.json();
+    if (resp.ok && !data.error) sheetSuccess = true;
+  } catch (e) {}
+
+  if (btnEl) {
+    btnEl.disabled = false;
+    btnEl.textContent = sheetSuccess ? "Saved & Synced to Sheet ✓" : "Saved Locally ✓";
+    setTimeout(() => { btnEl.textContent = "Save Settings & Sync to Sheet"; }, 2500);
+  }
+
+  renderEmailSettingsTableBody();
+}
+
+function renderEmailSettingsTableBody(){
+  const tbody = document.getElementById("emailSettingsTableBody");
+  if (!tbody) return;
+  const currentSettings = getEmailSettings();
+  let rows = workbookData["Email Settings"];
+  if (!rows || rows.length === 0) {
+    rows = [
+      { "Setting": "Sender Name", "Value": currentSettings.senderName, "Notes": "Outreach sender full name" },
+      { "Setting": "Sender Designation", "Value": currentSettings.senderDesignation, "Notes": "Job title / role" },
+      { "Setting": "Company Name", "Value": currentSettings.senderCompany, "Notes": "Company organization" },
+      { "Setting": "Sender Email", "Value": currentSettings.senderEmail, "Notes": "Sender official email" },
+      { "Setting": "Default CC", "Value": currentSettings.defaultCc, "Notes": "Mandatory CC recipient" },
+      { "Setting": "Phone Number", "Value": currentSettings.senderPhone, "Notes": "Contact phone number" },
+      { "Setting": "Company Website", "Value": currentSettings.companyWebsite, "Notes": "Official company website" },
+      { "Setting": "Custom Signature", "Value": currentSettings.signature, "Notes": "Outreach signature block" }
+    ];
+    workbookData["Email Settings"] = rows;
+  }
+
+  tbody.innerHTML = rows.map((r, idx) => {
+    const key = r["Setting"] || r["Key"] || r["Field"] || ("Setting #" + (idx + 1));
+    const val = r["Value"] !== undefined ? r["Value"] : (r["Setting Value"] || "");
+    const notes = r["Notes"] || "";
+    return `
+      <tr>
+        <td style="font-weight:600;color:var(--text-primary);">${escapeHtml(key)}</td>
+        <td>
+          <input type="text" value="${escapeAttr(val)}" onchange="updateEmailSettingRowVal(${idx}, this.value)">
+        </td>
+        <td style="color:var(--text-muted);font-size:12px;">${escapeHtml(notes)}</td>
+        <td style="text-align:center;">
+          <button class="btn secondary tiny" onclick="deleteEmailSettingRow(${idx})" title="Delete record" style="color:var(--high);padding:3px 8px;font-size:11px;">✕</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function updateEmailSettingRowVal(idx, newVal){
+  const rows = workbookData["Email Settings"] || [];
+  if (rows[idx]) {
+    rows[idx]["Value"] = newVal;
+    const key = (rows[idx]["Setting"] || rows[idx]["Key"] || "").toLowerCase();
+    if (key.includes("name") && document.getElementById("settingSenderName")) document.getElementById("settingSenderName").value = newVal;
+    if (key.includes("designation") && document.getElementById("settingSenderDesignation")) document.getElementById("settingSenderDesignation").value = newVal;
+    if (key.includes("company") && document.getElementById("settingSenderCompany")) document.getElementById("settingSenderCompany").value = newVal;
+    if (key.includes("sender email") && document.getElementById("settingSenderEmail")) document.getElementById("settingSenderEmail").value = newVal;
+    if (key.includes("cc") && document.getElementById("settingDefaultCc")) document.getElementById("settingDefaultCc").value = newVal;
+    if (key.includes("phone") && document.getElementById("settingSenderPhone")) document.getElementById("settingSenderPhone").value = newVal;
+    if (key.includes("signature") && document.getElementById("settingSignature")) {
+      document.getElementById("settingSignature").value = newVal;
+      const previewEl = document.getElementById("signatureLivePreview");
+      if (previewEl) previewEl.innerHTML = newVal.includes("<") ? newVal : `<div style="white-space:pre-wrap;">${escapeHtml(newVal)}</div>`;
+    }
+  }
+}
+
+function deleteEmailSettingRow(idx){
+  const rows = workbookData["Email Settings"] || [];
+  if (rows[idx]) {
+    rows.splice(idx, 1);
+    renderEmailSettingsTableBody();
+  }
+}
+
+function renderEmailSettings(){
+  window.__viewingBrand = null;
+  window.__viewingCompetitor = null;
+  const settings = getEmailSettings();
+  const rawSheetRows = workbookData["Email Settings"] || [];
+
+  document.getElementById("content").innerHTML = `
+    <div class="settings-container">
+      <div class="settings-header-card">
+        <div class="settings-title-group">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            Email &amp; Outreach Settings
+          </h2>
+          <p>Manage your sender identity, default CC recipients, outreach signatures, and sync directly with Google Sheets.</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <span class="sync-badge" id="settingsSyncBadge" style="display:inline-flex;padding:4px 10px;font-size:12px;">
+            <span class="status-dot ${rawSheetRows.length ? 'live' : 'locked'}"></span>
+            <span>${rawSheetRows.length ? 'Sheet Synced (' + rawSheetRows.length + ' records)' : 'Local Configuration'}</span>
+          </span>
+          <button class="btn tiny" id="saveEmailSettingsBtn" style="padding:7px 14px;font-size:12.5px;">
+            Save Settings &amp; Sync to Sheet
+          </button>
+          <button class="btn secondary tiny" id="resetEmailSettingsBtn" style="padding:7px 14px;font-size:12.5px;">
+            Reset to Default
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <div class="settings-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Sender Profile &amp; Outreach Defaults
+          </h3>
+          <div class="settings-form-group">
+            <label>Sender Full Name</label>
+            <input type="text" id="settingSenderName" value="${escapeAttr(settings.senderName)}" placeholder="e.g. Bikash Roy">
+          </div>
+          <div class="settings-form-group">
+            <label>Designation / Role</label>
+            <input type="text" id="settingSenderDesignation" value="${escapeAttr(settings.senderDesignation)}" placeholder="e.g. Group Program Manager">
+          </div>
+          <div class="settings-form-group">
+            <label>Company Name</label>
+            <input type="text" id="settingSenderCompany" value="${escapeAttr(settings.senderCompany)}" placeholder="e.g. Channelplay Limited">
+          </div>
+          <div class="settings-form-group">
+            <label>Official Sender Email</label>
+            <input type="email" id="settingSenderEmail" value="${escapeAttr(settings.senderEmail)}" placeholder="e.g. bikash.roy1@channelplay.in">
+          </div>
+          <div class="settings-form-group">
+            <label>Default CC Address</label>
+            <input type="email" id="settingDefaultCc" value="${escapeAttr(settings.defaultCc)}" placeholder="e.g. bikash.roy1@channelplay.in">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Automatically marked as CC in Outlook Web drafts</div>
+          </div>
+          <div class="settings-form-group">
+            <label>Contact Phone Number</label>
+            <input type="text" id="settingSenderPhone" value="${escapeAttr(settings.senderPhone)}" placeholder="e.g. +91 8509950431">
+          </div>
+          <div class="settings-form-group">
+            <label>Company Website</label>
+            <input type="text" id="settingCompanyWebsite" value="${escapeAttr(settings.companyWebsite || 'https://www.channelplay.in')}" placeholder="https://www.channelplay.in">
+          </div>
+          <div style="margin-top:8px;">
+            <button class="btn secondary tiny" id="generateSigFromProfileBtn" style="font-size:11.5px;">
+              ✨ Auto-Generate Signature from Profile
+            </button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            Email Signature (Appended to Outreach Drafts)
+          </h3>
+          <div class="settings-form-group" style="flex:1;display:flex;flex-direction:column;">
+            <label>Signature Text / HTML</label>
+            <textarea id="settingSignature" rows="7" style="resize:vertical;min-height:140px;font-family:monospace;font-size:12px;">${escapeHtml(settings.signature)}</textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+              Taken into AI drafts and Outlook Web compose links.
+            </div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <label style="display:block;font-size:11.5px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+              Live Signature Preview
+            </label>
+            <div class="settings-preview-box" id="signatureLivePreview"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+          <h3 style="margin-bottom:0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            Google Sheets "Email Settings" Records
+          </h3>
+          <div style="display:flex;gap:8px;">
+            <button class="btn secondary tiny" id="addSettingRowBtn" style="font-size:11.5px;">
+              + Add Setting Record
+            </button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+          These are the records retrieved from or prepared for the <strong>Email Settings</strong> sheet tab. You can add new custom key-value pairs or edit values directly.
+        </p>
+
+        <div class="settings-table-wrap">
+          <table class="settings-table" id="emailSettingsTable">
+            <thead>
+              <tr>
+                <th style="width:28%;">Setting Key / Name</th>
+                <th style="width:44%;">Setting Value</th>
+                <th style="width:20%;">Notes</th>
+                <th style="width:8%;text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="emailSettingsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const nameInput = document.getElementById("settingSenderName");
+  const desigInput = document.getElementById("settingSenderDesignation");
+  const compInput = document.getElementById("settingSenderCompany");
+  const emailInput = document.getElementById("settingSenderEmail");
+  const ccInput = document.getElementById("settingDefaultCc");
+  const phoneInput = document.getElementById("settingSenderPhone");
+  const webInput = document.getElementById("settingCompanyWebsite");
+  const sigInput = document.getElementById("settingSignature");
+
+  function updateLivePreview(){
+    const sig = sigInput.value.trim();
+    const previewEl = document.getElementById("signatureLivePreview");
+    if (!previewEl) return;
+    if (sig.includes("<") && sig.includes(">")) {
+      previewEl.innerHTML = sig;
+    } else {
+      previewEl.innerHTML = sig ? `<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.6;color:var(--text-primary);">${escapeHtml(sig)}</div>` : `<span style="color:var(--text-muted);font-style:italic;">No signature provided yet.</span>`;
+    }
+  }
+
+  [nameInput, desigInput, compInput, emailInput, ccInput, phoneInput, webInput, sigInput].forEach(inp => {
+    inp.addEventListener("input", updateLivePreview);
+  });
+  updateLivePreview();
+
+  document.getElementById("generateSigFromProfileBtn").addEventListener("click", () => {
+    const sName = nameInput.value.trim() || "Bikash Roy";
+    const sDesig = desigInput.value.trim() || "Group Program Manager";
+    const sComp = compInput.value.trim() || "Channelplay Limited";
+    const sEmail = emailInput.value.trim() || "bikash.roy1@channelplay.in";
+    const sPhone = phoneInput.value.trim() || "+91 8509950431";
+    const sWeb = webInput.value.trim() || "https://www.channelplay.in";
+    sigInput.value = `Warm regards,\n\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}\nWeb: ${sWeb}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
+    updateLivePreview();
+  });
+
+  document.getElementById("saveEmailSettingsBtn").addEventListener("click", (e) => {
+    const updated = {
+      senderName: nameInput.value.trim(),
+      senderDesignation: desigInput.value.trim(),
+      senderCompany: compInput.value.trim(),
+      senderEmail: emailInput.value.trim(),
+      defaultCc: ccInput.value.trim(),
+      senderPhone: phoneInput.value.trim(),
+      companyWebsite: webInput.value.trim(),
+      signature: sigInput.value.trim()
+    };
+    saveEmailSettings(updated, e.target);
+  });
+
+  document.getElementById("resetEmailSettingsBtn").addEventListener("click", () => {
+    if (confirm("Reset email settings and signature back to Channelplay defaults?")) {
+      localStorage.removeItem("ce_dashboard_email_settings");
+      renderEmailSettings();
+    }
+  });
+
+  renderEmailSettingsTableBody();
+
+  document.getElementById("addSettingRowBtn").addEventListener("click", () => {
+    const key = prompt("Enter new Setting Key (e.g. 'Calendar Booking Link' or 'Regional Office'):");
+    if (!key || !key.trim()) return;
+    const val = prompt(`Enter value for "${key}":`) || "";
+    const notes = prompt("Enter optional notes / description:") || "";
+    const list = workbookData["Email Settings"] || [];
+    list.push({ "Setting": key.trim(), "Value": val.trim(), "Notes": notes.trim() });
+    workbookData["Email Settings"] = list;
+    renderEmailSettingsTableBody();
+  });
+}
+
+function openOutlookCompose(brandName, contact){
+  const state = window.__emailDraftState;
+  if (!state || !state.subject) {
+    alert("Please generate or select an outreach email draft first.");
+    return;
+  }
+  const emailSettings = getEmailSettings();
+
+  let toEmail = "";
+  if (contact) {
+    toEmail = contact["Official Email (public only)"] || contact["Official Email"] || contact["Email"] || "";
+  }
+  if (!toEmail) {
+    const allContacts = workbookData["Contacts"] || [];
+    const found = allContacts.find(c => c["Brand"] === brandName);
+    if (found) {
+      toEmail = found["Official Email (public only)"] || found["Official Email"] || found["Email"] || "";
+    }
+  }
+
+  const ccEmail = emailSettings.defaultCc || "bikash.roy1@channelplay.in";
+  const subject = state.subject || `Supporting ${brandName}'s retail execution with Channelplay`;
+
+  let body = state.plainBody;
+  if (!body) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = state.bodyHtml || "";
+    body = tmp.innerText || tmp.textContent || "";
+  }
+
+  const outlookUrl = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(toEmail)}&cc=${encodeURIComponent(ccEmail)}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  window.open(outlookUrl, "_blank", "noopener,noreferrer");
+}
+
 /* ---------------- Master Tab Router ---------------- */
 function renderTab(tab){
   currentTab = tab;
@@ -2834,6 +3276,7 @@ function renderTab(tab){
   if (tab === "contacts") return renderContacts();
   if (tab === "competitors") return renderCompetitors();
   if (tab === "emails") return renderEmails();
+  if (tab === "email-settings") return renderEmailSettings();
 }
 
 /* ==========================================================================
@@ -3013,8 +3456,14 @@ function renderBrandDetail(brandName){
               <div class="email-subject" id="emailSubjectLine">${hasSheetDraft ? escapeHtml(window.__emailDraftState.subject) : ""}</div>
               <div id="emailBodyContent">${hasSheetDraft ? window.__emailDraftState.bodyHtml : ""}</div>
             </div>
-            <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
               <button class="btn tiny" id="copyEmailBtn">Copy Formatted Email</button>
+              <button class="btn tiny btn-outlook" id="openOutlookBtn" title="Open new outreach email draft directly in Outlook Web in a new tab">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/>
+                </svg>
+                <span>Open in Outlook Web &#8599;</span>
+              </button>
               <span class="draft-note" id="emailDraftNote">${hasSheetDraft ? "Sourced from Email Drafts sheet." : ""}</span>
             </div>
           </div>
@@ -3061,6 +3510,9 @@ function renderBrandDetail(brandName){
   document.getElementById("copyEmailBtn").addEventListener("click", (e) => {
     const state = window.__emailDraftState;
     if (state) copyEmailRich(state.subject, state.bodyHtml, e.target);
+  });
+  document.getElementById("openOutlookBtn").addEventListener("click", () => {
+    openOutlookCompose(brandName, contact);
   });
   document.getElementById("aiDraftBtn").addEventListener("click", (e) => {
     generateAiEmailDraft(brandName, brand, topOpp, news, contact, e.target);
@@ -3149,6 +3601,7 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
         source: n["Source"], category: n["Category"]
       }));
 
+    const emailSettings = getEmailSettings();
     const resp = await fetch("/api/generate-email", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-dashboard-password": getSessionPassword() },
@@ -3164,16 +3617,22 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
         recentNews,
         contactName: contact ? contact["Decision Maker Name"] : "",
         contactDesignation: contact ? contact["Designation"] : "",
+        signature: emailSettings.signature,
+        senderName: emailSettings.senderName,
+        senderDesignation: emailSettings.senderDesignation,
+        senderCompany: emailSettings.senderCompany,
+        senderPhone: emailSettings.senderPhone,
+        senderEmail: emailSettings.senderEmail
       })
     });
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || "Generation failed");
 
-    window.__emailDraftState = { subject: data.subject, bodyHtml: data.bodyHtml };
+    window.__emailDraftState = { subject: data.subject, bodyHtml: data.bodyHtml, plainBody: data.plainBody };
     document.getElementById("emailResultWrap").style.display = "";
     document.getElementById("emailSubjectLine").textContent = data.subject;
     document.getElementById("emailBodyContent").innerHTML = data.bodyHtml;
-    document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news and live channelplay.in content.";
+    document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news, live channelplay.in content, and your Email Settings signature.";
     statusEl.textContent = "Draft ready.";
 
     fetch("/api/sheet-write", {
@@ -3206,28 +3665,87 @@ function buildExecSummary(brand, topOpp, news, pipelineRow){
 }
 
 function buildEmailDraft(brand, topOpp, news, sheetDraft){
+  const emailSettings = getEmailSettings();
+  const signature = emailSettings.signature;
+  const sName = emailSettings.senderName || "Bikash Roy";
+  const sDesig = emailSettings.senderDesignation || "Group Program Manager";
+  const sComp = emailSettings.senderCompany || "Channelplay Limited";
+  const sEmail = emailSettings.senderEmail || "bikash.roy1@channelplay.in";
+  const sPhone = emailSettings.senderPhone || "+91 8509950431";
+
   if (sheetDraft) {
+    const rawBody = String(sheetDraft["Draft Body"] || "");
+    const bodyHtml = rawBody.split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join("");
     return {
       subject: sheetDraft["Subject"],
-      bodyHtml: String(sheetDraft["Draft Body"] || "").split(/\n{2,}/).map(p => `<p>${escapeHtml(p)}</p>`).join(""),
+      bodyHtml,
+      plainBody: rawBody,
       isTemplate: false
     };
   }
-  if (!topOpp) {
-    return { subject: `${brand["Brand"]} — Channelplay introduction`, bodyHtml: `<p>No opportunity data yet — a drafted email will appear here once this brand has been through a research pass.</p>`, isTemplate: true };
-  }
+
+  const subject = `Partnering on ${brand["Brand"]}'s Retail Velocity & In-Store Execution with Channelplay`;
   const latestNews = news[0];
-  const subject = `Supporting ${brand["Brand"]}'s ${String(topOpp["Opportunity Type"]).toLowerCase()} with Channelplay`;
+  const hookLine = `Hi [Name], congratulations on ${brand["Brand"]}'s recent retail moves${latestNews ? ` (${latestNews["Headline"]})` : ""} in the Indian market.`;
+  const marketContext = `As ${brand["Brand"]} accelerates distribution across multi-brand counters and regional store networks, maintaining strong brand presence, active product demonstrations, and promoter productivity is essential to capturing counter share ahead of peak demand cycles.`;
+  const synergiesParagraph = `Channelplay operates as a full-funnel retail execution partner for leading brands in India. We deploy and manage dedicated in-store promoters, execute visual merchandising and POSM rollouts across pan-India counters, and drive accountability via real-time counter tracking.`;
+  const capabilities = [
+    `Experiential Promoter Deployment: Certified sales staff with proven 90%+ fill rates and 5.3% low attrition.`,
+    `Visual Merchandising & POSM Governance: Pan-India fixture rollouts, counter hygiene, and secondary display audits.`,
+    `Technology Governance via 1Channel: Real-time GPS attendance, selfie check-in, and counter sell-out tracking.`,
+    `Experiential Demonstrations: Standardized customer journey scripts tailored to maximize conversion rates.`
+  ];
+  const strategicClosing = `With festive retail footfalls and counter competition climbing, having agile in-store execution ensures your marketing investments translate directly to counter sales.`;
+  const softHook = `Would you be open to a brief 10–15 minute introductory call next week to explore retail synergies for ${brand["Brand"]}?`;
+
+  let sigHtml = "";
+  if (signature && signature.includes("<")) {
+    sigHtml = signature;
+  } else if (signature) {
+    sigHtml = `<div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);white-space:pre-wrap;font-family:inherit;">${escapeHtml(signature)}</div>`;
+  } else {
+    sigHtml = `
+      <div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-family:inherit;">
+        <div style="font-weight:700;font-size:14px;color:var(--text-primary);">${escapeHtml(sName)}</div>
+        <div style="font-size:12.5px;color:var(--text-secondary);margin-top:2px;">${escapeHtml(sDesig)} &bull; <strong style="color:var(--text-primary);">${escapeHtml(sComp)}</strong></div>
+        <div style="margin-top:8px;font-size:12px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+          <span>&#128231; <a href="mailto:${escapeHtml(sEmail)}" style="color:var(--accent);text-decoration:none;">${escapeHtml(sEmail)}</a></span>
+          <span>&#128222; ${escapeHtml(sPhone)}</span>
+          <span>&#127760; <a href="https://www.channelplay.in" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">www.channelplay.in</a></span>
+        </div>
+      </div>`;
+  }
+
   const bodyHtml = `
-    <p>Hi [Name],</p>
-    <p>I noticed <strong>${escapeHtml(brand["Brand"])}</strong>'s recent move${latestNews ? ` — <em>${escapeHtml(latestNews["Headline"])}</em> (${escapeHtml(latestNews["Date"])}, ${escapeHtml(latestNews["Source"])})` : ""}.
-    ${escapeHtml(topOpp["Business Impact"])}</p>
-    <p>At Channelplay, we support brands through moments like this with <strong>${escapeHtml(topOpp["Recommended Service"])}</strong>.
-    ${escapeHtml(topOpp["Opportunity for Channelplay"])}</p>
-    <p>Would you be open to a short call to explore ${escapeHtml(String(topOpp["Suggested Next Action"]).replace(/\.$/,""))}?</p>
-    <p>Best regards,<br>Bikash Roy<br>Group Program Manager, Channelplay</p>
-  `;
-  return { subject, bodyHtml, isTemplate: true };
+<div class="email-rich-wrap">
+  <p class="email-hook" style="font-weight:600;margin-bottom:14px;color:var(--text-primary);">${escapeHtml(hookLine)}</p>
+  <p class="email-context" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(marketContext)}</p>
+  <p class="email-synergies" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(synergiesParagraph)}</p>
+  <div class="email-capabilities-block" style="background:var(--bg-card);border-left:3px solid var(--accent);border-radius:6px;padding:12px 16px;margin:16px 0;">
+    <div style="font-weight:700;font-size:12.5px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Key Channelplay Capabilities &amp; Synergies:</div>
+    <ul class="email-cap-list" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--text-secondary);font-size:12.5px;line-height:1.6;">
+      ${capabilities.map(c => `<li>${escapeHtml(c)}</li>`).join("")}
+    </ul>
+  </div>
+  <p class="email-closing" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(strategicClosing)}</p>
+  <p class="email-softhook" style="font-weight:600;margin:16px 0;color:var(--text-primary);">${escapeHtml(softHook)}</p>
+  <div class="email-signature-divider">
+    ${sigHtml}
+  </div>
+</div>`;
+
+  const plainBody = [
+    hookLine,
+    marketContext,
+    synergiesParagraph,
+    "Key Channelplay Capabilities & Synergies:",
+    ...capabilities.map(c => `• ${c}`),
+    strategicClosing,
+    softHook,
+    signature || `Best regards,\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}`
+  ].join("\n\n");
+
+  return { subject, bodyHtml, plainBody, isTemplate: true };
 }
 
 /* ---------------- Event Listeners & Bootstrapping ---------------- */
@@ -3246,7 +3764,7 @@ function checkUrlHashRoute(){
       showCompetitorDetail(compName);
       return true;
     }
-  } else if (["overview","news","opportunities","contacts","competitors"].includes(hash)) {
+  } else if (["overview","news","opportunities","contacts","competitors","emails","email-settings"].includes(hash)) {
     renderTab(hash);
     return true;
   }

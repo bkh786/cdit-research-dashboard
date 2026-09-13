@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Consumer Electronics Brand's Research CRM — Stylesheet
+   Brand Research and Insights CRM — Stylesheet
+   Modern, cohesive styling with dark/light themes and responsive design.
    ========================================================================== */
 
 :root {
@@ -1735,3 +1736,194 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   .page-title { font-size: 15px; }
   .kpi-grid { grid-template-columns: 1fr; }
 }
+
+/* Outlook Compose Button */
+.btn.btn-outlook {
+  background: #0078d4;
+  border-color: #0078d4;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 120, 212, 0.25);
+  transition: all 0.15s ease;
+}
+.btn.btn-outlook:hover {
+  background: #106ebe;
+  border-color: #106ebe;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(0, 120, 212, 0.35);
+  transform: translateY(-1px);
+}
+.btn.btn-outlook:active {
+  transform: translateY(0);
+}
+.btn.btn-outlook svg {
+  flex-shrink: 0;
+}
+
+/* Enhanced Outreach Email Card Formatting */
+.email-rich-wrap {
+  font-size: 13.5px;
+  line-height: 1.72;
+  color: var(--text-primary);
+}
+.email-rich-wrap p {
+  margin-bottom: 12px;
+}
+.email-rich-wrap p:last-child {
+  margin-bottom: 0;
+}
+.email-capabilities-block {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin: 16px 0;
+}
+.email-cap-list {
+  list-style: disc;
+  margin: 0;
+  padding-left: 18px;
+}
+.email-cap-list li {
+  margin-bottom: 6px;
+}
+.email-signature-card {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  user-select: text;
+}
+
+/* Email Settings Page */
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.settings-header-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.settings-title-group h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.settings-title-group p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) {
+  .settings-grid { grid-template-columns: 1fr; }
+}
+.settings-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+}
+.settings-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-primary);
+}
+.settings-form-group {
+  margin-bottom: 14px;
+}
+.settings-form-group label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.settings-form-group input,
+.settings-form-group textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.settings-form-group input:focus,
+.settings-form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.settings-preview-box {
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  min-height: 120px;
+}
+.settings-table-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+}
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.settings-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.settings-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.settings-table td input {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+.settings-table tr:hover td {
+  background: var(--bg-card);
+}
+
