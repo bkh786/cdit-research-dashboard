@@ -2050,9 +2050,9 @@ async function researchBrandContact(brandName, btnEl){
     }
 
     // If currently viewing brand detail for this brand, update card in place
-    if (window.__viewingBrand === brandName) {
+    if (window.__viewingBrand && window.__viewingBrand.trim().toLowerCase() === brandName.trim().toLowerCase()) {
       const cardBody = document.getElementById("brandDetailContactCardBody");
-      const updatedContact = workbookData["Contacts"].find(row => row["Brand"] === brandName);
+      const updatedContact = workbookData["Contacts"].find(row => (row["Brand"] || "").trim().toLowerCase() === brandName.trim().toLowerCase());
       if (cardBody && updatedContact) {
         cardBody.innerHTML = renderContactCard(updatedContact);
       }
@@ -2844,7 +2844,7 @@ function getEmailSettings(){
     companyName: "Channelplay Limited",
     senderEmail: "bikash.roy1@channelplay.in",
     defaultCc: "bikash.roy1@channelplay.in",
-    phoneNumber: "+91 8509950431",
+    phoneNumber: "8509950431",
     companyWebsite: "https://www.channelplay.in"
   };
 
@@ -2891,7 +2891,7 @@ function upgradeSignatureTagline(sigHtml){
   if (!sigHtml) return sigHtml;
   const styledTagline = `<div class="email-signature-tagline" style="margin-top: 14px; font-size: 14px; line-height: 1.4; border: none;"><span style="color: #0f5c1b; font-weight: 700; font-style: italic;">Retail Execution</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #de691a; font-weight: 700; font-style: italic;">Field Force Outsourcing</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #164e86; font-weight: 700; font-style: italic;">Visual Merchandising</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #773e9b; font-weight: 700; font-style: italic;">Tech Audits</span></div>`;
   if (sigHtml.includes("Retail Execution") && !sigHtml.includes("#0f5c1b")) {
-    return sigHtml.replace(/<div[^>]*>[\s\r\n]*Retail Execution[\s\S]*?Tech Audits[\s\r\n]*<\/div>/i, styledTagline);
+    return sigHtml.replace(/<div[^>]*>[\s\S]*?Retail Execution[\s\S]*?Tech Audits[\s\S]*?<\/div>/i, styledTagline);
   }
   return sigHtml;
 }
@@ -2901,7 +2901,7 @@ function buildSignatureHtml(p){
   const desig = p.senderDesignation || "Business Manager - Consumer Electronics";
   const comp = p.companyName || p.senderCompany || "Channelplay Limited";
   const email = p.senderEmail || "bikash.roy1@channelplay.in";
-  const phone = p.phoneNumber || p.senderPhone || "+91 8509950431";
+  const phone = p.phoneNumber || p.senderPhone || "8509950431";
   const web = p.companyWebsite || "https://www.channelplay.in";
 
   return `
@@ -2910,9 +2910,9 @@ function buildSignatureHtml(p){
   <p style="margin: 0 0 4px 0; font-weight: 700; font-size: 14px; color: #0f172a;">${escapeHtml(name)}</p>
   <p style="margin: 0 0 8px 0; color: #475569; font-size: 13px;">${escapeHtml(desig)} &bull; <strong style="color: #0f172a;">${escapeHtml(comp)}</strong></p>
   <div style="margin: 0 0 8px 0; font-size: 12.5px; color: #64748b; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
-    <span>&#128231; <a href="mailto:${escapeHtml(email)}" style="color: #4f46e5; text-decoration: none;">${escapeHtml(email)}</a></span>
+    <span>&#128231; <a href="mailto:${escapeHtml(email)}" style="color: #2563eb; text-decoration: underline;">${escapeHtml(email)}</a></span>
     <span>&#128222; <span style="color: #0f172a;">${escapeHtml(phone)}</span></span>
-    <span>&#127760; <a href="${escapeAttr(web)}" target="_blank" rel="noopener" style="color: #4f46e5; text-decoration: none;">${escapeHtml(web)}</a></span>
+    <span>&#127760; <a href="${escapeAttr(web)}" target="_blank" rel="noopener" style="color: #2563eb; text-decoration: underline;">${escapeHtml(web)}</a></span>
   </div>
   <div class="email-signature-tagline" style="margin-top: 14px; font-size: 14px; line-height: 1.4; border: none;">
     <span style="color: #0f5c1b; font-weight: 700; font-style: italic;">Retail Execution</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #de691a; font-weight: 700; font-style: italic;">Field Force Outsourcing</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #164e86; font-weight: 700; font-style: italic;">Visual Merchandising</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #773e9b; font-weight: 700; font-style: italic;">Tech Audits</span>
@@ -2925,7 +2925,7 @@ function buildSignaturePlain(p){
   const desig = p.senderDesignation || "Business Manager - Consumer Electronics";
   const comp = p.companyName || p.senderCompany || "Channelplay Limited";
   const email = p.senderEmail || "bikash.roy1@channelplay.in";
-  const phone = p.phoneNumber || p.senderPhone || "+91 8509950431";
+  const phone = p.phoneNumber || p.senderPhone || "8509950431";
   const web = p.companyWebsite || "https://www.channelplay.in";
 
   return `Warm regards,\n\n${name}\n${desig} • ${comp}\n📧 ${email} 📞 ${phone} 🌐 ${web}\nRetail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits`;
@@ -3314,7 +3314,7 @@ function copyToClipboard(text, btnEl){
 
 function copyEmailRich(subject, htmlBody, btnEl){
   // Exclude the subject line from the copied email body
-  const plain = htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  const plain = (window.__emailDraftState && window.__emailDraftState.plainBody) ? window.__emailDraftState.plainBody : htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
   const richHtml = htmlBody;
   try {
     const item = new ClipboardItem({
@@ -3693,9 +3693,9 @@ function updateBrandEmailDraftWithContact(brandName, contact){
   const brands = workbookData["Brands Master"] || [];
   const allNews = workbookData["News feed"] || [];
   const allOpps = workbookData["Opportunities"] || [];
-  const brand = brands.find(b => b["Brand"] === brandClean) || { "Brand": brandClean };
-  const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandClean), "Date");
-  const opps = allOpps.filter(o => o["Brand"] === brandClean)
+  const brand = brands.find(b => (b["Brand"] || "").trim().toLowerCase() === brandClean.trim().toLowerCase()) || { "Brand": brandClean };
+  const news = sortByDateDesc(allNews.filter(n => (n["Brand"] || "").trim().toLowerCase() === brandClean.trim().toLowerCase()), "Date");
+  const opps = allOpps.filter(o => (o["Brand"] || "").trim().toLowerCase() === brandClean.trim().toLowerCase())
     .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
   const topOpp = opps[0];
 
@@ -3703,12 +3703,12 @@ function updateBrandEmailDraftWithContact(brandName, contact){
 
   if (window.__emailDraftState && !window.__emailDraftState.isTemplate && window.__emailDraftState.bodyHtml) {
     let updatedHtml = window.__emailDraftState.bodyHtml;
-    updatedHtml = updatedHtml.replace(/(<p[^>]*class=["']email-hook["'][^>]*>[\s\r\n]*Hello\s+)[^,]+(,)/i, `$1${cleanName}$2`);
+    updatedHtml = updatedHtml.replace(/(<p[^>]*class=["']email-hook["'][^>]*>[\s\r\n]*(?:Hello|Hi|Dear)\s+)[^,]+(,)/i, `$1${cleanName}$2`);
     if (!updatedHtml.includes(cleanName)) {
-      updatedHtml = updatedHtml.replace(/Hello\s+[^,]+,/i, `Hello ${cleanName},`);
+      updatedHtml = updatedHtml.replace(/(?:Hello|Hi|Dear)\s+[^,]+,/i, `Hello ${cleanName},`);
     }
     let updatedPlain = window.__emailDraftState.plainBody || "";
-    updatedPlain = updatedPlain.replace(/^Hello\s+[^,]+,/im, `Hello ${cleanName},`);
+    updatedPlain = updatedPlain.replace(/^(?:Hello|Hi|Dear)\s+[^,]+,/im, `Hello ${cleanName},`);
 
     window.__emailDraftState.bodyHtml = updatedHtml;
     window.__emailDraftState.plainBody = updatedPlain;

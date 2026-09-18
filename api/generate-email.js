@@ -154,8 +154,10 @@ CRITICAL DRAFTING INSTRUCTIONS:
           if (parsed.hookLine) {
             parsed.hookLine = parsed.hookLine.replace(/^Hi\s+/i, "Hello ");
             if (contactName) {
-              parsed.hookLine = parsed.hookLine.replace(/^Hello\s+[A-Za-z](?:,|\s)/i, `Hello ${contactName}, `);
-              parsed.hookLine = parsed.hookLine.replace(/^Hello\s+\[Name\]/i, `Hello ${contactName}`);
+              parsed.hookLine = parsed.hookLine.replace(/^(?:Hello|Hi|Dear)\s+[^,]+,/i, `Hello ${contactName},`);
+              if (!parsed.hookLine.includes(contactName)) {
+                parsed.hookLine = `Hello ${contactName}, ${parsed.hookLine.replace(/^(?:Hello|Hi|Dear)\s*\[?Name\]?[,\s]*/i, "")}`;
+              }
             }
           }
           break;
@@ -174,7 +176,7 @@ CRITICAL DRAFTING INSTRUCTIONS:
     const sDesig = senderDesignation || "Business Manager - Consumer Electronics";
     const sComp = companyName || senderCompany || "Channelplay Limited";
     const sEmail = senderEmail || "bikash.roy1@channelplay.in";
-    const sPhone = phoneNumber || senderPhone || "+91 8509950431";
+    const sPhone = phoneNumber || senderPhone || "8509950431";
     const sWeb = companyWebsite || "https://www.channelplay.in";
 
     let signaturePlain = signature || "";
@@ -196,9 +198,9 @@ CRITICAL DRAFTING INSTRUCTIONS:
   <p style="margin:0 0 4px 0;font-weight:700;font-size:14px;color:#0f172a;">${escapeHtmlServer(sName)}</p>
   <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">${escapeHtmlServer(sDesig)} &bull; <strong style="color:#0f172a;">${escapeHtmlServer(sComp)}</strong></p>
   <div style="margin:0 0 8px 0;font-size:12.5px;color:#64748b;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
-    <span>&#128231; <a href="mailto:${escapeHtmlServer(sEmail)}" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sEmail)}</a></span>
+    <span>&#128231; <a href="mailto:${escapeHtmlServer(sEmail)}" style="color:#2563eb;text-decoration:underline;">${escapeHtmlServer(sEmail)}</a></span>
     <span>&#128222; <span style="color:#0f172a;">${escapeHtmlServer(sPhone)}</span></span>
-    <span>&#127760; <a href="${escapeHtmlServer(sWeb)}" target="_blank" rel="noopener" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sWeb)}</a></span>
+    <span>&#127760; <a href="${escapeHtmlServer(sWeb)}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:underline;">${escapeHtmlServer(sWeb)}</a></span>
   </div>
   ${styledTagline}
 </div>`;
@@ -210,7 +212,7 @@ CRITICAL DRAFTING INSTRUCTIONS:
         .replace(/border-top:[^;"]+;?/gi, "border:none;")
         .replace(/border-bottom:[^;"]+;?/gi, "border:none;")
         .replace(/<hr[^>]*>/gi, "");
-      signatureHtml = signatureHtml.replace(/<div[^>]*>[\s\r\n]*Retail Execution[\s\S]*?Tech Audits[\s\r\n]*<\/div>/i, styledTagline);
+      signatureHtml = signatureHtml.replace(/<div[^>]*>[\s\S]*?Retail Execution[\s\S]*?Tech Audits[\s\S]*?<\/div>/i, styledTagline);
     }
 
     if (!parsed) {
