@@ -1225,6 +1225,108 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   font-size: 11px;
 }
 
+/* Collapsible Section Cards */
+.collapsible-card {
+  transition: var(--transition);
+}
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--radius-sm);
+  padding: 2px 0;
+  transition: opacity 0.15s ease;
+}
+.collapsible-header:hover {
+  opacity: 0.88;
+}
+.collapsible-header h3 {
+  margin-bottom: 0 !important;
+  user-select: none;
+}
+.collapsible-count-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+  margin-left: 6px;
+}
+.collapsible-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.collapsible-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+.collapsible-content-area {
+  display: none;
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+/* Email Subject & Body Separation */
+.email-subject-group {
+  margin-bottom: 14px;
+}
+.email-subject-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.email-subject-input {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.email-subject-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.email-body-group label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
 /* Email Box */
 .ai-draft-bar {
   display: flex;

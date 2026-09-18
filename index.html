@@ -3211,7 +3211,7 @@ function openOutlookCompose(brandName, contact){
   }
 
   const ccEmail = emailSettings.defaultCc || "bikash.roy1@channelplay.in";
-  const subject = state.subject || `Supporting ${brandName}'s retail execution with Channelplay`;
+  const subject = (document.getElementById("emailSubjectInput")?.value || "").trim() || state.subject || `Supporting ${brandName}'s retail execution with Channelplay`;
 
   // 2. Ensure rich HTML and plain text have the SAVED signature from Email Settings
   let fullRichHtml = state.bodyHtml || "";
@@ -3320,8 +3320,25 @@ function copyEmailRich(subject, htmlBody, btnEl){
 function flashCopied(btnEl){
   if (!btnEl) return;
   const old = btnEl.textContent;
-  btnEl.textContent = "Copied — paste into Outlook/Gmail ✓";
+  btnEl.textContent = "Email Body Copied ✓";
   setTimeout(() => { btnEl.textContent = old; }, 2000);
+}
+
+function toggleSectionCollapse(contentId, iconId, textId){
+  const contentEl = document.getElementById(contentId);
+  const iconEl = document.getElementById(iconId);
+  const textEl = document.getElementById(textId);
+  if (!contentEl) return;
+  const isHidden = (contentEl.style.display === "none" || window.getComputedStyle(contentEl).display === "none");
+  if (isHidden) {
+    contentEl.style.display = "block";
+    if (textEl) textEl.textContent = "Collapse";
+    if (iconEl) iconEl.style.transform = "rotate(180deg)";
+  } else {
+    contentEl.style.display = "none";
+    if (textEl) textEl.textContent = "Expand";
+    if (iconEl) iconEl.style.transform = "rotate(0deg)";
+  }
 }
 
 function showBrandDetail(brandName){
@@ -3433,38 +3450,77 @@ function renderBrandDetail(brandName){
           <div class="exec-summary">${execSummary}</div>
         </div>
 
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            Opportunity Breakdown
-          </h3>
-          ${oppsHtml}
-        </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
-            Detailed News Analysis (Most Recent First)
-          </h3>
-          ${newsHtml}
-        </div>
-
-        <div class="section-card">
-          <h3>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            Drafted Outreach Email
-          </h3>
-          <div class="ai-draft-bar">
-            <button class="btn tiny" id="aiDraftBtn">✨ Generate AI Email Draft</button>
-            <span class="spinner-text" id="aiDraftStatus" style="font-size:12px;color:var(--text-muted);">Ready to send or refine with Gemini</span>
+        <div class="section-card collapsible-card">
+          <div class="collapsible-header" onclick="toggleSectionCollapse('oppsContent', 'oppsToggleIcon', 'oppsToggleText')">
+            <h3 style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              Opportunity Breakdown
+              <span class="collapsible-count-badge">${opps.length} ${opps.length === 1 ? "item" : "items"}</span>
+            </h3>
+            <button type="button" class="btn tiny collapsible-toggle-btn" id="oppsToggleBtn" onclick="event.stopPropagation(); toggleSectionCollapse('oppsContent', 'oppsToggleIcon', 'oppsToggleText');" title="Click to expand or collapse">
+              <span id="oppsToggleText">Expand</span>
+              <svg id="oppsToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s ease;transform:rotate(0deg);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
           </div>
-          <div id="emailResultWrap">
-            <div class="email-box" id="emailBoxContent">
-              <div class="email-subject" id="emailSubjectLine">${escapeHtml(initialDraft.subject)}</div>
-              <div id="emailBodyContent">${initialDraft.bodyHtml}</div>
+          <div id="oppsContent" class="collapsible-content-area" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+            ${oppsHtml}
+          </div>
+        </div>
+
+        <div class="section-card collapsible-card">
+          <div class="collapsible-header" onclick="toggleSectionCollapse('newsContent', 'newsToggleIcon', 'newsToggleText')">
+            <h3 style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
+              Detailed News Analysis (Most Recent First)
+              <span class="collapsible-count-badge">${news.length} ${news.length === 1 ? "item" : "items"}</span>
+            </h3>
+            <button type="button" class="btn tiny collapsible-toggle-btn" id="newsToggleBtn" onclick="event.stopPropagation(); toggleSectionCollapse('newsContent', 'newsToggleIcon', 'newsToggleText');" title="Click to expand or collapse">
+              <span id="newsToggleText">Expand</span>
+              <svg id="newsToggleIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s ease;transform:rotate(0deg);"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          </div>
+          <div id="newsContent" class="collapsible-content-area" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+            ${newsHtml}
+          </div>
+        </div>
+
+        <div class="section-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+            <h3 style="margin-bottom:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              Drafted Outreach Email
+            </h3>
+            <div class="ai-draft-bar" style="margin-bottom:0;">
+              <button class="btn tiny" id="aiDraftBtn">✨ Generate AI Email Draft</button>
             </div>
+          </div>
+          <div id="aiDraftStatus" style="font-size:12px;color:var(--text-muted);margin-bottom:14px;">Ready to send or refine with Gemini</div>
+          
+          <div id="emailResultWrap">
+            <!-- Dedicated Subject Line Field -->
+            <div class="email-subject-group">
+              <label for="emailSubjectInput">
+                <span>Subject Line</span>
+                <span style="font-weight:500;font-size:11px;color:var(--text-muted);text-transform:none;">Excluded from email body</span>
+              </label>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="text" id="emailSubjectInput" class="email-subject-input" value="${escapeAttr(initialDraft.subject)}" />
+                <button type="button" class="btn tiny" id="copySubjectBtn" title="Copy only the subject line">Copy Subject</button>
+              </div>
+            </div>
+
+            <!-- Email Body Write Up (Subject line completely excluded) -->
+            <div class="email-body-group" style="margin-top:14px;">
+              <label>
+                <span>Email Body &amp; Signature</span>
+              </label>
+              <div class="email-box" id="emailBoxContent">
+                <div id="emailBodyContent">${initialDraft.bodyHtml}</div>
+              </div>
+            </div>
+
             <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-              <button class="btn tiny" id="copyEmailBtn">Copy Formatted Email</button>
+              <button class="btn tiny" id="copyEmailBtn">Copy Email Body</button>
               <button class="btn tiny btn-outlook" id="openOutlookBtn" title="Open new outreach email draft directly in Outlook Web in a new tab">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/>
@@ -3475,7 +3531,7 @@ function renderBrandDetail(brandName){
             </div>
             <div class="outlook-paste-tip" style="margin-top:12px;padding:9px 13px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
               <span style="font-size:14px;">💡</span>
-              <span><strong>Outlook Web Tip:</strong> Clicking <strong>Open in Outlook Web</strong> pre-fills recipient, CC &amp; subject, and copies the formatted HTML email body &amp; signature to your clipboard. Simply press <strong>Ctrl+V / Cmd+V</strong> in the Outlook Web message body to paste the styled message.</span>
+              <span><strong>Outlook Web Tip:</strong> Recipient, CC &amp; Subject are pre-filled automatically. The message body &amp; signature are copied to your clipboard — simply press <strong>Ctrl+V / Cmd+V</strong> in the Outlook message body to paste.</span>
             </div>
           </div>
         </div>
@@ -3520,8 +3576,23 @@ function renderBrandDetail(brandName){
 
   document.getElementById("copyEmailBtn").addEventListener("click", (e) => {
     const state = window.__emailDraftState;
-    if (state) copyEmailRich(state.subject, state.bodyHtml, e.target);
+    if (state) copyEmailRich(state.subject, state.bodyHtml, e.currentTarget);
   });
+  const copySubjBtn = document.getElementById("copySubjectBtn");
+  if (copySubjBtn) {
+    copySubjBtn.addEventListener("click", () => {
+      const subj = (document.getElementById("emailSubjectInput")?.value || "").trim();
+      if (subj) copyToClipboard(subj, copySubjBtn);
+    });
+  }
+  const emailSubjInput = document.getElementById("emailSubjectInput");
+  if (emailSubjInput) {
+    emailSubjInput.addEventListener("input", (e) => {
+      if (window.__emailDraftState) {
+        window.__emailDraftState.subject = e.target.value;
+      }
+    });
+  }
   document.getElementById("openOutlookBtn").addEventListener("click", () => {
     openOutlookCompose(brandName, contact);
   });
@@ -3644,7 +3715,8 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
 
     window.__emailDraftState = { subject: data.subject, bodyHtml: data.bodyHtml, plainBody: data.plainBody };
     document.getElementById("emailResultWrap").style.display = "";
-    document.getElementById("emailSubjectLine").textContent = data.subject;
+    const subjInput = document.getElementById("emailSubjectInput");
+    if (subjInput) subjInput.value = data.subject;
     document.getElementById("emailBodyContent").innerHTML = data.bodyHtml;
     document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news, live channelplay.in content, and your Email Settings signature.";
     statusEl.textContent = "Draft ready.";
