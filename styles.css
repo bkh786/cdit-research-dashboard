@@ -1790,11 +1790,18 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
 .email-cap-list li {
   margin-bottom: 6px;
 }
-.email-signature-card {
+.email-signature-card,
+.email-signature-rendered,
+.email-signature-divider,
+.email-signature-wrap {
   margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  border: none !important;
   user-select: text;
+}
+.email-signature-card div,
+.email-signature-rendered div {
+  border: none !important;
 }
 
 /* Email Settings Page */

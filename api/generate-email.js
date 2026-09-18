@@ -83,7 +83,7 @@ ${channelplayContext || "Channelplay specializes in: (1) Experiential Sales Forc
 
 CRITICAL DRAFTING INSTRUCTIONS:
 1. Make the email longer and richer than a generic short pitch. It must read like an executive-level strategic advisory note.
-2. Hook Line: Address the recipient warmly by first name (or [Name]), congratulating or referencing their recent brand news, product launches, or retail expansion.
+2. Hook Line: Address the recipient warmly by first name (or [Name]), greeting them specifically as "Hello <First Name>" (e.g. "Hello Rajiv," or "Hello [Name],"). Never use "Hi". Congratulate or reference their recent brand news, product launches, or retail expansion.
 3. Market Context & In-Store Challenges (1 comprehensive paragraph): Discuss the reality of translating brand buzz/launches into retail counter conversions in India (e.g., cut-throat shelf competition in multi-brand stores, untrained third-party retail staff, promoter attrition, premium experiential demo requirements).
 4. Business Synergies & Channelplay Value (1 comprehensive paragraph): Clearly articulate how Channelplay acts as an extension of ${brand}'s sales leadership to capture counter share and ensure pristine brand presence.
 5. Key Capabilities & Highlights: Provide 3 to 4 specific bullet points showcasing Channelplay's proven capabilities directly relevant to ${brand} (e.g., dedicated promoters with proven >90% fill rate and low attrition, pan-India visual merchandising & POSM rollout, 1Channel mobile tech for live counter visibility, compliance audits).
@@ -147,7 +147,12 @@ CRITICAL DRAFTING INSTRUCTIONS:
         const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
         if (!rawText) throw new Error(`Gemini (${model}) returned empty output.`);
         parsed = JSON.parse(rawText);
-        if (parsed) break;
+        if (parsed) {
+          if (parsed.hookLine) {
+            parsed.hookLine = parsed.hookLine.replace(/^Hi\s+/i, "Hello ");
+          }
+          break;
+        }
       } catch (err) {
         lastErr = err;
         console.warn(`Email generation on ${model} failed: ${err.message}`);
@@ -177,7 +182,7 @@ CRITICAL DRAFTING INSTRUCTIONS:
         signatureHtml = signature;
       } else {
         signatureHtml = `
-<div class="email-signature-card" style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;font-family:Arial,-apple-system,sans-serif;font-size:13px;line-height:1.6;color:#1e293b;">
+<div class="email-signature-card" style="margin-top:20px;padding-top:8px;border:none;font-family:Arial,-apple-system,sans-serif;font-size:13px;line-height:1.6;color:#1e293b;">
   <p style="margin:0 0 12px 0;color:#334155;">Warm regards,</p>
   <p style="margin:0 0 4px 0;font-weight:700;font-size:14px;color:#0f172a;">${escapeHtmlServer(sName)}</p>
   <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">${escapeHtmlServer(sDesig)} &bull; <strong style="color:#0f172a;">${escapeHtmlServer(sComp)}</strong></p>
@@ -186,18 +191,25 @@ CRITICAL DRAFTING INSTRUCTIONS:
     <span>&#128222; ${escapeHtmlServer(sPhone)}</span>
     <span>&#127760; <a href="${escapeHtmlServer(sWeb)}" target="_blank" rel="noopener" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sWeb)}</a></span>
   </div>
-  <div style="margin-top:8px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:6px;letter-spacing:0.3px;">
+  <div style="margin-top:6px;font-size:11px;color:#64748b;letter-spacing:0.3px;border:none;">
     Retail Execution &bull; Field Force Outsourcing &bull; Visual Merchandising &bull; Tech Audits
   </div>
 </div>`;
       }
     }
 
+    if (signatureHtml) {
+      signatureHtml = signatureHtml
+        .replace(/border-top:[^;"]+;?/gi, "border:none;")
+        .replace(/border-bottom:[^;"]+;?/gi, "border:none;")
+        .replace(/<hr[^>]*>/gi, "");
+    }
+
     if (!parsed) {
       const recipientGreeting = contactName ? contactName.split(" ")[0] : "[Name]";
       parsed = {
         subject: `Partnering on ${brand}'s Retail Counter Velocity & In-Store Execution`,
-        hookLine: `Hi ${recipientGreeting}, congratulations on ${brand}'s recent market initiatives and festive product rollout across the Indian market.`,
+        hookLine: `Hello ${recipientGreeting}, congratulations on ${brand}'s recent market initiatives and festive product rollout across the Indian market.`,
         marketContext: `As ${brand} accelerates its distribution footprint across regional multi-brand outlets (MBOs) and exclusive store touchpoints, ensuring consistent brand governance and active shopper engagement at the final moment of purchase is paramount. Many leading brands face critical hurdles around promoter retention, live demonstration compliance, and fragmented visibility across Tier-1 and Tier-2 counters.`,
         synergiesParagraph: `At Channelplay, we operate as a full-funnel retail execution partner. We bridge the gap between your above-the-line marketing investments and ground-level sell-through by deploying highly trained, technology-enabled sales promoters and managing agile visual merchandising operations. For benchmark consumer electronics and AV leaders, our dedicated programs have driven immediate uplifts in counter share while keeping attrition to industry-low levels.`,
         capabilities: [
@@ -227,7 +239,9 @@ CRITICAL DRAFTING INSTRUCTIONS:
   <p class="email-closing" style="margin-bottom:14px;line-height:1.68;">${escapeHtmlServer(parsed.strategicClosing || "")}</p>
   <p class="email-softhook" style="font-weight:600;margin:16px 0;color:var(--text-primary);">${escapeHtmlServer(parsed.softHook || "")}</p>
   
-  ${signatureHtml}
+  <div class="email-signature-wrap" style="margin-top:20px;border:none;">
+    ${signatureHtml}
+  </div>
 </div>`;
 
     const plainBody = [

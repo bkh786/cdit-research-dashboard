@@ -2895,7 +2895,7 @@ function buildSignatureHtml(p){
   const web = p.companyWebsite || "https://www.channelplay.in";
 
   return `
-<div class="email-signature-rendered" style="font-family: Arial, -apple-system, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+<div class="email-signature-rendered" style="font-family: Arial, -apple-system, sans-serif; font-size: 13px; line-height: 1.6; color: #1e293b; margin-top: 20px; padding-top: 8px; border: none;">
   <p style="margin: 0 0 12px 0; color: #334155;">Warm regards,</p>
   <p style="margin: 0 0 4px 0; font-weight: 700; font-size: 14px; color: #0f172a;">${escapeHtml(name)}</p>
   <p style="margin: 0 0 8px 0; color: #475569; font-size: 13px;">${escapeHtml(desig)} &bull; <strong style="color: #0f172a;">${escapeHtml(comp)}</strong></p>
@@ -2904,7 +2904,7 @@ function buildSignatureHtml(p){
     <span>&#128222; ${escapeHtml(phone)}</span>
     <span>&#127760; <a href="${escapeAttr(web)}" target="_blank" rel="noopener" style="color: #4f46e5; text-decoration: none;">${escapeHtml(web)}</a></span>
   </div>
-  <div style="margin-top: 8px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 6px; letter-spacing: 0.3px;">
+  <div style="margin-top: 6px; font-size: 11px; color: #64748b; letter-spacing: 0.3px; border: none;">
     Retail Execution &bull; Field Force Outsourcing &bull; Visual Merchandising &bull; Tech Audits
   </div>
 </div>`;
@@ -3224,10 +3224,10 @@ function openOutlookCompose(brandName, contact){
     fullPlainText += "\n\n" + emailSettings.signaturePlain;
   }
 
-  // 3. SYNCHRONOUSLY COPY FULL FORMATTED EMAIL (Rich HTML + Plain)
-  // Exact same proven method that copyEmailRich uses!
-  const plainToCopy = subject + "\n\n" + fullPlainText;
-  const richHtmlToCopy = `<p style="font-family:Arial,sans-serif;font-size:15px;color:#0f172a;margin-bottom:16px;"><strong>Subject: ${escapeHtml(subject)}</strong></p>${fullRichHtml}`;
+  // 3. SYNCHRONOUSLY COPY FULL FORMATTED EMAIL BODY (Rich HTML + Plain)
+  // Exclude the subject line from the clipboard payload so it is not pasted into the email body
+  const plainToCopy = fullPlainText;
+  const richHtmlToCopy = fullRichHtml;
   try {
     const item = new ClipboardItem({
       "text/plain": new Blob([plainToCopy], { type: "text/plain" }),
@@ -3244,12 +3244,12 @@ function openOutlookCompose(brandName, contact){
   const outlookBtn = document.getElementById("openOutlookBtn");
   if (outlookBtn) {
     const origHtml = outlookBtn.innerHTML;
-    outlookBtn.innerHTML = `<span>HTML Copied &amp; Opening Outlook... ✓</span>`;
+    outlookBtn.innerHTML = `<span>HTML Body Copied &amp; Opening Outlook... ✓</span>`;
     setTimeout(() => { outlookBtn.innerHTML = origHtml; }, 3000);
   }
 
-  // 4. Notify user that formatted email & saved signature are copied
-  showGlobalToast("📋 Full formatted HTML email & signature copied! In Outlook Web, press Ctrl+V / Cmd+V in the message body to paste.", false);
+  // 4. Notify user that formatted email body & saved signature are copied
+  showGlobalToast("📋 Formatted email body & signature copied! In Outlook Web, press Ctrl+V / Cmd+V in the message body to paste.", false);
 
   // 5. Open Outlook Web with To, Cc, Subject pre-filled.
   // CRITICAL:
@@ -3303,8 +3303,9 @@ function copyToClipboard(text, btnEl){
 }
 
 function copyEmailRich(subject, htmlBody, btnEl){
-  const plain = subject + "\n\n" + htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n");
-  const richHtml = `<p><strong>Subject: ${subject}</strong></p>${htmlBody}`;
+  // Exclude the subject line from the copied email body
+  const plain = htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  const richHtml = htmlBody;
   try {
     const item = new ClipboardItem({
       "text/plain": new Blob([plain], { type: "text/plain" }),
@@ -3474,7 +3475,7 @@ function renderBrandDetail(brandName){
             </div>
             <div class="outlook-paste-tip" style="margin-top:12px;padding:9px 13px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
               <span style="font-size:14px;">💡</span>
-              <span><strong>Outlook Web Tip:</strong> Clicking <strong>Open in Outlook Web</strong> pre-fills recipient, CC &amp; subject, and copies the formatted HTML draft &amp; signature to your clipboard. Simply press <strong>Ctrl+V / Cmd+V</strong> in the Outlook Web message body to paste the styled message.</span>
+              <span><strong>Outlook Web Tip:</strong> Clicking <strong>Open in Outlook Web</strong> pre-fills recipient, CC &amp; subject, and copies the formatted HTML email body &amp; signature to your clipboard. Simply press <strong>Ctrl+V / Cmd+V</strong> in the Outlook Web message body to paste the styled message.</span>
             </div>
           </div>
         </div>
@@ -3685,7 +3686,7 @@ function buildEmailDraft(brand, topOpp, news, contact){
   const brandName = (brand && brand["Brand"]) || "Brand";
   const contactName = contact ? String(contact["Decision Maker Name"] || "").trim() : "";
   const firstName = contactName ? contactName.split(/\s+/)[0] : "";
-  const salutation = firstName ? `Hi ${firstName},` : (contactName ? `Hi ${contactName},` : `Hi [Name],`);
+  const salutation = firstName ? `Hello ${firstName},` : (contactName ? `Hello ${contactName},` : `Hello [Name],`);
 
   const latestNews = news && news[0];
   const newsContext = latestNews ? ` (${latestNews["Headline"]})` : "";
@@ -3717,7 +3718,7 @@ function buildEmailDraft(brand, topOpp, news, contact){
   </div>
   <p class="email-closing" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(strategicClosing)}</p>
   <p class="email-softhook" style="font-weight:600;margin:16px 0;color:var(--text-primary);">${escapeHtml(softHook)}</p>
-  <div class="email-signature-divider">
+  <div class="email-signature-wrap" style="margin-top:20px;border:none;">
     ${sigHtml}
   </div>
 </div>`;
