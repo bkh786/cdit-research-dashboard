@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
       segment,
       topOpportunity,
       recentNews,
-      contactName,
+      contactName: rawContactName,
       contactDesignation,
       signature,
       signatureHtml: customSignatureHtml,
@@ -58,6 +58,9 @@ module.exports = async (req, res) => {
       res.status(400).json({ error: "brand is required" });
       return;
     }
+
+    const rawContact = rawContactName || "";
+    const contactName = (rawContact.length > 1 && rawContact.toLowerCase() !== (brand || "").toLowerCase() && !/^(not public|pending|unknown|unverified|tbd|n\/a|none)/i.test(rawContact)) ? rawContact.trim() : "";
 
     const channelplayContext = await fetchChannelplayContext();
 
@@ -83,7 +86,7 @@ ${channelplayContext || "Channelplay specializes in: (1) Experiential Sales Forc
 
 CRITICAL DRAFTING INSTRUCTIONS:
 1. Make the email longer and richer than a generic short pitch. It must read like an executive-level strategic advisory note.
-2. Hook Line: Address the recipient warmly by first name (or [Name]), greeting them specifically as "Hello <First Name>" (e.g. "Hello Rajiv," or "Hello [Name],"). Never use "Hi". Congratulate or reference their recent brand news, product launches, or retail expansion.
+2. Hook Line: Address the recipient warmly, greeting them specifically as "Hello <Name>" (e.g. "Hello ${contactName || "Rajiv"}," or "Hello [Name],"). Never use "Hi". Never invent single-letter initials like "Hello B,". Congratulate or reference their recent brand news, product launches, or retail expansion.
 3. Market Context & In-Store Challenges (1 comprehensive paragraph): Discuss the reality of translating brand buzz/launches into retail counter conversions in India (e.g., cut-throat shelf competition in multi-brand stores, untrained third-party retail staff, promoter attrition, premium experiential demo requirements).
 4. Business Synergies & Channelplay Value (1 comprehensive paragraph): Clearly articulate how Channelplay acts as an extension of ${brand}'s sales leadership to capture counter share and ensure pristine brand presence.
 5. Key Capabilities & Highlights: Provide 3 to 4 specific bullet points showcasing Channelplay's proven capabilities directly relevant to ${brand} (e.g., dedicated promoters with proven >90% fill rate and low attrition, pan-India visual merchandising & POSM rollout, 1Channel mobile tech for live counter visibility, compliance audits).
@@ -150,6 +153,10 @@ CRITICAL DRAFTING INSTRUCTIONS:
         if (parsed) {
           if (parsed.hookLine) {
             parsed.hookLine = parsed.hookLine.replace(/^Hi\s+/i, "Hello ");
+            if (contactName) {
+              parsed.hookLine = parsed.hookLine.replace(/^Hello\s+[A-Za-z](?:,|\s)/i, `Hello ${contactName}, `);
+              parsed.hookLine = parsed.hookLine.replace(/^Hello\s+\[Name\]/i, `Hello ${contactName}`);
+            }
           }
           break;
         }
@@ -174,8 +181,10 @@ CRITICAL DRAFTING INSTRUCTIONS:
     let signatureHtml = customSignatureHtml || "";
 
     if (!signaturePlain) {
-      signaturePlain = `Warm regards,\n\n${sName}\n${sDesig} | ${sComp}\nEmail: ${sEmail} | Phone: ${sPhone}\nWeb: ${sWeb}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
+      signaturePlain = `Warm regards,\n\n${sName}\n${sDesig} • ${sComp}\n📧 ${sEmail} 📞 ${sPhone} 🌐 ${sWeb}\nRetail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits`;
     }
+
+    const styledTagline = `<div class="email-signature-tagline" style="margin-top:14px;font-size:14px;line-height:1.4;border:none;"><span style="color:#0f5c1b;font-weight:700;font-style:italic;">Retail Execution</span> <span style="color:#000000;font-weight:700;">&bull;</span> <span style="color:#de691a;font-weight:700;font-style:italic;">Field Force Outsourcing</span> <span style="color:#000000;font-weight:700;">&bull;</span> <span style="color:#164e86;font-weight:700;font-style:italic;">Visual Merchandising</span> <span style="color:#000000;font-weight:700;">&bull;</span> <span style="color:#773e9b;font-weight:700;font-style:italic;">Tech Audits</span></div>`;
 
     if (!signatureHtml) {
       if (signature && signature.includes("<") && signature.includes(">")) {
@@ -186,14 +195,12 @@ CRITICAL DRAFTING INSTRUCTIONS:
   <p style="margin:0 0 12px 0;color:#334155;">Warm regards,</p>
   <p style="margin:0 0 4px 0;font-weight:700;font-size:14px;color:#0f172a;">${escapeHtmlServer(sName)}</p>
   <p style="margin:0 0 8px 0;color:#475569;font-size:13px;">${escapeHtmlServer(sDesig)} &bull; <strong style="color:#0f172a;">${escapeHtmlServer(sComp)}</strong></p>
-  <div style="margin:0 0 6px 0;font-size:12px;color:#64748b;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+  <div style="margin:0 0 8px 0;font-size:12.5px;color:#64748b;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
     <span>&#128231; <a href="mailto:${escapeHtmlServer(sEmail)}" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sEmail)}</a></span>
-    <span>&#128222; ${escapeHtmlServer(sPhone)}</span>
+    <span>&#128222; <span style="color:#0f172a;">${escapeHtmlServer(sPhone)}</span></span>
     <span>&#127760; <a href="${escapeHtmlServer(sWeb)}" target="_blank" rel="noopener" style="color:#4f46e5;text-decoration:none;">${escapeHtmlServer(sWeb)}</a></span>
   </div>
-  <div style="margin-top:6px;font-size:11px;color:#64748b;letter-spacing:0.3px;border:none;">
-    Retail Execution &bull; Field Force Outsourcing &bull; Visual Merchandising &bull; Tech Audits
-  </div>
+  ${styledTagline}
 </div>`;
       }
     }
@@ -203,10 +210,11 @@ CRITICAL DRAFTING INSTRUCTIONS:
         .replace(/border-top:[^;"]+;?/gi, "border:none;")
         .replace(/border-bottom:[^;"]+;?/gi, "border:none;")
         .replace(/<hr[^>]*>/gi, "");
+      signatureHtml = signatureHtml.replace(/<div[^>]*>[\s\r\n]*Retail Execution[\s\S]*?Tech Audits[\s\r\n]*<\/div>/i, styledTagline);
     }
 
     if (!parsed) {
-      const recipientGreeting = contactName ? contactName.split(" ")[0] : "[Name]";
+      const recipientGreeting = contactName || "[Name]";
       parsed = {
         subject: `Partnering on ${brand}'s Retail Counter Velocity & In-Store Execution`,
         hookLine: `Hello ${recipientGreeting}, congratulations on ${brand}'s recent market initiatives and festive product rollout across the Indian market.`,
@@ -224,20 +232,28 @@ CRITICAL DRAFTING INSTRUCTIONS:
     }
 
     const bodyHtml = `
-<div class="email-rich-wrap">
-  <p class="email-hook" style="font-weight:600;margin-bottom:14px;color:var(--text-primary);">${escapeHtmlServer(parsed.hookLine || "")}</p>
-  <p class="email-context" style="margin-bottom:14px;line-height:1.68;">${escapeHtmlServer(parsed.marketContext || "")}</p>
-  <p class="email-synergies" style="margin-bottom:14px;line-height:1.68;">${escapeHtmlServer(parsed.synergiesParagraph || "")}</p>
+<div class="email-rich-wrap" style="font-family:Arial,-apple-system,sans-serif;font-size:13.5px;line-height:1.68;color:#1e293b;">
+  <p class="email-hook" style="font-weight:700;margin-bottom:14px;color:#0f172a;font-size:14px;line-height:1.6;">${escapeHtmlServer(parsed.hookLine || "")}</p>
+  <p class="email-context" style="margin-bottom:14px;color:#334155;line-height:1.68;">${escapeHtmlServer(parsed.marketContext || "")}</p>
+  <p class="email-synergies" style="margin-bottom:14px;color:#334155;line-height:1.68;">${escapeHtmlServer(parsed.synergiesParagraph || "")}</p>
   
-  <div class="email-capabilities-block" style="background:var(--bg-card,#f8fafc);border-left:3px solid var(--accent,#4f46e5);border-radius:6px;padding:12px 16px;margin:16px 0;">
-    <div style="font-weight:700;font-size:12.5px;color:var(--accent,#4f46e5);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Key Channelplay Capabilities &amp; Business Synergies:</div>
-    <ul class="email-cap-list" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--text-secondary,#334155);font-size:12.5px;line-height:1.6;">
-      ${(parsed.capabilities || []).map(c => `<li>${escapeHtmlServer(c)}</li>`).join("")}
+  <div class="email-capabilities-block" style="margin:18px 0 16px 0;">
+    <p style="font-weight:700;font-size:13.5px;color:#0f172a;margin:0 0 8px 0;">Key Channelplay Capabilities &amp; Business Synergies:</p>
+    <ul class="email-cap-list" style="margin:0;padding-left:20px;color:#334155;font-size:13px;line-height:1.65;">
+      ${(parsed.capabilities || []).map(c => {
+        const colonIdx = c.indexOf(":");
+        if (colonIdx > 0) {
+          const title = c.slice(0, colonIdx + 1).trim();
+          const desc = c.slice(colonIdx + 1).trim();
+          return `<li style="margin-bottom:7px;"><strong style="color:#0f172a;">${escapeHtmlServer(title)}</strong> ${escapeHtmlServer(desc)}</li>`;
+        }
+        return `<li style="margin-bottom:7px;">${escapeHtmlServer(c)}</li>`;
+      }).join("\n      ")}
     </ul>
   </div>
   
-  <p class="email-closing" style="margin-bottom:14px;line-height:1.68;">${escapeHtmlServer(parsed.strategicClosing || "")}</p>
-  <p class="email-softhook" style="font-weight:600;margin:16px 0;color:var(--text-primary);">${escapeHtmlServer(parsed.softHook || "")}</p>
+  <p class="email-closing" style="margin-bottom:14px;color:#334155;line-height:1.68;">${escapeHtmlServer(parsed.strategicClosing || "")}</p>
+  <p class="email-softhook" style="font-weight:700;margin:16px 0;color:#0f172a;font-size:13.5px;line-height:1.6;">${escapeHtmlServer(parsed.softHook || "")}</p>
   
   <div class="email-signature-wrap" style="margin-top:20px;border:none;">
     ${signatureHtml}

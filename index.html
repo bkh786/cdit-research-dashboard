@@ -2056,6 +2056,7 @@ async function researchBrandContact(brandName, btnEl){
       if (cardBody && updatedContact) {
         cardBody.innerHTML = renderContactCard(updatedContact);
       }
+      updateBrandEmailDraftWithContact(brandName, updatedContact);
     } else if (currentTab === "contacts") {
       renderContacts();
     }
@@ -2879,11 +2880,20 @@ function getEmailSettings(){
   merged.senderCompany = merged.companyName;
   merged.senderPhone = merged.phoneNumber;
 
-  merged.signatureHtml = buildSignatureHtml(merged);
+  merged.signatureHtml = upgradeSignatureTagline(buildSignatureHtml(merged));
   merged.signaturePlain = buildSignaturePlain(merged);
   merged.signature = merged.signaturePlain;
 
   return merged;
+}
+
+function upgradeSignatureTagline(sigHtml){
+  if (!sigHtml) return sigHtml;
+  const styledTagline = `<div class="email-signature-tagline" style="margin-top: 14px; font-size: 14px; line-height: 1.4; border: none;"><span style="color: #0f5c1b; font-weight: 700; font-style: italic;">Retail Execution</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #de691a; font-weight: 700; font-style: italic;">Field Force Outsourcing</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #164e86; font-weight: 700; font-style: italic;">Visual Merchandising</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #773e9b; font-weight: 700; font-style: italic;">Tech Audits</span></div>`;
+  if (sigHtml.includes("Retail Execution") && !sigHtml.includes("#0f5c1b")) {
+    return sigHtml.replace(/<div[^>]*>[\s\r\n]*Retail Execution[\s\S]*?Tech Audits[\s\r\n]*<\/div>/i, styledTagline);
+  }
+  return sigHtml;
 }
 
 function buildSignatureHtml(p){
@@ -2899,13 +2909,13 @@ function buildSignatureHtml(p){
   <p style="margin: 0 0 12px 0; color: #334155;">Warm regards,</p>
   <p style="margin: 0 0 4px 0; font-weight: 700; font-size: 14px; color: #0f172a;">${escapeHtml(name)}</p>
   <p style="margin: 0 0 8px 0; color: #475569; font-size: 13px;">${escapeHtml(desig)} &bull; <strong style="color: #0f172a;">${escapeHtml(comp)}</strong></p>
-  <div style="margin: 0 0 6px 0; font-size: 12px; color: #64748b; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+  <div style="margin: 0 0 8px 0; font-size: 12.5px; color: #64748b; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
     <span>&#128231; <a href="mailto:${escapeHtml(email)}" style="color: #4f46e5; text-decoration: none;">${escapeHtml(email)}</a></span>
-    <span>&#128222; ${escapeHtml(phone)}</span>
+    <span>&#128222; <span style="color: #0f172a;">${escapeHtml(phone)}</span></span>
     <span>&#127760; <a href="${escapeAttr(web)}" target="_blank" rel="noopener" style="color: #4f46e5; text-decoration: none;">${escapeHtml(web)}</a></span>
   </div>
-  <div style="margin-top: 6px; font-size: 11px; color: #64748b; letter-spacing: 0.3px; border: none;">
-    Retail Execution &bull; Field Force Outsourcing &bull; Visual Merchandising &bull; Tech Audits
+  <div class="email-signature-tagline" style="margin-top: 14px; font-size: 14px; line-height: 1.4; border: none;">
+    <span style="color: #0f5c1b; font-weight: 700; font-style: italic;">Retail Execution</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #de691a; font-weight: 700; font-style: italic;">Field Force Outsourcing</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #164e86; font-weight: 700; font-style: italic;">Visual Merchandising</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #773e9b; font-weight: 700; font-style: italic;">Tech Audits</span>
   </div>
 </div>`;
 }
@@ -2918,7 +2928,7 @@ function buildSignaturePlain(p){
   const phone = p.phoneNumber || p.senderPhone || "+91 8509950431";
   const web = p.companyWebsite || "https://www.channelplay.in";
 
-  return `Warm regards,\n\n${name}\n${desig} | ${comp}\nEmail: ${email} | Phone: ${phone}\nWeb: ${web}\nRetail Execution · Field Force Outsourcing · Visual Merchandising · Tech Audits`;
+  return `Warm regards,\n\n${name}\n${desig} • ${comp}\n📧 ${email} 📞 ${phone} 🌐 ${web}\nRetail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits`;
 }
 
 async function saveEmailSettings(newSettings, btnEl){
@@ -3664,6 +3674,60 @@ function renderContactCard(contact){
   return html;
 }
 
+function getCleanContactGreetingName(rawName, brandName){
+  if (!rawName) return "";
+  const trimmed = String(rawName).trim();
+  if (trimmed.length <= 1) return "";
+  if (brandName && trimmed.toLowerCase() === brandName.toLowerCase()) return "";
+  if (/^(not public|pending|unknown|unverified|tbd|n\/a|none)/i.test(trimmed)) return "";
+  return trimmed;
+}
+
+function updateBrandEmailDraftWithContact(brandName, contact){
+  if (!contact) return;
+  const brandClean = brandName || window.__viewingBrand;
+  const rawName = contact["Decision Maker Name"] || "";
+  const cleanName = getCleanContactGreetingName(rawName, brandClean);
+  if (!cleanName) return;
+
+  const brands = workbookData["Brands Master"] || [];
+  const allNews = workbookData["News feed"] || [];
+  const allOpps = workbookData["Opportunities"] || [];
+  const brand = brands.find(b => b["Brand"] === brandClean) || { "Brand": brandClean };
+  const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandClean), "Date");
+  const opps = allOpps.filter(o => o["Brand"] === brandClean)
+    .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
+  const topOpp = opps[0];
+
+  const freshDraft = buildEmailDraft(brand, topOpp, news, contact);
+
+  if (window.__emailDraftState && !window.__emailDraftState.isTemplate && window.__emailDraftState.bodyHtml) {
+    let updatedHtml = window.__emailDraftState.bodyHtml;
+    updatedHtml = updatedHtml.replace(/(<p[^>]*class=["']email-hook["'][^>]*>[\s\r\n]*Hello\s+)[^,]+(,)/i, `$1${cleanName}$2`);
+    if (!updatedHtml.includes(cleanName)) {
+      updatedHtml = updatedHtml.replace(/Hello\s+[^,]+,/i, `Hello ${cleanName},`);
+    }
+    let updatedPlain = window.__emailDraftState.plainBody || "";
+    updatedPlain = updatedPlain.replace(/^Hello\s+[^,]+,/im, `Hello ${cleanName},`);
+
+    window.__emailDraftState.bodyHtml = updatedHtml;
+    window.__emailDraftState.plainBody = updatedPlain;
+    const bodyEl = document.getElementById("emailBodyContent");
+    if (bodyEl) bodyEl.innerHTML = updatedHtml;
+  } else {
+    window.__emailDraftState = freshDraft;
+    const subjInput = document.getElementById("emailSubjectInput");
+    if (subjInput) subjInput.value = freshDraft.subject;
+    const bodyEl = document.getElementById("emailBodyContent");
+    if (bodyEl) bodyEl.innerHTML = freshDraft.bodyHtml;
+  }
+
+  const draftNote = document.getElementById("emailDraftNote");
+  if (draftNote) {
+    draftNote.textContent = `Draft salutation updated for ${escapeHtml(cleanName)} (${contact["Designation"] || "Executive"}).`;
+  }
+}
+
 async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, btnEl){
   const statusEl = document.getElementById("aiDraftStatus");
   btnEl.disabled = true;
@@ -3683,6 +3747,10 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
         source: n["Source"], category: n["Category"]
       }));
 
+    const allContacts = workbookData["Contacts"] || [];
+    const currentContact = allContacts.find(c => c["Brand"] === brandName) || contact;
+    const cleanContactName = getCleanContactGreetingName(currentContact ? currentContact["Decision Maker Name"] : "", brandName);
+
     const emailSettings = getEmailSettings();
     const resp = await fetch("/api/generate-email", {
       method: "POST",
@@ -3697,7 +3765,8 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
           recommendedService: topOpp["Recommended Service"], nextAction: topOpp["Suggested Next Action"]
         } : null,
         recentNews,
-        contactName: contact ? contact["Decision Maker Name"] : "",
+        contactName: cleanContactName,
+        contactDesignation: currentContact ? currentContact["Designation"] : "",
         signature: emailSettings.signaturePlain,
         signatureHtml: emailSettings.signatureHtml,
         senderName: emailSettings.senderName,
@@ -3756,41 +3825,52 @@ function buildEmailDraft(brand, topOpp, news, contact){
   const sigPlain = emailSettings.signaturePlain;
 
   const brandName = (brand && brand["Brand"]) || "Brand";
-  const contactName = contact ? String(contact["Decision Maker Name"] || "").trim() : "";
-  const firstName = contactName ? contactName.split(/\s+/)[0] : "";
-  const salutation = firstName ? `Hello ${firstName},` : (contactName ? `Hello ${contactName},` : `Hello [Name],`);
+  const rawContactName = contact ? String(contact["Decision Maker Name"] || "").trim() : "";
+  const contactName = getCleanContactGreetingName(rawContactName, brandName);
+  const salutation = contactName ? `Hello ${contactName},` : `Hello [Name],`;
 
   const latestNews = news && news[0];
   const newsContext = latestNews ? ` (${latestNews["Headline"]})` : "";
   const oppType = topOpp ? topOpp["Opportunity Type"] : "";
 
-  const subject = `Partnering on ${brandName}'s Retail Velocity & In-Store Execution with Channelplay`;
-  const hookLine = `${salutation} congratulations on ${brandName}'s recent retail moves${newsContext} in the Indian market.`;
-  const marketContext = `As ${brandName} accelerates distribution across multi-brand counters and regional store networks, maintaining strong brand presence, active product demonstrations, and promoter productivity is essential to capturing counter share ahead of peak demand cycles.`;
-  const synergiesParagraph = `Channelplay operates as a full-funnel retail execution partner for leading brands in India. We deploy and manage dedicated in-store promoters, execute visual merchandising and POSM rollouts across pan-India counters, and drive accountability via real-time counter tracking.`;
+  const subject = `Partnering on ${brandName}'s Retail Counter Velocity & In-Store Execution`;
+  const hookLine = `${salutation} congratulations on ${brandName}'s recent market initiatives and festive product rollout across the Indian market.`;
+  const marketContext = `As ${brandName} accelerates its distribution footprint across regional multi-brand outlets (MBOs) and exclusive store touchpoints, ensuring consistent brand governance and active shopper engagement at the final moment of purchase is paramount. Many leading brands face critical hurdles around promoter retention, live demonstration compliance, and fragmented visibility across Tier-1 and Tier-2 counters.`;
+  const synergiesParagraph = `At Channelplay, we operate as a full-funnel retail execution partner. We bridge the gap between your above-the-line marketing investments and ground-level sell-through by deploying highly trained, technology-enabled sales promoters and managing agile visual merchandising operations. For benchmark consumer electronics and AV leaders, our dedicated programs have driven immediate uplifts in counter share while keeping attrition to industry-low levels.`;
   const capabilities = [
-    `Experiential Promoter Deployment: Certified sales staff with proven 90%+ fill rates and 5.3% low attrition.`,
-    `Visual Merchandising & POSM Governance: Pan-India fixture rollouts, counter hygiene, and secondary display audits.`,
-    `Technology Governance via 1Channel: Real-time GPS attendance, selfie check-in, and counter sell-out tracking.`,
-    `Experiential Demonstrations: Standardized customer journey scripts tailored to maximize conversion rates.`
+    `Experiential Field Force & Promoter Staffing: Rapid deployment of certified, tech-savvy brand ambassadors with a proven 90%+ fill rate and 5.3% promoter attrition.`,
+    `Visual Merchandising & POSM Governance: Flawless pan-India fixture deployment, display hygiene, and secondary placement audits across high-traffic retail counters.`,
+    `Technology-Driven Visibility via 1Channel: Real-time counter analytics, GPS-verified attendance, selfie check-ins, and daily SKU-level sales reporting directly accessible to your leadership team.`,
+    `High-Impact Product Demonstrations: Standardized customer journey scripts and experiential demo stations tailored to maximize conversion rates for premium lineups.`
   ];
-  const strategicClosing = `With festive retail footfalls and counter competition climbing, having agile in-store execution ensures your marketing investments translate directly to counter sales.`;
-  const softHook = `Would you be open to a brief 10–15 minute introductory call next week to explore retail synergies for ${brandName}?`;
+  const strategicClosing = `With the festive retail momentum currently underway, aligning on an agile in-store execution model can directly amplify your conversion rate across priority multi-brand counters and exclusive retail touchpoints.`;
+  const softHook = `Would you be open to a brief 10–15 minute introductory conversation next week to explore how we can support ${brandName}'s retail execution objectives?`;
 
   const bodyHtml = `
-<div class="email-rich-wrap">
-  <p class="email-hook" style="font-weight:600;margin-bottom:14px;color:var(--text-primary);">${escapeHtml(hookLine)}</p>
-  <p class="email-context" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(marketContext)}</p>
-  <p class="email-synergies" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(synergiesParagraph)}</p>
-  <div class="email-capabilities-block" style="background:var(--bg-card);border-left:3px solid var(--accent);border-radius:6px;padding:12px 16px;margin:16px 0;">
-    <div style="font-weight:700;font-size:12.5px;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Key Channelplay Capabilities &amp; Synergies:</div>
-    <ul class="email-cap-list" style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--text-secondary);font-size:12.5px;line-height:1.6;">
-      ${capabilities.map(c => `<li>${escapeHtml(c)}</li>`).join("")}
+<div class="email-rich-wrap" style="font-family: Arial, -apple-system, sans-serif; font-size: 13.5px; line-height: 1.68; color: #1e293b;">
+  <p class="email-hook" style="font-weight: 700; margin-bottom: 14px; color: #0f172a; font-size: 14px; line-height: 1.6;">${escapeHtml(hookLine)}</p>
+  <p class="email-context" style="margin-bottom: 14px; color: #334155; line-height: 1.68;">${escapeHtml(marketContext)}</p>
+  <p class="email-synergies" style="margin-bottom: 14px; color: #334155; line-height: 1.68;">${escapeHtml(synergiesParagraph)}</p>
+  
+  <div class="email-capabilities-block" style="margin: 18px 0 16px 0;">
+    <p style="font-weight: 700; font-size: 13.5px; color: #0f172a; margin: 0 0 8px 0;">Key Channelplay Capabilities &amp; Business Synergies:</p>
+    <ul class="email-cap-list" style="margin: 0; padding-left: 20px; color: #334155; font-size: 13px; line-height: 1.65;">
+      ${capabilities.map(c => {
+        const colonIdx = c.indexOf(":");
+        if (colonIdx > 0) {
+          const title = c.slice(0, colonIdx + 1).trim();
+          const desc = c.slice(colonIdx + 1).trim();
+          return `<li style="margin-bottom: 7px;"><strong style="color: #0f172a;">${escapeHtml(title)}</strong> ${escapeHtml(desc)}</li>`;
+        }
+        return `<li style="margin-bottom: 7px;">${escapeHtml(c)}</li>`;
+      }).join("\n      ")}
     </ul>
   </div>
-  <p class="email-closing" style="margin-bottom:14px;line-height:1.68;">${escapeHtml(strategicClosing)}</p>
-  <p class="email-softhook" style="font-weight:600;margin:16px 0;color:var(--text-primary);">${escapeHtml(softHook)}</p>
-  <div class="email-signature-wrap" style="margin-top:20px;border:none;">
+  
+  <p class="email-closing" style="margin-bottom: 14px; color: #334155; line-height: 1.68;">${escapeHtml(strategicClosing)}</p>
+  <p class="email-softhook" style="font-weight: 700; margin: 16px 0; color: #0f172a; font-size: 13.5px; line-height: 1.6;">${escapeHtml(softHook)}</p>
+  
+  <div class="email-signature-wrap" style="margin-top: 20px; border: none;">
     ${sigHtml}
   </div>
 </div>`;
@@ -3799,7 +3879,7 @@ function buildEmailDraft(brand, topOpp, news, contact){
     hookLine,
     marketContext,
     synergiesParagraph,
-    "Key Channelplay Capabilities & Synergies:",
+    "Key Channelplay Capabilities & Business Synergies:",
     ...capabilities.map(c => `• ${c}`),
     strategicClosing,
     softHook,

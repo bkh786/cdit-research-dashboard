@@ -1878,19 +1878,25 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
   margin-bottom: 0;
 }
 .email-capabilities-block {
-  border-left: 3px solid var(--accent);
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  padding: 12px 16px;
-  margin: 16px 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 18px 0 16px 0;
 }
 .email-cap-list {
   list-style: disc;
   margin: 0;
-  padding-left: 18px;
+  padding-left: 20px;
 }
 .email-cap-list li {
-  margin-bottom: 6px;
+  margin-bottom: 7px;
+  line-height: 1.65;
+}
+.email-signature-tagline {
+  margin-top: 14px;
+  font-size: 14px;
+  line-height: 1.4;
+  border: none !important;
 }
 .email-signature-card,
 .email-signature-rendered,
