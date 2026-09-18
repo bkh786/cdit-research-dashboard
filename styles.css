@@ -1864,6 +1864,30 @@ input[type=text]:focus, input[type=password]:focus, select:focus {
 .btn.btn-outlook svg {
   flex-shrink: 0;
 }
+.btn.btn-outlook-app {
+  background: #005a9e;
+  border-color: #005a9e;
+  color: #ffffff !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 90, 158, 0.25);
+  transition: all 0.15s ease;
+}
+.btn.btn-outlook-app:hover {
+  background: #004578;
+  border-color: #004578;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(0, 90, 158, 0.35);
+  transform: translateY(-1px);
+}
+.btn.btn-outlook-app:active {
+  transform: translateY(0);
+}
+.btn.btn-outlook-app svg {
+  flex-shrink: 0;
+}
 
 /* Enhanced Outreach Email Card Formatting */
 .email-rich-wrap {

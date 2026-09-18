@@ -3182,11 +3182,22 @@ function renderEmailSettings(){
   });
 }
 
-function openOutlookCompose(brandName, contact){
+function getClientPlatform(){
+  const ua = (navigator.userAgent || "").toLowerCase();
+  const platform = (navigator.platform || "").toLowerCase();
+  if (platform.includes("mac") || ua.includes("macintosh") || ua.includes("mac os x")) {
+    return { os: "Mac", isMac: true, isWindows: false, shortcut: "Cmd+V" };
+  }
+  if (platform.includes("win") || ua.includes("windows")) {
+    return { os: "Windows", isMac: false, isWindows: true, shortcut: "Ctrl+V" };
+  }
+  return { os: "Desktop", isMac: false, isWindows: false, shortcut: "Ctrl+V / Cmd+V" };
+}
+
+function prepareOutreachDraftPayload(brandName, contact){
   const state = window.__emailDraftState;
   if (!state || !state.subject) {
-    alert("Please generate or select an outreach email draft first.");
-    return;
+    return null;
   }
   const emailSettings = getEmailSettings();
 
@@ -3197,7 +3208,7 @@ function openOutlookCompose(brandName, contact){
   }
   if (!toEmail) {
     const allContacts = workbookData["Contacts"] || [];
-    const found = allContacts.find(c => c["Brand"] === brandName);
+    const found = allContacts.find(c => (c["Brand"] || "").trim().toLowerCase() === (brandName || "").trim().toLowerCase());
     if (found) {
       toEmail = found["Official Email (public only)"] || found["Official Email"] || found["Email"] || "";
     }
@@ -3206,7 +3217,7 @@ function openOutlookCompose(brandName, contact){
   // If email is missing or placeholder, derive the official brand domain email
   if (!toEmail || toEmail.toLowerCase().includes("pending") || toEmail.toLowerCase().includes("not public") || !toEmail.includes("@")) {
     const brands = workbookData["Brands Master"] || [];
-    const bObj = brands.find(b => b["Brand"] === brandName) || {};
+    const bObj = brands.find(b => (b["Brand"] || "").trim().toLowerCase() === (brandName || "").trim().toLowerCase()) || {};
     const website = (contact && contact["Company Website"]) || bObj["Website"] || "";
     if (website) {
       const cleanDomain = website.replace(/^https?:\/\//i, "").replace(/^www\./i, "").split("/")[0].trim();
@@ -3234,41 +3245,50 @@ function openOutlookCompose(brandName, contact){
     fullPlainText += "\n\n" + emailSettings.signaturePlain;
   }
 
-  // 3. SYNCHRONOUSLY COPY FULL FORMATTED EMAIL BODY (Rich HTML + Plain)
-  // Exclude the subject line from the clipboard payload so it is not pasted into the email body
-  const plainToCopy = fullPlainText;
-  const richHtmlToCopy = fullRichHtml;
+  return {
+    toEmail: String(toEmail || "").trim(),
+    ccEmail: String(ccEmail || "").trim(),
+    subject: String(subject || "").trim(),
+    plainToCopy: fullPlainText,
+    richHtmlToCopy: fullRichHtml,
+    emailSettings
+  };
+}
+
+function openOutlookCompose(brandName, contact){
+  const payload = prepareOutreachDraftPayload(brandName, contact);
+  if (!payload) {
+    alert("Please generate or select an outreach email draft first.");
+    return;
+  }
+
+  // Synchronously copy full formatted email body (Rich HTML + Plain)
   try {
     const item = new ClipboardItem({
-      "text/plain": new Blob([plainToCopy], { type: "text/plain" }),
-      "text/html": new Blob([richHtmlToCopy], { type: "text/html" })
+      "text/plain": new Blob([payload.plainToCopy], { type: "text/plain" }),
+      "text/html": new Blob([payload.richHtmlToCopy], { type: "text/html" })
     });
     navigator.clipboard.write([item]);
   } catch (e) {
     try {
-      navigator.clipboard.writeText(plainToCopy);
+      navigator.clipboard.writeText(payload.plainToCopy);
     } catch (_) {}
   }
 
-  // Visual feedback on the Outlook button
+  // Visual feedback on the Outlook Web button
   const outlookBtn = document.getElementById("openOutlookBtn");
   if (outlookBtn) {
     const origHtml = outlookBtn.innerHTML;
-    outlookBtn.innerHTML = `<span>HTML Body Copied &amp; Opening Outlook... ✓</span>`;
+    outlookBtn.innerHTML = `<span>HTML Body Copied &amp; Opening Outlook Web... ✓</span>`;
     setTimeout(() => { outlookBtn.innerHTML = origHtml; }, 3000);
   }
 
-  // 4. Notify user that formatted email body & saved signature are copied
+  // Notify user that formatted email body & saved signature are copied
   showGlobalToast("📋 Formatted email body & signature copied! In Outlook Web, press Ctrl+V / Cmd+V in the message body to paste.", false);
 
-  // 5. Open Outlook Web with To, Cc, Subject pre-filled.
-  // CRITICAL:
-  // - Never use URLSearchParams because it converts spaces to '+' which Outlook Web displays literally.
-  // - Microsoft's official compose deeplink handler expects RFC 6068 mailtouri to parse To, Cc, and Subject.
-  // - We also supply to, cc, and subject as direct URL parameters using encodeURIComponent (which strictly formats spaces as %20).
-  const cleanSubject = String(subject || "").trim();
-  const cleanTo = String(toEmail || "").trim();
-  const cleanCc = String(ccEmail || "").trim();
+  const cleanSubject = payload.subject;
+  const cleanTo = payload.toEmail;
+  const cleanCc = payload.ccEmail;
 
   const mailtoParts = [];
   if (cleanCc) mailtoParts.push("cc=" + encodeURIComponent(cleanCc));
@@ -3282,6 +3302,91 @@ function openOutlookCompose(brandName, contact){
   if (cleanSubject) outlookUrl += `&subject=${encodeURIComponent(cleanSubject)}`;
 
   window.open(outlookUrl, "_blank", "noopener,noreferrer");
+}
+
+function openOutlookDesktopApp(brandName, contact){
+  const payload = prepareOutreachDraftPayload(brandName, contact);
+  if (!payload) {
+    alert("Please generate or select an outreach email draft first.");
+    return;
+  }
+  const platform = getClientPlatform();
+
+  // 1. Synchronously copy rich HTML + plain text to system clipboard so full formatting, signature, and colors paste seamlessly
+  try {
+    const item = new ClipboardItem({
+      "text/plain": new Blob([payload.plainToCopy], { type: "text/plain" }),
+      "text/html": new Blob([payload.richHtmlToCopy], { type: "text/html" })
+    });
+    navigator.clipboard.write([item]);
+  } catch (e) {
+    try {
+      navigator.clipboard.writeText(payload.plainToCopy);
+    } catch (_) {}
+  }
+
+  // 2. Visual feedback on desktop button
+  const appBtn = document.getElementById("openOutlookAppBtn");
+  if (appBtn) {
+    const origHtml = appBtn.innerHTML;
+    appBtn.innerHTML = `<span>Outlook App Triggered ✓</span>`;
+    setTimeout(() => { appBtn.innerHTML = origHtml; }, 3500);
+  }
+
+  // 3. Notify user with platform-specific paste shortcut
+  showGlobalToast(`🚀 Triggering Outlook Desktop App (${platform.os})! Full HTML body & signature copied — press ${platform.shortcut} in the message body to paste.`, false);
+
+  // 4. Trigger OS default mail client (Microsoft Outlook desktop on Mac / Windows) with pre-filled To, CC, and Subject
+  const mailtoParts = [];
+  if (payload.ccEmail) mailtoParts.push("cc=" + encodeURIComponent(payload.ccEmail));
+  if (payload.subject) mailtoParts.push("subject=" + encodeURIComponent(payload.subject));
+  const mailtoUri = "mailto:" + encodeURIComponent(payload.toEmail) + (mailtoParts.length ? "?" + mailtoParts.join("&") : "");
+
+  const a = document.createElement("a");
+  a.href = mailtoUri;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 1000);
+}
+
+function downloadEmlDraft(brandName, contact){
+  const payload = prepareOutreachDraftPayload(brandName, contact);
+  if (!payload) {
+    alert("Please generate or select an outreach email draft first.");
+    return;
+  }
+  const senderEmail = payload.emailSettings.senderEmail || "bikash.roy1@channelplay.in";
+  const senderName = payload.emailSettings.senderName || "Bikash Roy";
+
+  const emlLines = [
+    "X-Unsent: 1",
+    `From: "${senderName}" <${senderEmail}>`,
+    `To: <${payload.toEmail}>`,
+    payload.ccEmail ? `Cc: <${payload.ccEmail}>` : "",
+    `Subject: ${payload.subject}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/html; charset="utf-8"',
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    `<!DOCTYPE html>`,
+    `<html>`,
+    `<head><meta charset="utf-8"></head>`,
+    `<body style="font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1e293b;">`,
+    payload.richHtmlToCopy,
+    `</body>`,
+    `</html>`
+  ].filter(line => line !== null && line !== undefined);
+
+  const emlBlob = new Blob([emlLines.join("\r\n")], { type: "message/rfc822" });
+  const url = URL.createObjectURL(emlBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Outreach_${(brandName || "Brand").replace(/[^a-zA-Z0-9_-]/g, "_")}.eml`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 2500);
+  showGlobalToast("📁 Downloaded .eml draft file! Double-click to open directly in Outlook.", false);
 }
 
 /* ---------------- Master Tab Router ---------------- */
@@ -3368,14 +3473,15 @@ function renderBrandDetail(brandName){
   const allDrafts = workbookData["Email Drafts"] || [];
   const latestResearchMap = getBrandLatestResearchMap();
 
-  const brand = brands.find(b => b["Brand"] === brandName) || { "Brand": brandName };
-  const news = sortByDateDesc(allNews.filter(n => n["Brand"] === brandName), "Date");
-  const opps = allOpps.filter(o => o["Brand"] === brandName)
+  const brand = brands.find(b => (b["Brand"] || "").trim().toLowerCase() === brandName.trim().toLowerCase()) || { "Brand": brandName };
+  const news = sortByDateDesc(allNews.filter(n => (n["Brand"] || "").trim().toLowerCase() === brandName.trim().toLowerCase()), "Date");
+  const opps = allOpps.filter(o => (o["Brand"] || "").trim().toLowerCase() === brandName.trim().toLowerCase())
     .slice().sort((a, b) => Number(b["Priority Score (1-5)"]) - Number(a["Priority Score (1-5)"]));
-  const contact = allContacts.find(c => c["Brand"] === brandName);
-  const pipelineRow = allPipeline.find(p => p["Brand"] === brandName);
+  const contact = allContacts.find(c => (c["Brand"] || "").trim().toLowerCase() === brandName.trim().toLowerCase());
+  const pipelineRow = allPipeline.find(p => (p["Brand"] || "").trim().toLowerCase() === brandName.trim().toLowerCase());
   const topOpp = opps[0];
   const latestResearch = latestResearchMap[brandName] || { date: brand["Date Added"] || "-", snippet: "" };
+  const platform = getClientPlatform();
 
   const execSummary = buildExecSummary(brand, topOpp, news, pipelineRow);
   const newsHtml = news.length ? news.map(n => `
@@ -3537,11 +3643,31 @@ function renderBrandDetail(brandName){
                 </svg>
                 <span>Open in Outlook Web &#8599;</span>
               </button>
+              <button class="btn tiny btn-outlook-app" id="openOutlookAppBtn" title="Directly launch Microsoft Outlook desktop app on ${platform.os} with prefilled recipient, CC, and subject">
+                ${platform.isMac ? `
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-2 .6-2.65 1.35-.58.66-1.09 1.73-.95 2.76 1 .08 2.06-.51 2.68-1.26z"/>
+                  </svg>
+                ` : `
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 3.449L9.75 2.1v9.451H0V3.449zm10.949-1.551L24 0v11.551h-13.051V1.898zM0 12.6h9.75V22.05L0 20.701V12.6zm10.949 0H24V24l-13.051-1.898V12.6z"/>
+                  </svg>
+                `}
+                <span>Open in Outlook App (${platform.os}) &#8599;</span>
+              </button>
+              <button class="btn tiny secondary" id="downloadEmlBtn" title="Download draft file (.eml) with To, CC, and full HTML body for Outlook desktop">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>Download .eml</span>
+              </button>
               <span class="draft-note" id="emailDraftNote">Personalized strategic outreach draft with your live Email Settings signature.</span>
             </div>
             <div class="outlook-paste-tip" style="margin-top:12px;padding:9px 13px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
               <span style="font-size:14px;">💡</span>
-              <span><strong>Outlook Web Tip:</strong> Recipient, CC &amp; Subject are pre-filled automatically. The message body &amp; signature are copied to your clipboard — simply press <strong>Ctrl+V / Cmd+V</strong> in the Outlook message body to paste.</span>
+              <span><strong>Outlook Integration Tip:</strong> <strong>Open in Outlook App (${platform.os})</strong> triggers your desktop Outlook application, while <strong>Open in Outlook Web</strong> opens your browser. In both, Recipient, CC &amp; Subject are pre-filled, and the formatted HTML body &amp; signature are ready on your clipboard — simply press <strong>${platform.shortcut}</strong> in the message body to paste with full rich styling!</span>
             </div>
           </div>
         </div>
@@ -3606,6 +3732,18 @@ function renderBrandDetail(brandName){
   document.getElementById("openOutlookBtn").addEventListener("click", () => {
     openOutlookCompose(brandName, contact);
   });
+  const openOutlookAppBtn = document.getElementById("openOutlookAppBtn");
+  if (openOutlookAppBtn) {
+    openOutlookAppBtn.addEventListener("click", () => {
+      openOutlookDesktopApp(brandName, contact);
+    });
+  }
+  const downloadEmlBtn = document.getElementById("downloadEmlBtn");
+  if (downloadEmlBtn) {
+    downloadEmlBtn.addEventListener("click", () => {
+      downloadEmlDraft(brandName, contact);
+    });
+  }
   document.getElementById("aiDraftBtn").addEventListener("click", (e) => {
     generateAiEmailDraft(brandName, brand, topOpp, news, contact, e.target);
   });
