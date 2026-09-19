@@ -2851,7 +2851,18 @@ function getEmailSettings(){
   let localSettings = {};
   try {
     const raw = localStorage.getItem("ce_dashboard_email_settings");
-    if (raw) localSettings = JSON.parse(raw);
+    if (raw) {
+      localSettings = JSON.parse(raw);
+      // If localSettings has corrupted signatureHtml (missing Warm regards or sender info), remove it
+      if (localSettings.signatureHtml && (!localSettings.signatureHtml.includes("Warm regards") || !localSettings.signatureHtml.includes(localSettings.senderName || defaults.senderName))) {
+        delete localSettings.signatureHtml;
+        delete localSettings.signature;
+        delete localSettings.signaturePlain;
+        try {
+          localStorage.setItem("ce_dashboard_email_settings", JSON.stringify(localSettings));
+        } catch (_) {}
+      }
+    }
   } catch (e) {}
 
   const sheetRows = workbookData["Email Settings"] || [];
@@ -2880,7 +2891,8 @@ function getEmailSettings(){
   merged.senderCompany = merged.companyName;
   merged.senderPhone = merged.phoneNumber;
 
-  merged.signatureHtml = upgradeSignatureTagline(buildSignatureHtml(merged));
+  // buildSignatureHtml constructs the full signature directly with Warm regards, contact info, and styled tagline
+  merged.signatureHtml = buildSignatureHtml(merged);
   merged.signaturePlain = buildSignaturePlain(merged);
   merged.signature = merged.signaturePlain;
 
@@ -2889,9 +2901,13 @@ function getEmailSettings(){
 
 function upgradeSignatureTagline(sigHtml){
   if (!sigHtml) return sigHtml;
+  if (!sigHtml.includes("Warm regards")) return null;
   const styledTagline = `<div class="email-signature-tagline" style="margin-top: 14px; font-size: 14px; line-height: 1.4; border: none;"><span style="color: #0f5c1b; font-weight: 700; font-style: italic;">Retail Execution</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #de691a; font-weight: 700; font-style: italic;">Field Force Outsourcing</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #164e86; font-weight: 700; font-style: italic;">Visual Merchandising</span> <span style="color: #000000; font-weight: 700;">&bull;</span> <span style="color: #773e9b; font-weight: 700; font-style: italic;">Tech Audits</span></div>`;
+  if (sigHtml.includes("email-signature-tagline")) {
+    return sigHtml.replace(/<div[^>]*class=["'][^"']*email-signature-tagline[^"']*["'][^>]*>[\s\S]*?<\/div>/i, styledTagline);
+  }
   if (sigHtml.includes("Retail Execution") && !sigHtml.includes("#0f5c1b")) {
-    return sigHtml.replace(/<div[^>]*>[\s\S]*?Retail Execution[\s\S]*?Tech Audits[\s\S]*?<\/div>/i, styledTagline);
+    return sigHtml.replace(/<div[^>]*>(?:(?!<div)[\s\S])*?Retail Execution[\s\S]*?Tech Audits[\s\S]*?<\/div>/i, styledTagline);
   }
   return sigHtml;
 }
@@ -3234,15 +3250,18 @@ function prepareOutreachDraftPayload(brandName, contact){
   const ccEmail = emailSettings.defaultCc || "bikash.roy1@channelplay.in";
   const subject = (document.getElementById("emailSubjectInput")?.value || "").trim() || state.subject || `Supporting ${brandName}'s retail execution with Channelplay`;
 
-  // 2. Ensure rich HTML and plain text have the SAVED signature from Email Settings
-  let fullRichHtml = state.bodyHtml || "";
-  if (!fullRichHtml.includes("email-signature-rendered") && !fullRichHtml.includes("email-signature-card") && !fullRichHtml.includes(emailSettings.senderName)) {
-    fullRichHtml += "\n" + emailSettings.signatureHtml;
+  // 2. Ensure rich HTML and plain text have the full signature from Email Settings
+  let fullRichHtml = (document.getElementById("emailBodyContent")?.innerHTML || state.bodyHtml || "").trim();
+  if (!fullRichHtml.includes("Warm regards") || !fullRichHtml.includes(emailSettings.senderName)) {
+    fullRichHtml = fullRichHtml.replace(/<div[^>]*class=["'][^"']*email-signature-tagline[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+    fullRichHtml = fullRichHtml.replace(/<div[^>]*class=["'][^"']*email-signature-wrap[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+    fullRichHtml += `\n<div class="email-signature-wrap" style="margin-top: 20px; border: none;">\n${emailSettings.signatureHtml}\n</div>`;
   }
 
-  let fullPlainText = state.plainBody || "";
-  if (!fullPlainText.includes(emailSettings.senderName)) {
-    fullPlainText += "\n\n" + emailSettings.signaturePlain;
+  let fullPlainText = (state.plainBody || "").trim();
+  if (!fullPlainText.includes("Warm regards") || !fullPlainText.includes(emailSettings.senderName)) {
+    fullPlainText = fullPlainText.replace(/Retail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits/g, "").trim();
+    fullPlainText += `\n\n${emailSettings.signaturePlain}`;
   }
 
   return {
@@ -3263,17 +3282,7 @@ function openOutlookCompose(brandName, contact){
   }
 
   // Synchronously copy full formatted email body (Rich HTML + Plain)
-  try {
-    const item = new ClipboardItem({
-      "text/plain": new Blob([payload.plainToCopy], { type: "text/plain" }),
-      "text/html": new Blob([payload.richHtmlToCopy], { type: "text/html" })
-    });
-    navigator.clipboard.write([item]);
-  } catch (e) {
-    try {
-      navigator.clipboard.writeText(payload.plainToCopy);
-    } catch (_) {}
-  }
+  copyRichFormattedEmail(payload.richHtmlToCopy, payload.plainToCopy, null, false);
 
   // Visual feedback on the Outlook Web button
   const outlookBtn = document.getElementById("openOutlookBtn");
@@ -3313,17 +3322,7 @@ function openOutlookDesktopApp(brandName, contact){
   const platform = getClientPlatform();
 
   // 1. Synchronously copy rich HTML + plain text to system clipboard so full formatting, signature, and colors paste seamlessly
-  try {
-    const item = new ClipboardItem({
-      "text/plain": new Blob([payload.plainToCopy], { type: "text/plain" }),
-      "text/html": new Blob([payload.richHtmlToCopy], { type: "text/html" })
-    });
-    navigator.clipboard.write([item]);
-  } catch (e) {
-    try {
-      navigator.clipboard.writeText(payload.plainToCopy);
-    } catch (_) {}
-  }
+  copyRichFormattedEmail(payload.richHtmlToCopy, payload.plainToCopy, null, false);
 
   // 2. Visual feedback on desktop button
   const appBtn = document.getElementById("openOutlookAppBtn");
@@ -3408,28 +3407,160 @@ function renderTab(tab){
    BRAND DETAIL VIEW
    ========================================================================== */
 function copyToClipboard(text, btnEl){
-  navigator.clipboard.writeText(text).then(() => {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (btnEl) {
+        const old = btnEl.textContent;
+        btnEl.textContent = "Copied ✓";
+        setTimeout(() => { btnEl.textContent = old; }, 1500);
+      }
+    }).catch(() => {
+      fallbackCopyText(text, btnEl);
+    });
+  } else {
+    fallbackCopyText(text, btnEl);
+  }
+}
+
+function fallbackCopyText(text, btnEl){
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand("copy");
     if (btnEl) {
       const old = btnEl.textContent;
       btnEl.textContent = "Copied ✓";
       setTimeout(() => { btnEl.textContent = old; }, 1500);
     }
-  });
+  } catch (_) {}
+  document.body.removeChild(textarea);
+}
+
+async function copyRichFormattedEmail(richHtml, plainText, btnEl = null, notify = true){
+  const emailSettings = getEmailSettings();
+  let bodyHtml = (richHtml || "").trim();
+
+  // Guarantee the full signature is included in bodyHtml
+  if (!bodyHtml.includes("Warm regards") || !bodyHtml.includes(emailSettings.senderName)) {
+    bodyHtml = bodyHtml.replace(/<div[^>]*class=["'][^"']*email-signature-tagline[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+    bodyHtml = bodyHtml.replace(/<div[^>]*class=["'][^"']*email-signature-wrap[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+    bodyHtml += `\n<div class="email-signature-wrap" style="margin-top: 20px; border: none;">\n${emailSettings.signatureHtml}\n</div>`;
+  }
+
+  let bodyPlain = (plainText || "").trim();
+  if (!bodyPlain || !bodyPlain.includes("Warm regards") || !bodyPlain.includes(emailSettings.senderName)) {
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = bodyHtml;
+    tempDiv.querySelectorAll("script, style").forEach(el => el.remove());
+    let derivedText = "";
+    tempDiv.childNodes.forEach(node => {
+      const t = (node.textContent || node.innerText || "").trim();
+      if (t) derivedText += t + "\n\n";
+    });
+    bodyPlain = derivedText.replace(/\n{3,}/g, "\n\n").trim();
+    if (!bodyPlain.includes("Warm regards") || !bodyPlain.includes(emailSettings.senderName)) {
+      bodyPlain += `\n\n${emailSettings.signaturePlain}`;
+    }
+  }
+
+  // Standard HTML envelope with inline styling for email clients & OS clipboard
+  const wrappedHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family: Arial, -apple-system, sans-serif; font-size: 13.5px; line-height: 1.68; color: #1e293b; margin: 0; padding: 0;">${bodyHtml}</body></html>`;
+
+  let copied = false;
+
+  // 1. Try modern Async Clipboard API with ClipboardItem (text/html and text/plain)
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      const item = new ClipboardItem({
+        "text/html": new Blob([wrappedHtml], { type: "text/html" }),
+        "text/plain": new Blob([bodyPlain], { type: "text/plain" })
+      });
+      await navigator.clipboard.write([item]);
+      copied = true;
+    } catch (err) {
+      console.warn("navigator.clipboard.write ClipboardItem failed, trying copy event fallback:", err);
+    }
+  }
+
+  // 2. Try synthetic copy event listener with clipboardData (reliable fallback in Safari/Chrome on macOS)
+  if (!copied) {
+    try {
+      const listener = (e) => {
+        e.preventDefault();
+        if (e.clipboardData) {
+          e.clipboardData.clearData();
+          e.clipboardData.setData("text/html", wrappedHtml);
+          e.clipboardData.setData("text/plain", bodyPlain);
+        }
+      };
+      document.addEventListener("copy", listener);
+      copied = document.execCommand("copy");
+      document.removeEventListener("copy", listener);
+    } catch (err) {
+      console.warn("copy event listener fallback failed, trying DOM selection:", err);
+    }
+  }
+
+  // 3. Try DOM selection on an offscreen contenteditable element
+  if (!copied) {
+    try {
+      const tempContainer = document.createElement("div");
+      tempContainer.setAttribute("contenteditable", "true");
+      tempContainer.style.position = "fixed";
+      tempContainer.style.left = "-9999px";
+      tempContainer.style.top = "-9999px";
+      tempContainer.style.opacity = "0";
+      tempContainer.style.pointerEvents = "none";
+      tempContainer.innerHTML = wrappedHtml;
+      document.body.appendChild(tempContainer);
+
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(tempContainer);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      copied = document.execCommand("copy");
+      selection.removeAllRanges();
+      document.body.removeChild(tempContainer);
+    } catch (err) {
+      console.warn("DOM selection fallback failed:", err);
+    }
+  }
+
+  // 4. Plain text fallback if all rich clipboard attempts fail
+  if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(bodyPlain);
+      copied = true;
+    } catch (_) {}
+  }
+
+  if (!copied) {
+    fallbackCopyText(bodyPlain, btnEl);
+    copied = true;
+  }
+
+  if (copied) {
+    if (btnEl) flashCopied(btnEl);
+    if (notify) showGlobalToast("Email body & full signature copied with rich formatting! Ready to paste (Cmd+V / Ctrl+V).", false);
+  } else {
+    showGlobalToast("Could not copy automatically. Please select text manually.", true);
+  }
+
+  return copied;
 }
 
 function copyEmailRich(subject, htmlBody, btnEl){
-  // Exclude the subject line from the copied email body
-  const plain = (window.__emailDraftState && window.__emailDraftState.plainBody) ? window.__emailDraftState.plainBody : htmlBody.replace(/<[^>]+>/g, "").replace(/\n{3,}/g, "\n\n").trim();
-  const richHtml = htmlBody;
-  try {
-    const item = new ClipboardItem({
-      "text/plain": new Blob([plain], { type: "text/plain" }),
-      "text/html": new Blob([richHtml], { type: "text/html" }),
-    });
-    navigator.clipboard.write([item]).then(() => flashCopied(btnEl));
-  } catch (e) {
-    copyToClipboard(plain, btnEl);
-  }
+  const state = window.__emailDraftState;
+  const plain = (state && state.plainBody) ? state.plainBody : "";
+  return copyRichFormattedEmail(htmlBody, plain, btnEl, true);
 }
 
 function flashCopied(btnEl){
@@ -3710,9 +3841,13 @@ function renderBrandDetail(brandName){
     </div>
   `;
 
-  document.getElementById("copyEmailBtn").addEventListener("click", (e) => {
+  document.getElementById("copyEmailBtn").addEventListener("click", async (e) => {
+    const bodyEl = document.getElementById("emailBodyContent");
+    const liveHtml = bodyEl ? bodyEl.innerHTML : "";
     const state = window.__emailDraftState;
-    if (state) copyEmailRich(state.subject, state.bodyHtml, e.currentTarget);
+    const htmlToCopy = liveHtml || (state && state.bodyHtml) || "";
+    const plainToCopy = (state && state.plainBody) || "";
+    await copyRichFormattedEmail(htmlToCopy, plainToCopy, e.currentTarget, true);
   });
   const copySubjBtn = document.getElementById("copySubjectBtn");
   if (copySubjBtn) {
@@ -3848,6 +3983,17 @@ function updateBrandEmailDraftWithContact(brandName, contact){
     let updatedPlain = window.__emailDraftState.plainBody || "";
     updatedPlain = updatedPlain.replace(/^(?:Hello|Hi|Dear)\s+[^,]+,/im, `Hello ${cleanName},`);
 
+    const emailSettings = getEmailSettings();
+    if (!updatedHtml.includes("Warm regards") || !updatedHtml.includes(emailSettings.senderName)) {
+      updatedHtml = updatedHtml.replace(/<div[^>]*class=["'][^"']*email-signature-tagline[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+      updatedHtml = updatedHtml.replace(/<div[^>]*class=["'][^"']*email-signature-wrap[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+      updatedHtml += `\n<div class="email-signature-wrap" style="margin-top:20px;border:none;">\n${emailSettings.signatureHtml}\n</div>`;
+    }
+    if (!updatedPlain.includes("Warm regards") || !updatedPlain.includes(emailSettings.senderName)) {
+      updatedPlain = updatedPlain.replace(/Retail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits/g, "").trim();
+      updatedPlain += `\n\n${emailSettings.signaturePlain}`;
+    }
+
     window.__emailDraftState.bodyHtml = updatedHtml;
     window.__emailDraftState.plainBody = updatedPlain;
     const bodyEl = document.getElementById("emailBodyContent");
@@ -3920,11 +4066,23 @@ async function generateAiEmailDraft(brandName, brand, topOpp, allNews, contact, 
     const data = await resp.json();
     if (!resp.ok || data.error) throw new Error(data.error || "Generation failed");
 
-    window.__emailDraftState = { subject: data.subject, bodyHtml: data.bodyHtml, plainBody: data.plainBody };
+    let finalHtml = data.bodyHtml || "";
+    let finalPlain = data.plainBody || "";
+    if (!finalHtml.includes("Warm regards") || !finalHtml.includes(emailSettings.senderName)) {
+      finalHtml = finalHtml.replace(/<div[^>]*class=["'][^"']*email-signature-tagline[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+      finalHtml = finalHtml.replace(/<div[^>]*class=["'][^"']*email-signature-wrap[^"']*["'][^>]*>[\s\S]*?<\/div>/gi, "");
+      finalHtml += `\n<div class="email-signature-wrap" style="margin-top:20px;border:none;">\n${emailSettings.signatureHtml}\n</div>`;
+    }
+    if (!finalPlain.includes("Warm regards") || !finalPlain.includes(emailSettings.senderName)) {
+      finalPlain = finalPlain.replace(/Retail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits/g, "").trim();
+      finalPlain += `\n\n${emailSettings.signaturePlain}`;
+    }
+
+    window.__emailDraftState = { subject: data.subject, bodyHtml: finalHtml, plainBody: finalPlain };
     document.getElementById("emailResultWrap").style.display = "";
     const subjInput = document.getElementById("emailSubjectInput");
     if (subjInput) subjInput.value = data.subject;
-    document.getElementById("emailBodyContent").innerHTML = data.bodyHtml;
+    document.getElementById("emailBodyContent").innerHTML = finalHtml;
     document.getElementById("emailDraftNote").textContent = "AI-generated just now via Gemini — grounded in this brand's recent news, live channelplay.in content, and your Email Settings signature.";
     statusEl.textContent = "Draft ready.";
 

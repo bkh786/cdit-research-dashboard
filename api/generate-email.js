@@ -179,20 +179,9 @@ CRITICAL DRAFTING INSTRUCTIONS:
     const sPhone = phoneNumber || senderPhone || "8509950431";
     const sWeb = companyWebsite || "https://www.channelplay.in";
 
-    let signaturePlain = signature || "";
-    let signatureHtml = customSignatureHtml || "";
-
-    if (!signaturePlain) {
-      signaturePlain = `Warm regards,\n\n${sName}\n${sDesig} • ${sComp}\n📧 ${sEmail} 📞 ${sPhone} 🌐 ${sWeb}\nRetail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits`;
-    }
-
     const styledTagline = `<div class="email-signature-tagline" style="margin-top:14px;font-size:14px;line-height:1.4;border:none;"><span style="color:#0f5c1b;font-weight:700;font-style:italic;">Retail Execution</span> <span style="color:#000000;font-weight:700;">&bull;</span> <span style="color:#de691a;font-weight:700;font-style:italic;">Field Force Outsourcing</span> <span style="color:#000000;font-weight:700;">&bull;</span> <span style="color:#164e86;font-weight:700;font-style:italic;">Visual Merchandising</span> <span style="color:#000000;font-weight:700;">&bull;</span> <span style="color:#773e9b;font-weight:700;font-style:italic;">Tech Audits</span></div>`;
 
-    if (!signatureHtml) {
-      if (signature && signature.includes("<") && signature.includes(">")) {
-        signatureHtml = signature;
-      } else {
-        signatureHtml = `
+    const fullSignatureHtml = `
 <div class="email-signature-card" style="margin-top:20px;padding-top:8px;border:none;font-family:Arial,-apple-system,sans-serif;font-size:13px;line-height:1.6;color:#1e293b;">
   <p style="margin:0 0 12px 0;color:#334155;">Warm regards,</p>
   <p style="margin:0 0 4px 0;font-weight:700;font-size:14px;color:#0f172a;">${escapeHtmlServer(sName)}</p>
@@ -204,15 +193,27 @@ CRITICAL DRAFTING INSTRUCTIONS:
   </div>
   ${styledTagline}
 </div>`;
-      }
+
+    const fullSignaturePlain = `Warm regards,\n\n${sName}\n${sDesig} • ${sComp}\n📧 ${sEmail} 📞 ${sPhone} 🌐 ${sWeb}\nRetail Execution • Field Force Outsourcing • Visual Merchandising • Tech Audits`;
+
+    let signaturePlain = signature || "";
+    if (!signaturePlain || !signaturePlain.includes("Warm regards") || !signaturePlain.includes(sName)) {
+      signaturePlain = fullSignaturePlain;
     }
 
-    if (signatureHtml) {
+    let signatureHtml = customSignatureHtml || "";
+    if (!signatureHtml || !signatureHtml.includes("Warm regards") || !signatureHtml.includes(sName)) {
+      signatureHtml = fullSignatureHtml;
+    } else {
       signatureHtml = signatureHtml
         .replace(/border-top:[^;"]+;?/gi, "border:none;")
         .replace(/border-bottom:[^;"]+;?/gi, "border:none;")
         .replace(/<hr[^>]*>/gi, "");
-      signatureHtml = signatureHtml.replace(/<div[^>]*>[\s\S]*?Retail Execution[\s\S]*?Tech Audits[\s\S]*?<\/div>/i, styledTagline);
+      if (signatureHtml.includes("email-signature-tagline")) {
+        signatureHtml = signatureHtml.replace(/<div[^>]*class=["'][^"']*email-signature-tagline[^"']*["'][^>]*>[\s\S]*?<\/div>/i, styledTagline);
+      } else if (signatureHtml.includes("Retail Execution") && !signatureHtml.includes("#0f5c1b")) {
+        signatureHtml = signatureHtml.replace(/<div[^>]*>(?:(?!<div)[\s\S])*?Retail Execution[\s\S]*?Tech Audits[\s\S]*?<\/div>/i, styledTagline);
+      }
     }
 
     if (!parsed) {
