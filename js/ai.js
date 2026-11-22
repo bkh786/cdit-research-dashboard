@@ -137,7 +137,7 @@ async function gemini(prompt, opts = {}) {
         tried.push({ model, why: err.kind === "gone" ? "retired / unavailable" : err.kind === "quota" ? "quota reached" : err.kind === "nosearch" ? "search not supported" : err.kind === "busy" ? "busy" : err.kind === "timeout" ? "too slow" : err.kind === "badjson" ? "bad output" : String(err.message).slice(0, 90), kind: err.kind });
         if (err.kind === "key") throw geminiKeyError(err.status, err.message);
         if (err.kind === "gone") { GEM.dead.add(model); if (GEM.good === model) GEM.good = ""; if (err.status === 404) gmSave(); continue outer; }
-        if (err.kind === "quota") { GEM.cool[model] = Date.now() + 60000; if (useSearch && allowUngrounded) continue; continue outer; }
+        if (err.kind === "quota") { const sec = +((String(err.message).match(/retry (?:in|after) ([\d.]+)\s*s/i) || [])[1]) || 0, daily = /per ?day|daily/i.test(err.message); if (daily) tried[tried.length - 1].daily = true; if (sec) tried[tried.length - 1].wait = Math.ceil(sec); GEM.cool[model] = Date.now() + (daily ? 3600000 : Math.min(Math.max(sec, 20), 300) * 1000); if (useSearch && allowUngrounded) continue; continue outer; }
         // a model that keeps failing is parked for 10 min so it is not retried on every run
         if ((GEM.fails[model] = (GEM.fails[model] || 0) + 1) >= 2) { GEM.cool[model] = Date.now() + 600000; GEM.fails[model] = 0; }
         if (err.kind === "busy") await new Promise((r) => setTimeout(r, 500));
@@ -147,8 +147,9 @@ async function gemini(prompt, opts = {}) {
   }
   if (deadline && left() < 4000) { const e = new Error("Gemini took too long to answer (time limit reached)."); e.code = "timeout"; e.tried = tried; throw e; }
   const allQuota = tried.length && tried.every((t) => t.kind === "quota");
+  const wait = Math.min(...tried.map((t) => t.wait || 60));
   const e = new Error(allQuota
-    ? "Gemini quota is used up on every available model. Wait a minute and retry, or enable billing for this key in Google AI Studio."
+    ? `Gemini's ${search ? "web-search " : ""}quota is used up on all ${new Set(tried.map((t) => t.model)).size} models this key can use${tried.some((t) => t.daily) ? " (daily limit)" : ""}. ${tried.some((t) => t.daily) ? "It resets daily — or enable billing for the key in Google AI Studio." : `Wait about ${wait}s and retry; if it keeps happening, enable billing for the key in Google AI Studio (free keys allow very few searches per minute).`}`
     : `No Gemini model could complete the request. Tried: ${[...new Set(tried.map((t) => `${t.model} (${t.why})`))].slice(0, 5).join(", ") || "none available"}.`);
   e.code = "gemini"; throw e;
 }
@@ -286,7 +287,8 @@ Return ONLY JSON:
 
   /* ---- pass 2: public, individual contact details for the top 2 people ---- */
   let verifyAvailable = true;
-  const details = await Promise.all(people.slice(0, 2).map(async (p) => {
+  const details = [];
+  for (const p of people.slice(0, 2)) details.push(await (async () => {
     const d = { email: "", phone: "", emailNote: "", phoneNote: "" };
     if (HARD - Date.now() < 8000) { d.emailNote = "Ran out of time for the contact-detail search."; return d; }
     try {
@@ -323,7 +325,7 @@ Return ONLY JSON:
       }
     } catch (e) { if (e.keyProblem) throw e; d.emailNote = e.code === "timeout" ? "Contact-detail search timed out." : "Contact-detail search was unavailable."; }
     return d;
-  }));
+  })());
 
   /* ---- shape + save ---- */
   const verifiedLinkedIn = resolved.map((s) => linkedinProfile(s.url)).filter(Boolean);
