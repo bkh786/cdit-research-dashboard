@@ -292,20 +292,23 @@ Object.assign(ACT, {
   "cmp-copy-li": async () => { toast((await copyText($("#cmpLi").value)) ? "LinkedIn note copied" : "Copy failed", "ok"); },
   "cmp-copy-fu": async () => { toast((await copyText($("#cmpFu").value)) ? "Follow-up copied" : "Copy failed", "ok"); },
   "cmp-outlook-web": async () => {
-    const s = composeState(); await copyRich(s.html, s.plain);
-    toast("Body copied — paste it into the Outlook message (⌘V / Ctrl+V).", "info", 6000);
-    const u = `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(s.to)}&cc=${encodeURIComponent(s.cc)}&subject=${encodeURIComponent(s.subject)}`;
-    window.open(u, "_blank", "noopener");
+    const s = composeState();
+    // Outlook on the web accepts to / cc / subject / body in its compose deep-link (body is plain text).
+    let body = s.plain; while (encodeURIComponent(body).length > 7000 && body.length > 200) body = body.slice(0, Math.floor(body.length * 0.85));
+    const q = [["to", s.to], ["cc", s.cc], ["subject", s.subject], ["body", body]].filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    window.open(`https://outlook.office.com/mail/deeplink/compose?${q}`, "_blank", "noopener"); // open first, inside the click
+    const ok = await copyRich(s.html, s.plain);
+    toast(ok ? "Draft opened in Outlook. Formatted copy is on your clipboard — paste (⌘V / Ctrl+V) to keep the styling & signature." : "Draft opened in Outlook with subject, recipients and text.", "info", 7000);
   },
   "cmp-outlook-app": async () => {
     const s = composeState(); await copyRich(s.html, s.plain);
     toast("Body copied — paste it into the draft that opens (⌘V / Ctrl+V).", "info", 6000);
-    const a = document.createElement("a"); a.href = `mailto:${encodeURIComponent(s.to)}?${s.cc ? "cc=" + encodeURIComponent(s.cc) + "&" : ""}subject=${encodeURIComponent(s.subject)}`; a.click();
+    const a = document.createElement("a"); a.href = `mailto:${encodeURIComponent(s.to)}?${s.cc ? "cc=" + encodeURIComponent(s.cc) + "&" : ""}subject=${encodeURIComponent(s.subject)}&body=${encodeURIComponent(s.plain.slice(0, 1800))}`; a.click();
   },
   "cmp-gmail": async () => {
     const s = composeState(); await copyRich(s.html, s.plain);
     toast("Body copied — paste it into Gmail (⌘V / Ctrl+V).", "info", 6000);
-    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(s.to)}&cc=${encodeURIComponent(s.cc)}&su=${encodeURIComponent(s.subject)}`, "_blank", "noopener");
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(s.to)}&cc=${encodeURIComponent(s.cc)}&su=${encodeURIComponent(s.subject)}&body=${encodeURIComponent(s.plain.slice(0, 4000))}`, "_blank", "noopener");
   },
   "cmp-eml": () => {
     const s = composeState(), sd = cfg.sender;

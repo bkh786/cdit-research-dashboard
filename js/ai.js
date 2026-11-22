@@ -11,7 +11,7 @@ const GEM_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GEM_LAST_RESORT = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
 const GEM = { dead: new Set(), cool: {}, fails: {}, good: "" };
 /** The model that last worked for this key is remembered on this device, so runs start on it instead of re-probing. */
-const gmKey = () => "bri.gm.ok." + String(cfg.geminiKey || "").slice(-8);
+const gmKey = () => "bri.gm.ok2." + String(cfg.geminiKey || "").slice(-8);
 function gmLoad() {
   try {
     const c = JSON.parse(localStorage.getItem(gmKey()) || "null");
@@ -72,7 +72,8 @@ async function candidateModels(key) {
 /* ------------------------------------ calls ------------------------------------ */
 function classify(status, msg) {
   if (/api key|api_key/i.test(msg) && (status === 400 || status === 401 || status === 403)) return "key";
-  if (status === 404 || /no longer available|not found|is not supported for|deprecated|not available to new/i.test(msg)) return "gone";
+  if (status === 400 && /tool|search|grounding|google_search/i.test(msg)) return "nosearch";
+  if (status === 404 || /no longer available|not found|is not supported for generateContent|deprecated|not available to new/i.test(msg)) return "gone";
   if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(msg)) return "quota";
   if (status === 400 && /tool|search|grounding|google_search/i.test(msg)) return "nosearch";
   if (status >= 500 || /overloaded|unavailable|try again/i.test(msg)) return "busy";
@@ -119,6 +120,7 @@ async function gemini(prompt, opts = {}) {
   const { search = false, allowUngrounded = true, expect = "json", deadline = 0 } = opts;
   const models = await candidateModels(cfg.geminiKey);
   const tried = [];
+  if (!opts._retried && models.every((m) => GEM.dead.has(m) || (GEM.cool[m] || 0) > Date.now())) { GEM.dead.clear(); GEM.cool = {}; GEM.fails = {}; gmSave(); }
   const left = () => (deadline ? deadline - Date.now() : 1e9);
   outer: for (const model of models) {
     if (GEM.dead.has(model) || (GEM.cool[model] || 0) > Date.now()) continue;
@@ -134,7 +136,7 @@ async function gemini(prompt, opts = {}) {
       } catch (err) {
         tried.push({ model, why: err.kind === "gone" ? "retired / unavailable" : err.kind === "quota" ? "quota reached" : err.kind === "nosearch" ? "search not supported" : err.kind === "busy" ? "busy" : err.kind === "timeout" ? "too slow" : err.kind === "badjson" ? "bad output" : String(err.message).slice(0, 90), kind: err.kind });
         if (err.kind === "key") throw geminiKeyError(err.status, err.message);
-        if (err.kind === "gone") { GEM.dead.add(model); if (GEM.good === model) GEM.good = ""; gmSave(); continue outer; }
+        if (err.kind === "gone") { GEM.dead.add(model); if (GEM.good === model) GEM.good = ""; if (err.status === 404) gmSave(); continue outer; }
         if (err.kind === "quota") { GEM.cool[model] = Date.now() + 60000; if (useSearch && allowUngrounded) continue; continue outer; }
         // a model that keeps failing is parked for 10 min so it is not retried on every run
         if ((GEM.fails[model] = (GEM.fails[model] || 0) + 1) >= 2) { GEM.cool[model] = Date.now() + 600000; GEM.fails[model] = 0; }

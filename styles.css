@@ -320,3 +320,9 @@ details.fold { border: 1px solid var(--line); border-radius: var(--r); backgroun
 .ar-tool:hover { border-color: var(--accent-line); } .ar-tool.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); }
 .ol.big li { margin: 12px 0; line-height: 1.6; }
 .step-body textarea.mono, .step-body .mono { font-family: var(--mono); font-size: 12px; }
+
+/* install button */
+.install-btn{background:var(--accent,#4f46e5);color:#fff;border-color:transparent;white-space:nowrap}
+.install-btn:hover{filter:brightness(1.08)}
+.install-btn .ic{margin-right:6px}
+@media (max-width:640px){.install-btn span{display:none}.install-btn .ic{margin:0}}
