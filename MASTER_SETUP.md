@@ -1,25 +1,18 @@
-# Master sheet sign-in (users, roles, workspaces)
+# Platform setup (no server variables)
 
-The **set-up-master** Google Sheet (Drive → `brand-research` folder) holds every login, role, and each
-user's workspace (data-sheet link, bridge URL, Gemini key, web-app URL). When these three server
-environment variables are set, the dashboard switches from the single shared password to
-email + password sign-in:
+The web app is static. The browser talks directly to Google Apps Script (master sheet + each user's data sheet) and to Gemini. **Nothing needs to be configured in Vercel.**
 
-| Variable | Value |
-|---|---|
-| `MASTER_BRIDGE_URL` | `/exec` URL of the master Apps Script web app |
-| `MASTER_BRIDGE_SECRET` | the secret you put on line 1 of `apps-script/MasterCode.gs` |
-| `SESSION_SECRET` | any long random string (signs login sessions) |
+## One-time, by the administrator
+1. Open the **set-up-master** Google Sheet → Extensions → Apps Script. Replace the code with `apps-script/MasterCode.gs`.
+2. Deploy → New deployment → Web app → Execute as **Me**, access **Anyone** → copy the `/exec` URL.
+   (Updating later: Deploy → Manage deployments → ✏️ → New version. The URL stays the same.)
+3. Put the URL in `config.js` (`masterUrl`) and push, **or** open the site once with `?master=<exec-url>`.
+4. Sign in with the admin email and password. The sheet stores a salted hash, never the plain password.
 
-Optional: `SESSION_HOURS` (default 12). Keep `DASHBOARD_PASSWORD` set — the daily automation
-(`/api/automation-write?password=…`) still uses it and writes to `APPS_SCRIPT_URL`.
+Session tokens are signed by the script itself with an auto-generated key — no secret to set.
 
-## One-time setup
-1. Open the set-up-master sheet → Extensions → Apps Script.
-2. Paste `apps-script/MasterCode.gs`, replace `__SECRET__` on line 1 with a long random string.
-3. Deploy → New deployment → Web app → Execute as **Me**, access **Anyone** → copy the `/exec` URL.
-4. Add the three variables in Vercel → redeploy.
-5. Sign in as the administrator, open **Administration** to manage users, workspaces, roles.
+## Per user
+Administration → Users → Add user. Each person then opens Setup, creates their own sheet, pastes the bridge script (`apps-script/Code.gs`, v2.1.0+) and adds a Gemini key. Everything is saved to their row in the master sheet and follows them to any device.
 
-Passwords are stored as salted SHA-256 hashes. Gemini keys and bridge secrets are stored in plain text
-in the Workspaces tab, so keep the sheet's sharing restricted to administrators.
+## Auto-research
+Each user generates their own scheduled-research files on the **Auto-research** page (Claude skill, Gemini Apps Script runner, or ChatGPT task prompt).

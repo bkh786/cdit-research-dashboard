@@ -32,6 +32,11 @@ const DEFAULT_PROFILE = {
   tagline: "Retail Execution|Field Force Outsourcing|Visual Merchandising|Tech Audits",
   ownerName: "",
 };
+const DEFAULT_AUTO = {
+  freq: "daily", day: "Monday", time: "08:00",
+  tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"; } catch (_) { return "Asia/Kolkata"; } })(),
+  lookback: 2, maxBrands: 12, tier: "all", doSignals: true, doOpps: true, doComps: false, doContacts: false, categories: [], extra: "",
+};
 const DEFAULT_SENDER = { senderName: "", senderDesignation: "", senderEmail: "", defaultCc: "", phoneNumber: "" };
 
 /* ------------------------------- config -------------------------------- */
@@ -49,8 +54,8 @@ function loadCfg() {
     } catch (_) {}
   }
   return {
-    mode: c.mode || "default", // "default" = server's sheet · "own" = user's own bridge
-    bridgeUrl: c.bridgeUrl || "", bridgeSecret: c.bridgeSecret || "",
+    mode: "own",
+    bridgeUrl: c.bridgeUrl || "", bridgeSecret: c.bridgeSecret || "", sheetUrl: c.sheetUrl || "",
     geminiKey: c.geminiKey || "", geminiModel: c.geminiModel || "",
     theme: c.theme || localStorage.getItem("cdit_theme") || "light",
     accent: c.accent || localStorage.getItem("cdit_accent") || "indigo",
@@ -58,6 +63,7 @@ function loadCfg() {
     onboarded: !!c.onboarded,
     profile: { ...DEFAULT_PROFILE, ...(c.profile || {}) },
     sender: { ...DEFAULT_SENDER, ...(c.sender || {}) },
+    auto: { ...DEFAULT_AUTO, ...(c.auto || {}) },
   };
 }
 /** Called when switching workspace so one person's sender/profile never leaks into another's. */
@@ -72,32 +78,40 @@ function saveCfg() {
 }
 
 /* ---------------------- master-sheet login & workspace ---------------------- */
-const AUTH = { mode: "legacy", user: null, workspace: null };
-const tokStore = { get: () => sessionStorage.getItem("bri_tok") || "", set: (v) => sessionStorage.setItem("bri_tok", v), clear: () => sessionStorage.removeItem("bri_tok") };
+// AUTH.mode: "master" = email + password sign-in against the set-up-master sheet
+//            "local"  = no platform configured: personal use, settings kept in this browser
+const AUTH = { mode: "local", user: null, workspace: null };
 let _syncT = null;
+/** Saves this user's workspace (bridge URL/secret, Gemini key, sheet link…) to the master sheet, straight from the browser. */
 function scheduleWorkspaceSync() {
   if (AUTH.mode !== "master" || !AUTH.user) return;
   clearTimeout(_syncT);
   _syncT = setTimeout(async () => {
-    const f = { bridgeUrl: cfg.bridgeUrl, geminiModel: cfg.geminiModel };
-    if (cfg.bridgeSecret) f.bridgeSecret = cfg.bridgeSecret;
-    if (cfg.geminiKey) f.geminiKey = cfg.geminiKey;
-    try { await api("/api/auth", { action: "saveMyWorkspace", fields: f }); } catch (e) { toast("Couldn't save to master sheet: " + e.message, "err"); }
+    const f = { "Bridge URL": cfg.bridgeUrl, "Gemini Model": cfg.geminiModel };
+    if (cfg.sheetUrl) f["Data Sheet URL"] = cfg.sheetUrl;
+    if (cfg.bridgeSecret) f["Bridge Secret"] = cfg.bridgeSecret;
+    if (cfg.geminiKey) f["Gemini API Key"] = cfg.geminiKey;
+    try { await masterCall("saveMyWorkspace", { fields: f }); } catch (e) { toast("Couldn't save to master sheet: " + e.message, "err"); }
   }, 400);
 }
-/** Pull the signed-in user's workspace (from the master sheet) into the local config. */
-async function hydrateFromMaster() {
-  const me = await api("/api/auth", { action: "me" });
-  AUTH.user = me.user; AUTH.workspace = me.workspace;
-  const w = me.workspace || {};
+/** Applies the signed-in user's workspace (returned by the master sheet) to the in-memory config. */
+function applyWorkspace(user, w) {
+  AUTH.user = user; AUTH.workspace = w || null;
+  w = w || {};
   cfg.mode = "own"; cfg.onboarded = true;
-  cfg.bridgeUrl = w.bridgeUrl || ""; cfg.geminiModel = w.geminiModel || "";
-  cfg.bridgeSecret = ""; cfg.geminiKey = "";
-  if (w.companyName && (!cfg.profile.companyName || cfg.profile.companyName === DEFAULT_PROFILE.companyName)) cfg.profile.companyName = w.companyName;
+  cfg.bridgeUrl = String(w["Bridge URL"] || "").trim(); cfg.bridgeSecret = String(w["Bridge Secret"] || "").trim();
+  cfg.geminiKey = String(w["Gemini API Key"] || "").trim(); cfg.geminiModel = String(w["Gemini Model"] || "").trim();
+  cfg.sheetUrl = String(w["Data Sheet URL"] || "").trim();
+  if (w["Company Name"] && (!cfg.profile.companyName || cfg.profile.companyName === DEFAULT_PROFILE.companyName)) cfg.profile.companyName = w["Company Name"];
   saveCfgLocalOnly();
 }
-function saveCfgLocalOnly() { try { localStorage.setItem(CFG_KEY, JSON.stringify({ ...cfg, bridgeSecret: "", geminiKey: "" })); } catch (_) {} }
-function canView(id) { return AUTH.mode !== "master" || !AUTH.user || (AUTH.user.pages || []).includes(id) || id === "brand"; }
+async function hydrateFromMaster() { const me = await masterCall("me"); applyWorkspace(me.user, me.workspace); }
+function saveCfgLocalOnly() { try { localStorage.setItem(CFG_KEY, JSON.stringify(AUTH.mode === "master" ? { ...cfg, bridgeSecret: "", geminiKey: "" } : cfg)); } catch (_) {} }
+function canView(id) {
+  if (AUTH.mode !== "master" || !AUTH.user) return true;
+  const pg = AUTH.user.pages || [];
+  return pg.includes(id) || id === "brand" || (id === "autoresearch" && pg.includes("setup"));
+}
 
 /* ------------------------------ helpers -------------------------------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -167,6 +181,8 @@ const ICONS = {
   grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
   warn: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
   trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V22h16"/>',
 };
 const ic = (name, size = 16) => `<svg class="ic" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -182,28 +198,6 @@ function toast(msg, kind = "ok", ms = 4200) {
   requestAnimationFrame(() => t.classList.add("in"));
   setTimeout(() => { t.classList.remove("in"); setTimeout(() => t.remove(), 300); }, ms);
 }
-
-/* ---------------------------------- API --------------------------------- */
-const pwStore = { get: () => sessionStorage.getItem("cdit_pw") || "", set: (v) => sessionStorage.setItem("cdit_pw", v), clear: () => sessionStorage.removeItem("cdit_pw") };
-
-function apiHeaders() {
-  if (AUTH.mode === "master") return { "Content-Type": "application/json", Authorization: "Bearer " + tokStore.get() };
-  const h = { "Content-Type": "application/json", "x-dashboard-password": pwStore.get() };
-  if (cfg.mode === "own") { h["x-workspace"] = "own"; if (cfg.bridgeUrl) { h["x-bridge-url"] = cfg.bridgeUrl; h["x-bridge-secret"] = cfg.bridgeSecret; } }
-  if (cfg.geminiKey) h["x-gemini-key"] = cfg.geminiKey;
-  if (cfg.geminiModel) h["x-gemini-model"] = cfg.geminiModel;
-  return h;
-}
-async function api(path, body, { method } = {}) {
-  const resp = await fetch(path, { method: method || (body ? "POST" : "GET"), headers: apiHeaders(), body: body ? JSON.stringify(body) : undefined });
-  let data = {};
-  try { data = await resp.json(); } catch (_) {}
-  if (resp.status === 401 && AUTH.mode === "master" && path !== "/api/auth") { const e = new Error("Session expired — please sign in again."); e.code = 401; throw e; }
-  if (resp.status === 401 && /unauthorized/i.test(data.error || "") && !/secret/i.test(data.error || "")) { const e = new Error("Session expired — please unlock again."); e.code = 401; throw e; }
-  if (!resp.ok || data.error) { const e = new Error(data.error || `Request failed (${resp.status})`); e.code = resp.status; throw e; }
-  return data;
-}
-const write = (action, payload) => api("/api/sheet-write", { action, ...payload });
 
 /* ------------------------------ data model ------------------------------ */
 const S = { raw: {}, headers: {}, meta: {}, D: null, loaded: false };
@@ -320,11 +314,19 @@ function applySheetSettings() {
   saveCfg();
 }
 
-async function loadData({ quiet } = {}) {
-  const data = await api("/api/sheet-data");
-  S.raw = data.sheets || {};
+async function loadData() {
+  const geminiConnected = !!cfg.geminiKey;
+  if (!cfg.bridgeUrl) {
+    S.raw = {}; S.headers = {};
+    S.meta = { syncedAt: new Date().toISOString(), connection: "none", writable: false, spreadsheet: "", geminiConnected };
+    buildModel(); S.loaded = true;
+    return {};
+  }
+  const data = await bridgeCall({ action: "readAll" });
+  if (!data || !data.sheets) throw new Error("Your bridge is an older version without read support. Re-paste the latest bridge script (Setup → Connect) and redeploy.");
+  S.raw = {}; TAB_NAMES.forEach((t) => (S.raw[t] = data.sheets[t] || []));
   S.headers = data.headers || {};
-  S.meta = { syncedAt: data.syncedAt, connection: data.connection, writable: data.writable, spreadsheet: data.spreadsheet || "", geminiConnected: data.geminiConnected, geminiModel: data.geminiModel, usingOwnSheet: data.usingOwnSheet };
+  S.meta = { syncedAt: data.syncedAt || new Date().toISOString(), connection: "bridge", writable: true, spreadsheet: data.spreadsheet || "", geminiConnected };
   applySheetSettings();
   buildModel();
   S.loaded = true;

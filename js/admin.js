@@ -7,13 +7,13 @@
 
 const ADM = { tab: "users", users: [], workspaces: [], roles: [], settings: {}, log: [], error: "" };
 const ADMIN_TABS = [["users", "Users"], ["workspaces", "Workspaces"], ["roles", "Roles & pages"], ["settings", "Platform"], ["log", "Audit log"]];
-const ALL_PAGES = ["overview", "signals", "opportunities", "contacts", "pipeline", "competitors", "add-brand", "setup", "settings", "admin"];
-const adm = (action, payload) => api("/api/admin", { action, ...payload });
+const ALL_PAGES = ["overview", "signals", "opportunities", "contacts", "pipeline", "competitors", "add-brand", "setup", "autoresearch", "settings", "admin"];
+const adm = (action, payload) => masterCall(action, payload);
 
 async function renderAdmin() {
   const C = $("#content");
   if (!(AUTH.mode === "master" && AUTH.user && AUTH.user.isAdmin)) {
-    C.innerHTML = `<div class="page-head"><div><div class="eyebrow">Administration</div><h1>Administrators only</h1><p>${AUTH.mode === "master" ? "Your role does not include this page." : "Sign-in through the master sheet is not enabled on this deployment (set MASTER_BRIDGE_URL, MASTER_BRIDGE_SECRET and SESSION_SECRET)."}</p></div></div>`;
+    C.innerHTML = `<div class="page-head"><div><div class="eyebrow">Administration</div><h1>Administrators only</h1><p>${AUTH.mode === "master" ? "Your role does not include this page." : "Sign-in through the master sheet is not configured for this site. Set masterUrl in config.js."}</p></div></div>`;
     return;
   }
   C.innerHTML = `<div class="page-head"><div><div class="eyebrow">Administration</div><h1>Users, workspaces &amp; access</h1><p>Everything here is stored in the <b>set-up-master</b> Google Sheet. Roles decide which pages each person sees.</p></div></div>
@@ -54,7 +54,7 @@ function admWorkspacesHtml() {
   ${ADM.workspaces.map((w) => `<tr><td><b>${esc(w["Workspace Name"] || w["Workspace ID"])}</b><div class="muted">${esc(w["Workspace ID"])}</div></td><td>${esc(w["Owner Email"])}</td>
     <td>${w["Data Sheet URL"] ? `<a href="${attr(w["Data Sheet URL"])}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">—</span>'}</td>
     <td>${w["Bridge URL"] ? '<span class="pill good">connected</span>' : '<span class="pill warn">not set</span>'}</td>
-    <td>${w["Gemini API Key"] ? '<span class="pill good">key saved</span>' : '<span class="pill">server default</span>'}</td>
+    <td>${w["Gemini API Key"] ? '<span class="pill good">key saved</span>' : '<span class="pill">not set</span>'}</td>
     <td>${w["Web App URL"] ? `<a href="${attr(w["Web App URL"])}" target="_blank" rel="noopener">Open</a>` : '<span class="muted">—</span>'}</td>
     <td style="white-space:nowrap"><button class="btn sm ghost" data-act="adm-ws" data-id="${attr(w["Workspace ID"])}">Edit</button> <button class="btn sm danger" data-act="adm-del-ws" data-id="${attr(w["Workspace ID"])}">Delete</button></td></tr>`).join("")}
   </tbody></table></div><p class="muted" style="margin-top:10px">Secrets are masked here; leave a masked field untouched to keep the stored value.</p>`;
@@ -72,7 +72,7 @@ function admSettingsHtml() {
   const s = ADM.settings;
   return `<div class="card pad" style="max-width:560px"><div class="field"><label>App name</label><input class="input" id="stName" value="${attr(s["app.name"] || "")}"></div>
   <div class="field"><label>Public web-app URL</label><input class="input mono" id="stUrl" value="${attr(s["app.url"] || "")}"></div>
-  <div class="field"><label>Session length (hours)</label><input class="input" id="stHours" value="${attr(s["session.hours"] || "12")}"><span class="hint">Informational — set SESSION_HOURS on the server to change it.</span></div>
+  <div class="field"><label>Session length (hours)</label><input class="input" id="stHours" value="${attr(s["session.hours"] || "12")}"><span class="hint">How long a sign-in stays valid. Applies to the next login.</span></div>
   <button class="btn" data-act="adm-save-settings">Save</button></div>`;
 }
 
@@ -168,7 +168,7 @@ Object.assign(ACT, {
       <div class="field"><label>New password (min 8 characters)</label><input class="input" type="password" id="cpNew" autocomplete="new-password"></div>
       <div class="modal-actions"><button class="btn ghost" data-act="close-modal">Close</button><button class="btn" id="cpSave">Change password</button></div>`);
     $("#cpSave", o).onclick = (e) => admBusy(e.target, async () => {
-      await api("/api/auth", { action: "changePassword", current: $("#cpCur", o).value, next: $("#cpNew", o).value });
+      await masterCall("changePassword", { current: $("#cpCur", o).value, next: $("#cpNew", o).value });
       o.remove(); toast("Password changed");
     });
   },

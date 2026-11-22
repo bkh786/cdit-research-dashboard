@@ -14,7 +14,7 @@ const NAV = [
   ["overview", "Overview", "home"], ["signals", "Signals", "radar"], ["opportunities", "Opportunities", "bolt"],
   ["contacts", "Contacts", "users"], ["pipeline", "Pipeline", "kanban"], ["competitors", "Competitor Watch", "eye"],
   ["add-brand", "Add brand", "plus"],
-  ["setup", "Setup guide", "rocket"], ["settings", "Settings", "gear"], ["admin", "Administration", "users"],
+  ["setup", "Setup guide", "rocket"], ["autoresearch", "Auto-research", "clock"], ["settings", "Settings", "gear"], ["admin", "Administration", "users"],
 ];
 
 /* ------------------------------- boot / auth ------------------------------- */
@@ -41,62 +41,51 @@ function boot() {
     cfg.sidebarCollapsed = app.classList.contains("collapsed"); saveCfg();
   });
   $("#emInput").addEventListener("keydown", (e) => e.key === "Enter" && $("#pwInput").focus());
-  detectMode().then(() => {
-    if (AUTH.mode === "master") {
-      $("#emWrap").classList.remove("hidden"); $("#gateTxt").textContent = "Sign in with your email and password.";
-      $("#pwInput").placeholder = "Password"; $("#emInput").focus();
-      if (tokStore.get()) startMaster().catch(() => { tokStore.clear(); $("#gate").classList.remove("hidden"); });
-    } else if (pwStore.get()) start(); else $("#pwInput").focus();
-  });
-}
-
-async function detectMode() {
-  try {
-    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "status" }) });
-    const d = await r.json(); AUTH.mode = d.mode === "master" ? "master" : "legacy";
-  } catch (_) { AUTH.mode = "legacy"; }
+  // ?master=<web-app url> lets an administrator point this browser at the platform once
+  try { const m = new URLSearchParams(location.search).get("master"); if (m && BRIDGE_RE.test(m)) { localStorage.setItem("bri.masterUrl", m); history.replaceState(null, "", location.pathname + location.hash); } } catch (_) {}
+  AUTH.mode = masterUrl() ? "master" : "local";
+  if (AUTH.mode === "master") {
+    $("#emInput").focus();
+    if (tokStore.get()) startMaster().catch(() => { tokStore.clear(); $("#gate").classList.remove("hidden"); });
+  } else {
+    // personal mode: no platform configured — everything stays in this browser + your own sheet
+    $("#lockBtn").classList.add("hidden");
+    start().catch((e) => toast(e.message, "err"));
+  }
 }
 
 async function startMaster() {
   await hydrateFromMaster();
+  await afterLogin();
+}
+async function afterLogin() {
   try { if (localStorage.getItem("bri.lastUser") !== AUTH.user.email) { resetIdentity(); localStorage.setItem("bri.lastUser", AUTH.user.email); } } catch (_) {}
   if (AUTH.user.mustChange) setTimeout(() => ACT["change-pw"] && ACT["change-pw"](), 600);
   await start();
 }
 
 async function unlock() {
-  const pw = $("#pwInput").value;
-  if (!pw) return;
-  if (AUTH.mode === "master") {
-    const email = $("#emInput").value.trim();
-    if (!email) { $("#pwError").textContent = "Enter your email."; return; }
-    $("#pwError").textContent = ""; $("#unlockBtn").disabled = true;
-    try {
-      const r = await api("/api/auth", { action: "login", email, password: pw });
-      tokStore.set(r.token); $("#pwInput").value = "";
-      await startMaster();
-    } catch (e) { tokStore.clear(); $("#pwError").textContent = e.message; }
-    finally { $("#unlockBtn").disabled = false; }
-    return;
-  }
-  pwStore.set(pw);
-  $("#pwError").textContent = "";
-  $("#unlockBtn").disabled = true;
-  try { await start(); }
-  catch (e) {
-    pwStore.clear();
-    $("#pwError").textContent = e.code === 401 || /unauthor|expired/i.test(e.message) ? "Incorrect password." : e.message;
-  } finally { $("#unlockBtn").disabled = false; }
+  const pw = $("#pwInput").value, email = $("#emInput").value.trim();
+  if (!email) { $("#pwError").textContent = "Enter your email."; return; }
+  if (!pw) { $("#pwError").textContent = "Enter your password."; return; }
+  $("#pwError").textContent = ""; $("#unlockBtn").disabled = true; $("#unlockBtn").textContent = "Signing in…";
+  try {
+    const r = await masterCall("login", { email, password: pw });
+    tokStore.set(r.token); $("#pwInput").value = "";
+    applyWorkspace(r.user, r.workspace);
+    await afterLogin();
+  } catch (e) { tokStore.clear(); $("#pwError").textContent = e.message; }
+  finally { $("#unlockBtn").disabled = false; $("#unlockBtn").textContent = "Sign in"; }
 }
 
 async function start() {
   setStatus("load", "Syncing…");
   try { await loadData(); }
   catch (e) {
-    if (e.code === 401 || /expired/i.test(e.message)) { pwStore.clear(); tokStore.clear(); setStatus("bad", "Locked"); throw e; }
-    // Logged in but the sheet isn't reachable: still show the app so the user can fix it in Setup.
+    if (e.code === 401) { tokStore.clear(); setStatus("bad", "Locked"); throw e; }
+    // Signed in but the sheet isn't reachable: still show the app so the user can fix it in Setup.
     S.loaded = true; S.D = S.D || { brands: [], news: [], opps: [], contacts: [], pipeline: [], comps: [], byName: {} };
-    S.raw = {}; S.meta = { connection: "error", error: e.message };
+    S.raw = {}; S.meta = { connection: "error", error: e.message, geminiConnected: !!cfg.geminiKey };
     setStatus("bad", "Sheet not reachable");
     showApp();
     location.hash = "#/setup";
@@ -107,7 +96,7 @@ async function start() {
   showApp();
   if (!location.hash || location.hash === "#") location.hash = S.meta.connection === "none" ? "#/setup" : "#/overview";
   routeFromHash();
-  if (!cfg.onboarded) openWelcome();
+  if (!cfg.onboarded) { cfg.onboarded = true; saveCfg(); }
 }
 
 function showApp() {
@@ -173,7 +162,7 @@ function routeFromHash() {
 function render() {
   paintChrome();
   const C = $("#content");
-  const fn = { overview: renderOverview, signals: renderSignals, opportunities: renderOpps, contacts: renderContacts, pipeline: renderPipeline, competitors: renderCompetitors, setup: renderSetup, settings: renderSettings, admin: renderAdmin, brand: () => renderBrand(viewArg) }[view];
+  const fn = { autoresearch: renderAuto, overview: renderOverview, signals: renderSignals, opportunities: renderOpps, contacts: renderContacts, pipeline: renderPipeline, competitors: renderCompetitors, setup: renderSetup, settings: renderSettings, admin: renderAdmin, brand: () => renderBrand(viewArg) }[view];
   C.style.animation = "none"; void C.offsetHeight; C.style.animation = "";
   fn();
 }
@@ -199,7 +188,7 @@ Object.assign(ACT, {
   go: (t) => go(t.dataset.view),
   brand: (t) => go("brand", t.dataset.brand),
   refresh: async (t) => { t.classList.add("spin"); try { await loadData(); render(); toast("Data refreshed"); } catch (e) { toast(e.message, "err"); } t.classList.remove("spin"); },
-  lock: () => { pwStore.clear(); tokStore.clear(); location.hash = ""; location.reload(); },
+  lock: () => { tokStore.clear(); try { sessionStorage.clear(); } catch (_) {} location.hash = ""; location.reload(); },
   theme: (t) => { cfg.theme = t.dataset.v; saveCfg(); applyTheme(); paintChrome(); },
   accent: (t) => { cfg.accent = t.dataset.v; saveCfg(); applyTheme(); paintChrome(); },
   "add-brand": () => openAddBrand(),
@@ -444,7 +433,7 @@ function renderContacts() {
   const missing = D.brands.filter((b) => !b.readyContacts.length);
   C.innerHTML = `${setupBanner()}
     <div class="page-head"><div><div class="eyebrow">Contacts</div><h1>Who to talk to</h1><p>Decision-makers found through live search. Only publicly published details are saved — nothing is guessed. Always verify before sending.</p></div>
-      <div class="actions"><button class="btn" data-act="find-all-contacts" ${missing.length ? "" : "disabled"}>${ic("sparkle", 15)}Find ${missing.length} missing contact${missing.length === 1 ? "" : "s"} with AI</button></div></div>
+      <div class="actions">${genericRows(D).length ? `<button class="btn ghost" data-act="clean-contacts">${ic("shield", 15)}Remove ${genericRows(D).length} generic detail${genericRows(D).length === 1 ? "" : "s"}</button>` : ""}<button class="btn" data-act="find-all-contacts" ${missing.length ? "" : "disabled"}>${ic("sparkle", 15)}Find ${missing.length} missing contact${missing.length === 1 ? "" : "s"} with AI</button></div></div>
     <div class="card table-wrap"><table class="t"><thead><tr><th>Brand</th><th>Decision-maker</th><th>Department</th><th>Reach</th><th>Notes</th><th></th></tr></thead><tbody>
     ${rows.map(({ b, c }) => { const has = c && !isPlaceholder(c["Decision Maker Name"]); return `<tr>
       <td><div class="row" style="flex-wrap:nowrap">${logoHtml(b)}${brandLinkHtml(b.name)}</div></td>
@@ -455,14 +444,32 @@ function renderContacts() {
       <td>${has ? "" : `<button class="btn sm soft" data-act="research-contact" data-brand="${attr(b.name)}">${ic("sparkle", 13)}Find</button>`}</td></tr>`; }).join("") || `<tr><td colspan="6">${emptyState("users", "No brands yet", "Add brands first.")}</td></tr>`}
     </tbody></table></div>`;
 }
+/** Direct e-mail / phone that are safe to show: generic, customer-care and free-mail details are never presented as a person's contact. */
+function directEmail(c) { const e = firstEmailIn(c["Official Email (public only)"]); return e && !isGenericEmail(e) ? e : ""; }
+function directPhone(c) { const p = c["Official Contact Number (public only)"]; return p && !isPlaceholder(p) && !isGenericPhone(p) ? String(p).trim() : ""; }
+function genericRows(D) { return D.contacts.filter((c) => scrubGeneric(c)); }
 function contactLinks(c) {
-  const em = c["Official Email (public only)"], ph = c["Official Contact Number (public only)"], li = c["LinkedIn Profile"];
-  const firstEmail = String(em || "").match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+  const em = directEmail(c), ph = directPhone(c), li = c["LinkedIn Profile"];
   return `<div class="stack" style="gap:3px;font-size:12.5px">
-    ${firstEmail ? `<a href="mailto:${attr(firstEmail[0])}">${ic("mail", 12)} ${esc(firstEmail[0])}</a>` : ""}
-    ${ph && !isPlaceholder(ph) ? `<span>${ic("phone", 12)} ${esc(String(ph).slice(0, 40))}</span>` : ""}
+    ${em ? `<a href="mailto:${attr(em)}">${ic("mail", 12)} ${esc(em)}</a>` : ""}
+    ${ph ? `<span>${ic("phone", 12)} ${esc(ph.slice(0, 40))}</span>` : ""}
     ${li && /^https?:/i.test(li) ? `<a href="${attr(li)}" target="_blank" rel="noopener">${ic("link", 12)} ${/\/in\//.test(li) ? "LinkedIn profile" : "LinkedIn search"}</a>` : ""}</div>`;
 }
+ACT["clean-contacts"] = async (t) => {
+  const rows = genericRows(S.D);
+  if (!rows.length) return;
+  if (!confirm(`Clear ${rows.length} customer-care / generic e-mail or phone entr${rows.length === 1 ? "y" : "ies"} from your Contacts sheet?\nOnly those cells are blanked; names and everything else stay.`)) return;
+  t.disabled = true;
+  let n = 0;
+  try {
+    for (const c of rows) {
+      const fix = scrubGeneric(c);
+      await write("updateRow", { sheet: "Contacts", matchColumn: "Decision Maker Name", matchValue: c["Decision Maker Name"], updates: { ...fix, "Research Status": `${c["Research Status"] || ""} Generic contact details removed ${today()}.`.trim() } });
+      n++;
+    }
+    await loadData(); toast(`Removed generic details from ${n} contact${n === 1 ? "" : "s"}`); render();
+  } catch (e) { toast(e.message, "err"); t.disabled = false; }
+};
 ACT["find-all-contacts"] = async () => {
   const names = S.D.brands.filter((b) => !b.readyContacts.length).map((b) => b.name);
   await runQueue("Finding decision-makers", names, async (n) => { const r = await researchContact(n, { silent: true }); return r.found ? r.contacts[0]["Decision Maker Name"] : "none found"; });
@@ -530,7 +537,7 @@ ACT["track-comp"] = async (t) => {
 
 /* ============================ ADD BRAND / RESEARCH ============================ */
 function researchBrand(name, extra = {}) {
-  return api("/api/research-brand", { brand: name, profile: { ...cfg.profile, ownerName: cfg.profile.ownerName || cfg.sender.senderName }, ...extra });
+  return researchBrandAI(name, { profile: { ...cfg.profile, ownerName: cfg.profile.ownerName || cfg.sender.senderName }, ...extra });
 }
 function openAddBrand() {
   if (needSheet()) { toast("Connect your Google Sheet first (Setup guide).", "err"); return go("setup"); }
@@ -571,18 +578,3 @@ async function bulkAddBrands(names, { research, sector, tier } = {}) {
   try { await loadData(); } catch (_) {}
   return res;
 }
-
-/* ------------------------------ first-run welcome ------------------------------ */
-function openWelcome() {
-  const o = modal(`<div class="eyebrow">Welcome</div><h2>Make this dashboard yours</h2>
-    <p class="lead">Each person can track their own brands in their own private Google Sheet — no one sees anyone else's data.</p>
-    <div class="stack">
-      <button class="card card-pad" data-act="welcome-own" style="text-align:left;cursor:pointer;border-color:var(--accent-line)"><div class="row" style="flex-wrap:nowrap">${ic("rocket", 22)}<div><b>Set up my own workspace</b> <span class="pill acc">Recommended · ~5 min</span><div class="sub">Connect your Google Sheet, create all tabs in one click, add your brands.</div></div></div></button>
-      <button class="card card-pad" data-act="welcome-shared" style="text-align:left;cursor:pointer"><div class="row" style="flex-wrap:nowrap">${ic("users", 22)}<div><b>Use the shared team workspace</b><div class="sub">Open the default sheet configured on this deployment.</div></div></div></button>
-    </div>`);
-  window.__welcome = o;
-}
-Object.assign(ACT, {
-  "welcome-own": (t) => { cfg.onboarded = true; if (cfg.mode !== "own") resetIdentity(); cfg.mode = "own"; saveCfg(); t.closest(".overlay").remove(); go("setup"); },
-  "welcome-shared": (t) => { cfg.onboarded = true; if (cfg.mode !== "default") resetIdentity(); cfg.mode = "default"; saveCfg(); t.closest(".overlay").remove(); },
-});

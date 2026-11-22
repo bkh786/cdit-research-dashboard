@@ -1,13 +1,7 @@
 # Brand Research & Insights — deployment & setup
 
-## For the admin (once): deploy on Vercel
-1. Push this repo to GitHub and import it in Vercel (no build step).
-2. Set environment variables:
-   - `DASHBOARD_PASSWORD` (required) — the access password.
-   - Optional defaults so people can skip their own keys: `GEMINI_API_KEY`, `GEMINI_MODEL`.
-   - Optional shared "team workspace": `APPS_SCRIPT_URL` + `APPS_SCRIPT_SECRET` (a bridge for the shared sheet).
-     The old `GOOGLE_API_KEY` + `GOOGLE_SHEET_ID` read-only mode still works but is no longer needed.
-3. Redeploy.
+## For the admin (once)
+Host the folder as a static site (Vercel, no build step, **no environment variables**). Then follow `MASTER_SETUP.md` to connect the master sheet.
 
 ## For every user (5 minutes) — also shown inside the app under **Setup guide**
 1. Create a blank Google Sheet.
@@ -19,7 +13,7 @@
 6. Settings: company, services, sender name and signature.
 
 Your sheet stays private; the bridge only accepts requests carrying your secret. The secret, bridge URL and Gemini key
-are stored in your browser (localStorage) and sent over HTTPS to this app's API, which forwards them — they are not stored server-side.
+live in your private workspace row in the master sheet (or in this browser in personal mode). The browser talks to Google directly; no server stores them.
 
 ## Updating an existing bridge
 Replace the Apps Script with the latest `apps-script/Code.gs` (keep your secret), then *Deploy → Manage deployments → Edit → New version*.

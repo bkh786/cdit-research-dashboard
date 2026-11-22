@@ -10,7 +10,7 @@ async function researchContact(name, { silent } = {}) {
   const b = brandByName(name);
   const onlyPlaceholders = !b || b.contacts.every((c) => isPlaceholder(c["Decision Maker Name"]));
   const rec = b && b.top ? b.top["Recommended Contact Department"] : "";
-  const r = await api("/api/research-contact", { brand: name, profile: cfg.profile, recommendedDept: rec, mode: onlyPlaceholders ? "update" : "append" });
+  const r = await researchContactAI(name, { profile: cfg.profile, recommendedDept: rec, mode: onlyPlaceholders ? "update" : "append" });
   if (!silent) toast(r.found ? `Found ${r.contacts[0]["Decision Maker Name"]} (${r.contacts[0].Designation || "leader"})` : (r.note || "No contact found"), r.found ? "ok" : "info");
   return r;
 }
@@ -39,31 +39,85 @@ function execSummary(b) {
   return `<b>${esc(b.name)}</b> is a <b>${esc(b.tier)}-priority</b> account (heat ${b.heat}/100). The strongest angle is <b>${esc(t["Opportunity Type"])}</b>: ${esc(t["Business Impact"] || "")} ${esc(t["Opportunity for Channelplay"] || "")}${n ? ` Most recent signal (${esc(niceDate(n.Date))}): “${esc(n.Headline)}”.` : ""}${t["Suggested Next Action"] ? ` <b>Next step:</b> ${esc(t["Suggested Next Action"])}` : ""}`;
 }
 
+const AV = ["#4f46e5", "#0f8a82", "#d6385a", "#c77a0a", "#188a4a", "#7c3aed"];
+const statusPart = (txt, re) => { const m = String(txt || "").match(re); return m ? m[1] : ""; };
+
+function personCard(c, i) {
+  const em = directEmail(c), ph = directPhone(c), li = c["LinkedIn Profile"] || "";
+  const st = String(c["Research Status"] || "");
+  const conf = statusPart(st, /Confidence:\s*(High|Medium|Low)/i) || "";
+  const emV = statusPart(st, /Email verified on ([\w.-]+)/i), phV = statusPart(st, /Phone verified on ([\w.-]+)/i);
+  const src = statusPart(st, /Source:\s*(https?:\/\/\S+?)(?:\s\(|\.?\s|$)/i);
+  const evidence = st.replace(/Confidence:.*$/i, "").trim();
+  const name = c["Decision Maker Name"] || "";
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase() || "?";
+  const isProfile = /linkedin\.com\/in\//i.test(li);
+  return `<div class="pcard">
+    <div class="pc-top"><div class="pc-av" style="--av:${AV[i % AV.length]}">${esc(initials)}</div>
+      <div class="grow"><div class="pc-name">${esc(name)}</div><div class="pc-role">${esc(c.Designation || "")}</div>
+        <div class="chips" style="margin-top:7px">${c.Department ? `<span class="pill">${esc(c.Department)}</span>` : ""}${conf ? `<span class="pill ${conf === "High" ? "good" : conf === "Medium" ? "warn" : ""}">${esc(conf)} confidence</span>` : ""}${c["Office Location"] ? `<span class="pill">${ic("pin", 11)} ${esc(c["Office Location"])}</span>` : ""}</div></div></div>
+    <div class="pc-lines">
+      ${em ? `<div class="pc-line">${ic("mail", 15)}<a href="mailto:${attr(em)}" class="grow">${esc(em)}</a>${emV ? `<span class="vchip" title="Printed on ${attr(emV)}">${ic("check", 11)} verified</span>` : ""}<button class="cbtn" data-act="copy-val" data-v="${attr(em)}" title="Copy e-mail">${ic("copy", 13)}</button></div>` : `<div class="pc-line miss">${ic("mail", 15)}<span class="grow">No public personal e-mail found</span></div>`}
+      ${ph ? `<div class="pc-line">${ic("phone", 15)}<a href="tel:${attr(ph.replace(/[^+\d]/g, ""))}" class="grow">${esc(ph)}</a>${phV ? `<span class="vchip" title="Printed on ${attr(phV)}">${ic("check", 11)} verified</span>` : ""}<button class="cbtn" data-act="copy-val" data-v="${attr(ph)}" title="Copy number">${ic("copy", 13)}</button></div>` : `<div class="pc-line miss">${ic("phone", 15)}<span class="grow">No direct number published</span></div>`}
+      ${/^https?:/i.test(li) ? `<div class="pc-line">${ic("link", 15)}<a href="${attr(li)}" target="_blank" rel="noopener" class="grow">${isProfile ? "LinkedIn profile" : "Find on LinkedIn"}</a>${isProfile ? `<span class="vchip">${ic("check", 11)} found</span>` : `<span class="vchip off">search</span>`}${ic("ext", 12)}</div>` : ""}
+    </div>
+    ${evidence ? `<details class="pc-ev"><summary>How we found this</summary><p>${esc(evidence)}</p>${src ? `<a href="${attr(src)}" target="_blank" rel="noopener">${ic("ext", 12)} Open source</a>` : ""}</details>` : ""}
+  </div>`;
+}
+
+function oppCard(o) {
+  const tags = serviceTags(o["Recommended Service"] || o["Opportunity Type"]);
+  return `<div class="opp2">
+    <div class="opp2-top"><div><h4>${esc(o["Opportunity Type"])}</h4><div class="chips" style="margin-top:6px">${svcPills(tags)}</div></div>
+      <div class="opp2-score">${stars(o["Priority Score (1-5)"])}<small>confidence ${esc(o["Confidence Score (1-5)"] || "—")}/5</small></div></div>
+    ${o["Business Impact"] ? `<p class="opp2-impact">${esc(o["Business Impact"])}</p>` : ""}
+    <div class="opp2-grid">
+      ${o["Opportunity for Channelplay"] ? `<div><small>How we help</small><p>${esc(o["Opportunity for Channelplay"])}</p></div>` : ""}
+      ${o["Recommended Contact Department"] ? `<div><small>Talk to</small><p>${esc(o["Recommended Contact Department"])}</p></div>` : ""}
+    </div>
+    ${o["Suggested Next Action"] ? `<div class="opp2-next">${ic("chev", 14)}<span>${esc(o["Suggested Next Action"])}</span></div>` : ""}
+  </div>`;
+}
+
 function renderBrand(name) {
   const b = brandByName(name), C = $("#content");
   DRAFT = DRAFT && DRAFT.brand === b.name ? DRAFT : null;
-  const sel = (DRAFT && DRAFT.contactIdx) || 0;
+  const stageIdx = STAGES.indexOf(b.stage);
+  const stages = STAGES.filter((s) => !["Lost", "Dormant"].includes(s) || s === b.stage);
   C.innerHTML = `
     <button class="crumb" data-act="go" data-view="overview">${ic("back", 14)} All brands</button>
-    <div class="card hero" style="margin-bottom:18px">
-      ${logoHtml(b, "lg")}
-      <div class="grow"><div class="row" style="gap:10px"><h1>${esc(b.name)}</h1>${tierPill(b.tier)}${svcPills(b.services)}</div>
-        <div class="sub" style="margin-top:4px">${esc([b.sector, b.segment].filter(Boolean).join(" · "))}</div>
-        <div class="row" style="gap:14px;margin-top:6px;font-size:12.5px;color:var(--ink-3)">${b.hq ? `<span>${ic("pin", 12)} ${esc(b.hq)}</span>` : ""}${b.domain ? `<a href="https://${attr(b.domain)}" target="_blank" rel="noopener">${ic("link", 12)} ${esc(b.domain)}</a>` : ""}<span>Tracking since ${esc(niceDate(b.added))}</span></div></div>
-      ${heatRing(b.heat)}
-      <div class="actions row"><button class="btn soft" data-act="refresh-research" data-brand="${attr(b.name)}">${ic("sparkle", 14)}Research with AI</button><button class="btn ghost" data-act="share" data-brand="${attr(b.name)}">${ic("share", 14)}Share briefing</button></div>
-    </div>
+
+    <section class="bhero">
+      <div class="bhero-main">
+        ${logoHtml(b, "lg")}
+        <div class="grow">
+          <div class="eyebrow">${esc([b.sector, b.segment].filter(Boolean).join(" · ") || "Brand")}</div>
+          <h1>${esc(b.name)}</h1>
+          <div class="chips" style="margin-top:8px">${tierPill(b.tier)}${svcPills(b.services)}</div>
+          <div class="bmeta">${b.hq ? `<span>${ic("pin", 13)} ${esc(b.hq)}</span>` : ""}${b.domain ? `<a href="https://${attr(b.domain)}" target="_blank" rel="noopener">${ic("link", 13)} ${esc(b.domain)}</a>` : ""}<span>${ic("clock", 13)} Tracking since ${esc(niceDate(b.added))}</span></div>
+        </div>
+        ${heatRing(b.heat, "lgring")}
+      </div>
+      <div class="bstats">
+        <div><b>${b.news.length}</b><span>Signals</span></div>
+        <div><b>${b.opps.length}</b><span>Opportunities</span></div>
+        <div><b>${b.readyContacts.length}</b><span>Decision-makers</span></div>
+        <div><b>${b.latestNews ? relDate(b.latestNews) : "—"}</b><span>Latest signal</span></div>
+      </div>
+      <div class="bactions"><button class="btn" data-act="refresh-research" data-brand="${attr(b.name)}">${ic("sparkle", 14)}Research with AI</button><button class="btn ghost" data-act="share" data-brand="${attr(b.name)}">${ic("share", 14)}Share briefing</button></div>
+    </section>
+
+    <div class="stagebar" role="group" aria-label="Pipeline stage">${stages.map((s) => { const i = STAGES.indexOf(s); return `<button class="${s === b.stage ? "cur" : i < stageIdx && stageIdx < 6 ? "done" : ""}" data-act="set-stage" data-brand="${attr(b.name)}" data-s="${attr(s)}"><i>${i < stageIdx && s !== b.stage && stageIdx < 6 ? ic("check", 12) : ""}</i><span>${esc(s)}</span></button>`; }).join("")}</div>
 
     <div class="split">
       <div class="stack">
-        <div class="card"><div class="card-head"><h3>${ic("book", 17)}Executive summary</h3></div><div class="card-body"><p style="line-height:1.7">${execSummary(b)}</p></div></div>
+        <div class="card why-card"><div class="why-ic">${ic("flame", 20)}</div><div><div class="eyebrow" style="margin-bottom:4px">Why now</div><p>${execSummary(b)}</p></div></div>
 
-        <div class="card"><div class="card-head"><h3>${ic("bolt", 17)}Opportunities <span class="muted" style="font-weight:500">${b.opps.length}</span></h3></div><div class="card-body">
-          ${b.opps.length ? b.opps.map((o) => `<div class="opp"><div class="row" style="justify-content:space-between;gap:8px"><h4>${esc(o["Opportunity Type"])}</h4><div class="row" style="gap:8px">${svcPills(serviceTags(o["Recommended Service"]))}${stars(o["Priority Score (1-5)"])}</div></div>
-            <dl><dt>What's happening</dt><dd>${esc(o["Business Impact"])}</dd><dt>How we help</dt><dd>${esc(o["Opportunity for Channelplay"])}</dd><dt>Service</dt><dd>${esc(o["Recommended Service"])}</dd><dt>Talk to</dt><dd>${esc(o["Recommended Contact Department"])}</dd><dt>Next action</dt><dd style="color:var(--accent);font-weight:600">${esc(o["Suggested Next Action"])}</dd><dt>Confidence</dt><dd>${esc(o["Confidence Score (1-5)"] || "—")}/5</dd></dl></div>`).join("") : emptyState("bolt", "No opportunities scored yet", "Run AI research to generate them.", `<button class="btn soft" data-act="refresh-research" data-brand="${attr(b.name)}">${ic("sparkle", 14)} Research with AI</button>`)}</div></div>
+        <div class="card"><div class="card-head"><h3>${ic("bolt", 17)}Opportunities <span class="count-pill">${b.opps.length}</span></h3></div><div class="card-body stack" style="gap:12px">
+          ${b.opps.length ? b.opps.map(oppCard).join("") : emptyState("bolt", "No opportunities scored yet", "Run AI research to generate them.", `<button class="btn soft" data-act="refresh-research" data-brand="${attr(b.name)}">${ic("sparkle", 14)} Research with AI</button>`)}</div></div>
 
-        <div class="card"><div class="card-head"><h3>${ic("radar", 17)}Signals timeline <span class="muted" style="font-weight:500">${b.news.length}</span></h3></div><div class="card-body">
-          ${b.news.length ? `<div class="timeline">${b.news.map((n) => `<div class="tl-item"><div class="when">${esc(niceDate(n.Date))} · ${esc(n.Source || "")} ${n.Category ? `· <span class="pill acc">${esc(n.Category)}</span>` : ""}</div>
+        <div class="card"><div class="card-head"><h3>${ic("radar", 17)}Signals timeline <span class="count-pill">${b.news.length}</span></h3></div><div class="card-body">
+          ${b.news.length ? `<div class="timeline">${b.news.map((n) => `<div class="tl-item"><div class="when">${esc(niceDate(n.Date))}${n.Source ? " · " + esc(n.Source) : ""} ${n.Category ? `<span class="pill acc">${esc(n.Category)}</span>` : ""}</div>
             <h4>${n.URL ? `<a href="${attr(n.URL)}" target="_blank" rel="noopener" style="color:inherit">${esc(n.Headline)} ${ic("ext", 12)}</a>` : esc(n.Headline)}</h4><p>${esc(n["AI Summary"] || "")}</p>${n["Why It Matters"] ? `<div class="why-now"><b>Why it matters:</b> ${esc(n["Why It Matters"])}</div>` : ""}</div>`).join("")}</div>` : '<div class="muted">No signals recorded yet.</div>'}</div></div>
 
         <div class="card" id="composer"><div class="card-head"><h3>${ic("mail", 17)}Outreach draft</h3>
@@ -72,18 +126,17 @@ function renderBrand(name) {
       </div>
 
       <div class="stack">
-        <div class="card"><div class="card-head"><h3>${ic("kanban", 17)}Pipeline</h3></div><div class="card-body">
-          <div class="field"><label>Stage</label><select class="select" id="plStage">${STAGES.map((s) => `<option ${b.stage === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+        <div class="card"><div class="card-head"><h3>${ic("users", 17)}Decision-makers</h3><button class="btn sm soft" data-act="research-contact" data-brand="${attr(b.name)}">${ic("sparkle", 13)}${b.readyContacts.length ? "Find more" : "Find with AI"}</button></div>
+          <div class="card-body stack" style="gap:12px">
+            ${b.readyContacts.map(personCard).join("") || `<div class="empty" style="padding:22px 10px">${ic("users", 28)}<b>No decision-maker yet</b><div>Click “Find with AI” to search the web for the right person.</div></div>`}
+            ${b.readyContacts.length ? `<div class="tip">${ic("shield", 12)} Only e-mails and numbers printed on a page that names the person are saved. Customer-care and generic contacts are never used.</div>` : ""}
+          </div></div>
+
+        <div class="card"><div class="card-head"><h3>${ic("kanban", 17)}Pipeline notes</h3></div><div class="card-body">
           <div class="fgrid"><div class="field"><label>Owner</label><input class="input" id="plOwner2" value="${attr(b.owner)}" placeholder="${attr(cfg.sender.senderName || "Name")}"></div>
           <div class="field"><label>Follow-up</label><input class="input" type="date" id="plFollow" value="${attr(b.followUp)}"></div></div>
-          <div class="field"><label>Notes</label><textarea class="textarea" id="plNotes" style="min-height:70px">${esc(b.pipeNotes)}</textarea></div>
+          <div class="field"><label>Notes</label><textarea class="textarea" id="plNotes" style="min-height:84px">${esc(b.pipeNotes)}</textarea></div>
           <button class="btn" style="width:100%" data-act="save-pipeline" data-brand="${attr(b.name)}">Save to sheet</button></div></div>
-
-        <div class="card"><div class="card-head"><h3>${ic("users", 17)}Decision-makers</h3><button class="btn sm soft" data-act="research-contact" data-brand="${attr(b.name)}">${ic("sparkle", 13)}${b.readyContacts.length ? "Find more" : "Find with AI"}</button></div><div class="card-body" style="padding-top:6px">
-          ${b.readyContacts.map((c, i) => `
-            <div class="contact"><div class="avatar">${esc((c["Decision Maker Name"] || "?").charAt(0))}</div><div class="grow"><b>${esc(c["Decision Maker Name"])}</b><div class="sub">${esc(c.Designation)}${c.Department ? " · " + esc(c.Department) : ""}</div>${contactLinks(c)}
-              ${c["Office Location"] ? `<div class="cline">${ic("pin", 12)} ${esc(c["Office Location"])}</div>` : ""}
-              <div class="tip" style="margin-top:6px">${esc((c["Research Status"] || "").slice(0, 260))}</div></div></div>`).join("") || `<div class="empty" style="padding:22px 10px">${ic("users", 28)}<b>No decision-maker yet</b><div>Click “Find with AI” to search the web for the right person.</div></div>`}</div></div>
 
         ${b.notes ? `<div class="card"><div class="card-head"><h3>Status notes</h3></div><div class="card-body sub">${esc(b.notes)}</div></div>` : ""}
       </div>
@@ -91,11 +144,16 @@ function renderBrand(name) {
 }
 
 Object.assign(ACT, {
+  "set-stage": async (t) => { try { await updateStage(t.dataset.brand, t.dataset.s); renderBrand(t.dataset.brand); } catch (_) {} },
+  "copy-val": async (t) => toast((await copyText(t.dataset.v)) ? "Copied" : "Copy failed"),
+});
+
+Object.assign(ACT, {
   "save-pipeline": async (t) => {
     const name = t.dataset.brand;
     t.disabled = true;
     try {
-      const updates = { Stage: $("#plStage").value, Owner: $("#plOwner2").value.trim(), "Next Follow-up Date": $("#plFollow").value, Notes: $("#plNotes").value.trim(), "Last Update": today() };
+      const updates = { Stage: (brandByName(name) || {}).stage || "Prospect", Owner: $("#plOwner2").value.trim(), "Next Follow-up Date": $("#plFollow").value, Notes: $("#plNotes").value.trim(), "Last Update": today() };
       await write("upsertRow", { sheet: "Pipeline", matchColumn: "Brand", matchValue: name, updates });
       await loadData(); toast("Pipeline saved"); render();
     } catch (e) { toast(e.message, "err"); t.disabled = false; }
@@ -148,7 +206,7 @@ function templateParts(b, contact) {
 function pickContact(b) {
   return b.readyContacts[(DRAFT && DRAFT.contactIdx) || 0] || b.readyContacts[0] || null;
 }
-function emailOf(c) { const m = String((c && c["Official Email (public only)"]) || "").match(/[\w.+-]+@[\w-]+\.[\w.-]+/); return m ? m[0] : ""; }
+function emailOf(c) { return c ? directEmail(c) : ""; }
 
 function composerHtml(b) {
   if (!DRAFT) return `<div class="empty" style="padding:26px 10px">${ic("mail", 30)}<b>Draft a personalised email in one click</b><div>Uses ${esc(b.name)}'s latest signals, the top opportunity, the decision-maker and your signature.</div></div>`;
@@ -161,12 +219,12 @@ function composerHtml(b) {
     ${contacts.length > 1 ? `<div class="field"><label>Write to</label><select class="select" id="cmpContact">${contacts.map((k, i) => `<option value="${i}" ${i === (DRAFT.contactIdx || 0) ? "selected" : ""}>${esc(k["Decision Maker Name"])} — ${esc(k.Designation)}</option>`).join("")}</select></div>` : ""}
     <div class="tabs"><button class="${tab === "email" ? "on" : ""}" data-act="cmp-tab" data-t="email">Email</button><button class="${tab === "linkedin" ? "on" : ""}" data-act="cmp-tab" data-t="linkedin">LinkedIn note</button><button class="${tab === "follow" ? "on" : ""}" data-act="cmp-tab" data-t="follow">Follow-up</button></div>
     ${tab === "email" ? `
-      <div class="compose"><div class="compose-row"><label>To</label><input id="cmpTo" value="${attr(to)}" placeholder="${c ? "No public email found — paste one or use LinkedIn" : "recipient@company.com"}"></div>
+      <div class="compose"><div class="compose-row"><label>To</label><input id="cmpTo" value="${attr(to)}" placeholder="${c ? "No verified email — paste one or use LinkedIn" : "recipient@company.com"}"></div>
         <div class="compose-row"><label>Cc</label><input id="cmpCc" value="${attr(cc)}"></div>
         <div class="compose-row"><label>Subject</label><input id="cmpSubject" value="${attr(DRAFT.subject || x.subject)}"></div>
         <div class="compose-body" id="cmpBody" contenteditable="true" spellcheck="true">${DRAFT.bodyHtml}</div></div>
       ${x.subjectAlt ? `<div class="row" style="margin-top:8px"><span class="tip">Alternative subject:</span><button class="chip-btn" data-act="cmp-subj">${esc(x.subjectAlt)}</button></div>` : ""}
-      ${!to ? `<div class="note warn" style="margin-top:10px">${ic("warn", 16)}<div><b>No verified e-mail address.</b> We never guess addresses. Check the company website or LinkedIn, then paste it above.</div></div>` : ""}
+      ${!to ? `<div class="note warn" style="margin-top:10px">${ic("warn", 16)}<div><b>No verified personal e-mail.</b> We never guess addresses and never use customer-care or generic mailboxes. Message them on LinkedIn, or paste an address you have confirmed.</div></div>` : ""}
       <div class="row" style="margin-top:14px">
         <button class="btn" data-act="cmp-copy">${ic("copy", 14)}Copy email</button>
         <button class="btn ghost" data-act="cmp-outlook-web">Outlook Web</button>
@@ -199,7 +257,7 @@ ACT["gen-email"] = async (t) => {
   $("#composerBody").innerHTML = `<div class="empty" style="padding:30px">${ic("sparkle", 28)}<b>Reading signals &amp; writing…</b><div>Takes about 10–15 seconds.</div></div>`;
   const cutoff = Date.now() - 90 * 864e5;
   try {
-    const r = await api("/api/generate-email", {
+    const r = await generateEmailAI({
       brand: b.name, sector: b.sector, segment: b.segment,
       topOpportunity: b.top ? { type: b.top["Opportunity Type"], businessImpact: b.top["Business Impact"], opportunityForChannelplay: b.top["Opportunity for Channelplay"], recommendedService: b.top["Recommended Service"], nextAction: b.top["Suggested Next Action"] } : null,
       recentNews: b.news.filter((n) => { const d = parseDate(n.Date); return !d || d.getTime() >= cutoff; }).slice(0, 6).map((n) => ({ date: n.Date, headline: n.Headline, summary: n["AI Summary"], source: n.Source })),

@@ -1,12 +1,20 @@
-const SECRET = '__SECRET__';
 /**
- * Brand Research – MASTER bridge (bound to the "set-up-master" Google Sheet).
+ * Brand Research – MASTER bridge (bound to the "set-up-master" Google Sheet).  v3
  *
- * Owns users, roles, per-user workspaces and platform settings. The web app's
- * server (never the browser) calls this with the shared secret.
+ * Owns users, roles, per-user workspaces and platform settings.
+ * The web app talks to this script DIRECTLY from the browser — there is no server in
+ * between and nothing to configure on Vercel. Security model:
+ *   • login(email, password) → a signed session token (HMAC-SHA256, key is generated
+ *     automatically and kept in Script Properties — you never see or set it).
+ *   • every other call must carry that token; it is re-checked against the Users tab on
+ *     every request, so disabling / demoting a user takes effect immediately.
+ *   • admin actions additionally require the "Can Administer" flag on the caller's role.
+ *
  * Deploy: Extensions → Apps Script → paste → Deploy → New deployment → Web app
- *   Execute as: Me · Who has access: Anyone → copy the /exec URL.
+ *   Execute as: Me · Who has access: Anyone → copy the /exec URL into config.js (masterUrl).
+ * After changing this script: Deploy → Manage deployments → ✏️ → Version: New version → Deploy.
  */
+const VERSION = '3.0.0';
 const TABS = {
   Users: ['Email','Name','Role','Password Hash','Salt','Status','Created At','Last Login','Workspace ID','Must Change Password','Notes'],
   Workspaces: ['Workspace ID','Owner Email','Workspace Name','Data Sheet URL','Bridge URL','Bridge Secret','Gemini API Key','Gemini Model','Web App URL','Company Name','Status','Updated At'],
@@ -16,19 +24,60 @@ const TABS = {
 };
 const SECRET_COLS = ['Bridge Secret', 'Gemini API Key'];
 const MASK = '••••';
+const PUBLIC_ACTIONS = { ping: 1, login: 1 };
+
+function doGet() { return out({ ok: true, service: 'brand-research-master', version: VERSION }); }
+function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
 function doPost(e) {
+  const lock = LockService.getScriptLock();
   try {
-    const b = JSON.parse(e.postData.contents || '{}');
-    if (!SECRET || SECRET === '__' + 'SECRET__' || b.secret !== SECRET) return out({ error: 'Unauthorized' });
-    ensureTabs();
+    const b = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const fn = ACTIONS[b.action];
     if (!fn) return out({ error: 'Unknown action: ' + b.action });
+    lock.waitLock(20000);
+    ensureTabs();
+    if (!PUBLIC_ACTIONS[b.action]) {
+      const who = verifyToken(b.token);
+      if (!who) return out({ error: 'Unauthorized: please sign in again.' });
+      const u = findUser(who.e);
+      if (!u || norm(u.Status) !== 'active') return out({ error: 'Unauthorized: account disabled or removed.' });
+      b.me = u; b.actor = u.Email;
+      if (ADMIN_ONLY[b.action] && !roleInfo(u.Role).admin) return out({ error: 'Administrator access required.' });
+    }
     return out(fn(b));
-  } catch (err) { return out({ error: String(err && err.message || err) }); }
+  } catch (err) {
+    return out({ error: String(err && err.message || err) });
+  } finally {
+    try { lock.releaseLock(); } catch (x) {}
+  }
 }
-function doGet() { return out({ ok: true, service: 'brand-research-master' }); }
-function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+
+/* ---------- session tokens ---------- */
+function sessionKey() {
+  const p = PropertiesService.getScriptProperties();
+  let k = p.getProperty('SESSION_KEY');
+  if (!k) { k = Utilities.getUuid() + Utilities.getUuid() + Utilities.getUuid(); p.setProperty('SESSION_KEY', k); }
+  return k;
+}
+function sign(payload) { return Utilities.base64EncodeWebSafe(Utilities.computeHmacSha256Signature(payload, sessionKey())); }
+function makeToken(email, hours) {
+  const payload = Utilities.base64EncodeWebSafe(JSON.stringify({ e: norm(email), exp: Date.now() + hours * 3600 * 1000 }));
+  return payload + '.' + sign(payload);
+}
+function verifyToken(token) {
+  token = String(token || '');
+  const i = token.indexOf('.'); if (i < 1) return null;
+  const payload = token.slice(0, i), sig = token.slice(i + 1);
+  if (!safeEq(sig, sign(payload))) return null;
+  try {
+    const p = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(payload)).getDataAsString());
+    return p.exp > Date.now() ? p : null;
+  } catch (e) { return null; }
+}
+function sessionHours() {
+  try { const r = table('Platform Settings').rows.filter(function (x) { return x.Key === 'session.hours'; })[0]; const h = Number(r && r.Value); return h > 0 && h <= 720 ? h : 12; } catch (e) { return 12; }
+}
 
 /* ---------- sheet helpers ---------- */
 function ss() { return SpreadsheetApp.getActiveSpreadsheet(); }
@@ -75,10 +124,19 @@ function maskWs(w) {
   SECRET_COLS.forEach(function (c) { const v = String(w[c] || ''); o[c] = v ? MASK + v.slice(-4) : ''; });
   return o;
 }
+/** A user's own workspace, WITH secrets (only ever returned to that user). */
+function ownWorkspace(u) {
+  const w = table('Workspaces').rows.filter(function (x) { return norm(x['Workspace ID']) === norm(u['Workspace ID']) || norm(x['Owner Email']) === norm(u.Email); })[0];
+  if (!w) return null;
+  const o = {}; Object.keys(w).forEach(function (k) { if (k !== '_row') o[k] = w[k]; });
+  return o;
+}
+
+const ADMIN_ONLY = { listUsers: 1, upsertUser: 1, deleteUser: 1, listWorkspaces: 1, upsertWorkspace: 1, deleteWorkspace: 1, listRoles: 1, upsertRole: 1, deleteRole: 1, getSettings: 1, saveSettings: 1, auditLog: 1 };
 
 /* ---------- actions ---------- */
 const ACTIONS = {
-  ping: function () { ensureTabs(); return { ok: true, sheet: ss().getName(), url: ss().getUrl(), users: table('Users').rows.length }; },
+  ping: function () { return { ok: true, service: 'brand-research-master', version: VERSION, sheet: ss().getName(), users: table('Users').rows.length }; },
 
   login: function (b) {
     const email = norm(b.email), cache = CacheService.getScriptCache(), key = 'fail:' + email;
@@ -90,21 +148,13 @@ const ACTIONS = {
     cache.remove(key);
     const t = table('Users'); u['Last Login'] = now(); writeRow(t, u._row, u);
     log(email, 'login', email, '');
-    return { user: publicUser(u) };
+    return { token: makeToken(u.Email, sessionHours()), user: publicUser(u), workspace: ownWorkspace(u) };
   },
 
-  getUser: function (b) { const u = findUser(b.email); if (!u || norm(u.Status) !== 'active') return { error: 'Unauthorized' }; return { user: publicUser(u) }; },
-
-  getWorkspace: function (b) {
-    const u = findUser(b.email); if (!u) return { error: 'Unknown user' };
-    const w = table('Workspaces').rows.filter(function (x) { return norm(x['Workspace ID']) === norm(u['Workspace ID']) || norm(x['Owner Email']) === norm(u.Email); })[0];
-    if (!w) return { workspace: null };
-    const o = {}; Object.keys(w).forEach(function (k) { if (k !== '_row') o[k] = w[k]; });
-    return { workspace: o };
-  },
+  me: function (b) { return { user: publicUser(b.me), workspace: ownWorkspace(b.me) }; },
 
   saveMyWorkspace: function (b) {
-    const u = findUser(b.email); if (!u) return { error: 'Unknown user' };
+    const u = b.me;
     const allowed = ['Workspace Name','Data Sheet URL','Bridge URL','Bridge Secret','Gemini API Key','Gemini Model','Web App URL','Company Name'];
     const t = table('Workspaces');
     let w = t.rows.filter(function (x) { return norm(x['Owner Email']) === norm(u.Email); })[0];
@@ -117,14 +167,14 @@ const ACTIONS = {
   },
 
   changePassword: function (b) {
-    const u = findUser(b.email); if (!u) return { error: 'Unknown user' };
+    const u = b.me;
     if (!safeEq(hashPw(String(u.Salt), String(b.current || '')), u['Password Hash'])) return { error: 'Current password is incorrect.' };
     if (String(b.next || '').length < 8) return { error: 'New password must be at least 8 characters.' };
     const t = table('Users'); u.Salt = newSalt(); u['Password Hash'] = hashPw(u.Salt, b.next); u['Must Change Password'] = 'no'; writeRow(t, u._row, u);
     log(u.Email, 'change-password', u.Email, ''); return { ok: true };
   },
 
-  /* ----- admin ----- */
+  /* ----- admin (role must have Can Administer = yes) ----- */
   listUsers: function () { return { users: table('Users').rows.map(publicUser) }; },
 
   upsertUser: function (b) {
@@ -139,7 +189,7 @@ const ACTIONS = {
     const admins = t.rows.filter(function (x) { return norm(x.Email) !== email && norm(x.Status) === 'active' && roleInfo(x.Role).admin; });
     if (!admins.length && !(norm(u.Status) === 'active' && roleInfo(u.Role).admin)) return { error: 'At least one active administrator must remain.' };
     writeRow(t, u._row, u);
-    if (isNew) { const wt = table('Workspaces'); writeRow(wt, 0, { 'Workspace ID': u['Workspace ID'], 'Owner Email': email, 'Workspace Name': (f.name || email) + ' workspace', 'Gemini Model': 'gemini-2.5-flash', Status: 'active', 'Updated At': today() }); }
+    if (isNew) { const wt = table('Workspaces'); writeRow(wt, 0, { 'Workspace ID': u['Workspace ID'], 'Owner Email': email, 'Workspace Name': (f.name || email) + ' workspace', 'Gemini Model': '', Status: 'active', 'Updated At': today() }); }
     log(b.actor, isNew ? 'create-user' : 'update-user', email, f.role || ''); return { ok: true, created: isNew };
   },
 
@@ -158,6 +208,8 @@ const ACTIONS = {
 
   upsertWorkspace: function (b) {
     const f = b.workspace || {}, id = String(f['Workspace ID'] || ''); if (!id) return { error: 'Workspace ID is required.' };
+    const bu = String(f['Bridge URL'] || '').trim();
+    if (bu && !/^https:\/\/script\.google\.com\/(a\/macros\/[A-Za-z0-9.\-_]+\/|macros\/)s\/[A-Za-z0-9_\-]+\/exec$/.test(bu)) return { error: 'Bridge URL must look like https://script.google.com/macros/s/…/exec' };
     const t = table('Workspaces'); let w = t.rows.filter(function (x) { return norm(x['Workspace ID']) === norm(id); })[0] || { 'Workspace ID': id, Status: 'active' };
     t.head.forEach(function (h) { if (h === 'Workspace ID' || f[h] === undefined) return; if (SECRET_COLS.indexOf(h) >= 0 && String(f[h]).indexOf(MASK) === 0) return; w[h] = f[h]; });
     w['Updated At'] = today(); writeRow(t, w._row, w); log(b.actor, 'update-workspace', id, ''); return { ok: true };

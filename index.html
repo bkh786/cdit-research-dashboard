@@ -22,15 +22,15 @@
 </head>
 <body>
 
-<!-- Password gate -->
+<!-- Sign-in gate (only shown when a platform / master sheet is configured) -->
 <div class="gate" id="gate">
   <div class="card gate-card">
     <div class="logo-mark">BRI</div>
     <h1>Brand Research &amp; Insights</h1>
-    <p id="gateTxt">Enter the access password to open your sales-intelligence workspace.</p>
-    <div id="emWrap" class="hidden"><input class="input" type="email" id="emInput" placeholder="Email" autocomplete="username" style="margin-bottom:10px;text-align:center" /></div>
-    <input class="input" type="password" id="pwInput" placeholder="Access password" autocomplete="current-password" style="margin-bottom:12px;text-align:center" />
-    <button class="btn lg" id="unlockBtn" style="width:100%">Unlock</button>
+    <p id="gateTxt">Sign in with your email and password.</p>
+    <div id="emWrap"><input class="input" type="email" id="emInput" placeholder="Email" autocomplete="username" style="margin-bottom:10px;text-align:center" /></div>
+    <input class="input" type="password" id="pwInput" placeholder="Password" autocomplete="current-password" style="margin-bottom:12px;text-align:center" />
+    <button class="btn lg" id="unlockBtn" style="width:100%">Sign in</button>
     <div class="err" id="pwError" role="alert"></div>
   </div>
 </div>
@@ -51,6 +51,7 @@
     <button class="nav" data-act="go" data-view="competitors"></button>
     <div class="nav-label">Workspace</div>
     <button class="nav" data-act="go" data-view="setup"></button>
+    <button class="nav" data-act="go" data-view="autoresearch"></button>
     <button class="nav" data-act="go" data-view="settings"></button>
     <button class="nav hidden" data-act="go" data-view="admin"></button>
     <div class="side-foot">
@@ -94,11 +95,15 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script src="js/core.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ai.js"></script>
 <script src="js/views.js"></script>
 <script src="js/outreach.js"></script>
 <script src="js/setup.js"></script>
 <script src="js/admin.js"></script>
+<script src="js/auto.js"></script>
 <script>boot();</script>
 </body>
 </html>

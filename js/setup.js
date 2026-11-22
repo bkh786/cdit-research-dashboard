@@ -4,7 +4,7 @@
    ========================================================================== */
 "use strict";
 
-const BRIDGE_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[A-Za-z0-9.\-_]+\/|macros\/)s\/[A-Za-z0-9_\-]+\/exec$/;
+const LATEST_BRIDGE = "2.1.0";
 const REQUIRED_TABS = ["Brands Master", "News feed", "Opportunities", "Contacts", "Pipeline", "Email Drafts", "Competitor Watch", "Email Settings", "Workspace Settings"];
 let PING = null; // last ping result
 
@@ -16,8 +16,9 @@ function tabsPresent() {
 /* ================================== SETUP ================================== */
 function renderSetup() {
   const C = $("#content");
-  const own = cfg.mode === "own";
-  const connected = S.meta.connection === "bridge" || S.meta.connection === "apikey";
+  const own = true;
+  const connected = S.meta.connection === "bridge";
+  if (connected && !PING && !renderSetup._pinging) { renderSetup._pinging = true; write("ping", {}).then((r) => { PING = r; }).catch(() => {}).finally(() => { renderSetup._pinging = false; if (view === "setup") renderSetup(); }); }
   const tabsOk = tabsPresent().length === REQUIRED_TABS.length;
   const hasGem = !!S.meta.geminiConnected;
   const hasBrands = S.D.brands.length > 0;
@@ -32,9 +33,8 @@ function renderSetup() {
   C.innerHTML = `
     <div class="page-head"><div><div class="eyebrow">Setup guide</div><h1>Connect your own workspace</h1>
       <p>Your brands, signals and contacts live in <b>your own Google Sheet</b> — private to you. This guide takes about 5 minutes; everything after step 1 is automatic.</p></div>
-      <div class="actions"><div class="seg" style="margin:0"><button class="${own ? "on" : ""}" data-act="set-mode" data-m="own">My own sheet</button><button class="${own ? "" : "on"}" data-act="set-mode" data-m="default">Shared team sheet</button></div></div></div>
-
-    ${!own ? `<div class="note info" style="margin-bottom:18px">${ic("users", 18)}<div><b>You're using the shared team workspace</b> configured on this deployment. Switch to “My own sheet” to keep your brands private. You can still add your own Gemini key below.</div></div>` : ""}
+    </div>
+    ${PING && PING.version && PING.version !== LATEST_BRIDGE ? `<div class="note warn" style="margin-bottom:18px">${ic("warn", 18)}<div><b>Your bridge script is v${esc(PING.version)}; the latest is v${LATEST_BRIDGE}.</b> The new version lets the dashboard verify contact e-mails/phones on the source page. Click <b>Copy bridge script</b> in step 2, replace the code in Apps Script, then <b>Deploy → Manage deployments → ✏️ → New version → Deploy</b>. The web-app URL stays the same.</div></div>` : ""}
 
     <div class="split rev" style="grid-template-columns:minmax(0,1fr) 340px">
       <div class="steps">
@@ -62,11 +62,11 @@ function renderSetup() {
         ` : ""}
 
         <div class="${cls(4)}"><div class="step-num">${num(4)}</div><div class="step-body"><h3>Add your Gemini API key</h3>
-          <p>Gemini (with Google Search) powers brand research, decision-maker search and email drafting. The free tier is enough for personal use. Your key is stored only in this browser and sent securely with your requests.</p>
+          <p>Gemini (with Google Search) powers brand research, decision-maker search and email drafting. The free tier is enough for personal use. Your key is kept in your own private workspace row (${AUTH.mode === "master" ? "in the set-up-master sheet" : "in this browser only"}) and is sent only to Google — never to a hosting server.</p>
           <ol class="ol"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio → Get API key</a> and create a key.</li><li>Paste it below.</li></ol>
           <div class="fgrid" style="max-width:640px"><div class="field"><label>Gemini API key</label><input class="input mono" type="password" id="gemKey" placeholder="AIza…" value="${attr(cfg.geminiKey)}" autocomplete="off"></div>
-          <div class="field"><label>Model <span class="muted">(optional)</span></label><input class="input mono" id="gemModel" placeholder="gemini-2.5-flash" value="${attr(cfg.geminiModel)}"></div></div>
-          <div class="row"><button class="btn" data-act="save-gemini">${ic("sparkle", 14)}Save &amp; test Gemini</button><span id="gemMsg">${hasGem && !cfg.geminiKey ? '<span class="pill good">Server key active</span>' : ""}</span></div></div></div>
+          <div class="field"><label>Preferred model <span class="muted">(optional)</span></label><input class="input mono" id="gemModel" placeholder="Leave blank — chosen automatically" value="${attr(cfg.geminiModel)}"><div class="hint">No model is fixed. The app asks Google which models your key can use, tries the best one and automatically falls back if a model is retired or out of quota.</div></div></div>
+          <div class="row"><button class="btn" data-act="save-gemini">${ic("sparkle", 14)}Save &amp; test Gemini</button><span id="gemMsg"></span></div></div></div>
 
         <div class="${cls(5)}"><div class="step-num">${num(5)}</div><div class="step-body"><h3>Add the brands you want to track</h3>
           <p>Type your brand names (comma or new line separated). Tick <b>Research now</b> and the AI will find recent signals, score opportunities for your services, and you can find decision-makers next.</p>
@@ -74,7 +74,7 @@ function renderSetup() {
           <div class="fgrid" style="max-width:640px"><div class="field"><label>Default sector <span class="muted">(optional)</span></label><input class="input" id="setupSector" placeholder="${attr((cfg.profile.sectors.split("|")[0]) || "Consumer Electronics")}"></div>
           <div class="field"><label>Default priority</label><select class="select" id="setupTier"><option>High</option><option selected>Medium</option><option>Low</option></select></div></div>
           <label class="row" style="gap:8px;margin-bottom:12px;cursor:pointer"><input type="checkbox" id="setupResearch" ${hasGem ? "checked" : "disabled"}> <span><b>Research now</b> with AI ${hasGem ? "" : '<span class="muted">(needs a Gemini key — step 5)</span>'}</span></label>
-          <button class="btn lg" data-act="setup-brands" ${connected || !own ? "" : "disabled"}>${ic("plus", 16)}Add brands</button></div></div>
+          <button class="btn lg" data-act="setup-brands" ${connected ? "" : "disabled"}>${ic("plus", 16)}Add brands</button></div></div>
 
         ${steps.every(Boolean) ? `<div class="note good">${ic("check", 18)}<div><b>You're all set.</b> <a href="#/overview">Open the dashboard →</a> and set your name &amp; signature in <a href="#/settings">Settings</a>.</div></div>` : ""}
       </div>
@@ -87,20 +87,15 @@ function renderSetup() {
           <details class="fold"><summary>“Unauthorized: secret mismatch”</summary><div>The secret inside the script doesn't match this browser. Click <b>Copy bridge script</b> again, replace the script in Apps Script, then <b>Deploy → Manage deployments → Edit → New version</b>.</div></details>
           <details class="fold"><summary>“Did not return JSON”</summary><div>Re-deploy as <b>Web app</b> with <b>Who has access: Anyone</b>. “Anyone with Google account” won't work. Use the <span class="mono">/exec</span> URL, not <span class="mono">/dev</span>.</div></details>
           <details class="fold"><summary>I changed the script — nothing happens</summary><div>Apps Script runs the <i>deployed version</i>. After every edit use <b>Deploy → Manage deployments → ✏️ → Version: New version → Deploy</b>.</div></details>
-          <details class="fold"><summary>Gemini quota / 429 errors</summary><div>The free tier has per-minute limits. Wait a minute and retry, add billing in Google AI Studio, or change the model above (e.g. <span class="mono">gemini-2.5-flash-lite</span>).</div></details>
-          <details class="fold"><summary>Is my data private?</summary><div>Yes. Your sheet is never shared publicly. Only someone with your secret + URL could write to it, and those are stored only in your browser and your Apps Script.</div></details>
+          <details class="fold"><summary>“Couldn't reach the sheet bridge”</summary><div>The browser could not open your Apps Script URL. Check the URL ends in <span class="mono">/exec</span> and the deployment says <b>Who has access: Anyone</b>. Ad-blockers that block <span class="mono">script.google.com</span> also cause this.</div></details>
+          <details class="fold"><summary>Gemini model errors or quota (429)</summary><div>Models are discovered and switched automatically. If every model reports quota, wait a minute or enable billing for the key in Google AI Studio. A message that the key is rejected means the key itself needs re-copying.</div></details>
+          <details class="fold"><summary>Is my data private?</summary><div>Yes. Your sheet is never shared publicly. Only someone with your secret + URL could write to it. They live in your private workspace and in your Apps Script.</div></details>
         </div></div>
       </div>
     </div>`;
 }
 
 Object.assign(ACT, {
-  "set-mode": async (t) => {
-    if (cfg.mode !== t.dataset.m) resetIdentity();
-    cfg.mode = t.dataset.m; cfg.onboarded = true; saveCfg();
-    try { await loadData(); } catch (e) { S.meta = { connection: "none" }; S.raw = {}; buildModel(); }
-    render();
-  },
   "show-bridge": async () => {
     const txt = await bridgeScript();
     $("#bridgePreview").innerHTML = `<pre class="code" style="margin-top:10px">${esc(txt)}</pre>`;
@@ -117,6 +112,7 @@ Object.assign(ACT, {
     t.disabled = true; msg.innerHTML = '<span class="muted">Testing…</span>';
     try {
       PING = await write("ping", {});
+      if (PING.spreadsheetUrl) { cfg.sheetUrl = PING.spreadsheetUrl; saveCfg(); }
       msg.innerHTML = `<span class="pill good">${ic("check", 12)} Connected to “${esc(PING.spreadsheet)}”</span>`;
       await loadData(); paintChrome();
       renderSetup();
@@ -137,8 +133,12 @@ Object.assign(ACT, {
   "save-gemini": async (t) => {
     cfg.geminiKey = $("#gemKey").value.trim(); cfg.geminiModel = $("#gemModel").value.trim(); saveCfg();
     const msg = $("#gemMsg"); t.disabled = true; msg.innerHTML = '<span class="muted">Testing…</span>';
-    try { const r = await api("/api/gemini-test", {}); S.meta.geminiConnected = true; msg.innerHTML = `<span class="pill good">${ic("check", 12)} Working · ${esc(r.model)}</span>`; paintChrome(); setTimeout(renderSetup, 900); }
-    catch (e) { msg.innerHTML = `<span class="pill bad">${esc(e.message).slice(0, 180)}</span>`; }
+    if (!cfg.geminiKey) { msg.innerHTML = '<span class="pill bad">Paste your Gemini API key first.</span>'; t.disabled = false; return; }
+    try {
+      const r = await testGemini(); S.meta.geminiConnected = true;
+      msg.innerHTML = `<span class="pill good">${ic("check", 12)} Working · auto-selected ${esc(r.model)} (${r.available} models available${r.skipped.length ? `; skipped ${esc(r.skipped.join(", "))}` : ""})</span>`;
+      paintChrome(); setTimeout(renderSetup, 2500);
+    } catch (e) { S.meta.geminiConnected = false; msg.innerHTML = `<span class="pill bad">${esc(e.message).slice(0, 260)}</span>`; paintChrome(); }
     t.disabled = false;
   },
   "setup-brands": async () => {
@@ -200,10 +200,10 @@ function renderSettings() {
         <div class="card"><div class="card-head"><h3>Signature preview</h3></div><div class="card-body" style="background:#fff;border-radius:0 0 18px 18px"><div id="sigPreview">${sigHtml()}</div></div></div>
         <div class="card"><div class="card-head"><h3>${ic("link", 17)}Connection</h3></div><div class="card-body">
           <div class="checklist">
-            <div class="chk ${cfg.mode === "own" ? "ok" : "warn"}">${ic("users", 15)}<span>Workspace</span><span>${cfg.mode === "own" ? "My own sheet" : "Shared team sheet"}</span></div>
-            <div class="chk ${S.meta.connection === "bridge" || S.meta.connection === "apikey" ? "ok" : "miss"}">${ic("check", 15)}<span>Google Sheet</span><span>${esc(S.meta.spreadsheet || (S.meta.connection === "apikey" ? "read via API key" : "not connected"))}</span></div>
+            <div class="chk ok">${ic("users", 15)}<span>Workspace</span><span>${AUTH.user ? esc(AUTH.user.email) : "Personal (this browser)"}</span></div>
+            <div class="chk ${S.meta.connection === "bridge" ? "ok" : "miss"}">${ic("check", 15)}<span>Google Sheet</span><span>${esc(S.meta.spreadsheet || "not connected")}</span></div>
             <div class="chk ${S.meta.writable ? "ok" : "warn"}">${ic("check", 15)}<span>Write access</span><span>${S.meta.writable ? "yes" : "read-only"}</span></div>
-            <div class="chk ${S.meta.geminiConnected ? "ok" : "miss"}">${ic("sparkle", 15)}<span>Gemini</span><span>${S.meta.geminiConnected ? esc(cfg.geminiModel || S.meta.geminiModel || "ready") : "no key"}</span></div></div>
+            <div class="chk ${S.meta.geminiConnected ? "ok" : "miss"}">${ic("sparkle", 15)}<span>Gemini</span><span>${S.meta.geminiConnected ? esc(GEM.good || cfg.geminiModel || "ready · auto model") : "no key"}</span></div></div>
           <div class="row" style="margin-top:12px"><a class="btn sm ghost" href="#/setup">Open setup guide</a>${cfg.bridgeUrl ? `<button class="btn sm danger" data-act="disconnect">Disconnect my sheet</button>` : ""}</div></div></div>
       </div>
     </div>`;
@@ -230,5 +230,5 @@ Object.assign(ACT, {
     catch (e) { toast("Saved locally, but the sheet sync failed: " + e.message, "err", 7000); }
     t.disabled = false; renderSettings();
   },
-  disconnect: () => { cfg.bridgeUrl = ""; cfg.bridgeSecret = ""; saveCfg(); toast("Disconnected from your sheet"); ACT["set-mode"]({ dataset: { m: "own" } }); },
+  disconnect: async () => { cfg.bridgeUrl = ""; cfg.bridgeSecret = ""; cfg.sheetUrl = ""; saveCfg(); PING = null; await loadData(); toast("Disconnected from your sheet"); render(); },
 });

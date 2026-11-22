@@ -10,7 +10,7 @@
  * Your sheet stays PRIVATE — nobody can read or write it without the secret.
  */
 const SECRET = '__SECRET__';
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 
 /** Canonical tabs + headers. Edit here if you want extra columns. */
 const SCHEMA = {
@@ -55,7 +55,11 @@ function doGet() {
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    if (!SECRET || SECRET === '__SECRET__' || body.secret !== SECRET) return json_({ error: 'Unauthorized: secret mismatch' });
+    if (!SECRET || SECRET === '__' + 'SECRET__' || body.secret !== SECRET) return json_({ error: 'Unauthorized: secret mismatch' });
+    // Network helpers do not touch the sheet, so they run outside the lock.
+    if (body.action === 'resolveUrls') return json_(resolveUrls_(body.urls));
+    if (body.action === 'checkPages')  return json_(checkPages_(body.urls, body.needles));
+    if (body.action === 'fetchText')   return json_(fetchText_(body.urls, body.max));
     const lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
@@ -241,6 +245,52 @@ function saveSettings_(pairs) {
     n++;
   });
   return { ok: true, saved: n };
+}
+
+/* --------------------------- web helpers (verification) --------------------------- */
+
+const UA = 'Mozilla/5.0 (compatible; BrandResearchBot/1.0)';
+function okUrl_(u) { return /^https?:\/\/[^\s]+$/i.test(String(u || '')); }
+function fetchAllSafe_(urls, opts) {
+  const list = (urls || []).filter(okUrl_).slice(0, 10);
+  const reqs = list.map(function (u) { const o = { url: u, muteHttpExceptions: true, headers: { 'User-Agent': UA } }; Object.keys(opts || {}).forEach(function (k) { o[k] = opts[k]; }); return o; });
+  let resps;
+  try { resps = UrlFetchApp.fetchAll(reqs); }
+  catch (e) { resps = reqs.map(function (r) { try { return UrlFetchApp.fetch(r.url, r); } catch (x) { return null; } }); }
+  return list.map(function (u, i) { return { url: u, resp: resps[i] }; });
+}
+function textOf_(resp) {
+  let t = ''; try { t = resp.getContentText(); } catch (e) {}
+  t = t.slice(0, 900000);
+  return t.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&#64;|&commat;/g, '@').replace(/\s+/g, ' ');
+}
+/** Grounding links are redirect URLs — return where they really point. */
+function resolveUrls_(urls) {
+  const r = fetchAllSafe_(urls, { followRedirects: false });
+  return { ok: true, urls: r.map(function (x) { let loc = ''; try { loc = x.resp.getHeaders()['Location'] || x.resp.getHeaders()['location'] || ''; } catch (e) {} return { url: x.url, resolved: loc || x.url }; }) };
+}
+function hasNeedle_(hay, n) {
+  n = String(n || '').trim(); if (!n) return false;
+  if (/^[+\d][\d\s\-().+]{6,}$/.test(n)) {
+    const d = n.replace(/\D/g, '').slice(-10);
+    return new RegExp(d.split('').join('[\\s\\-().]*')).test(hay);
+  }
+  return hay.toLowerCase().indexOf(n.toLowerCase()) >= 0;
+}
+/** For each URL: HTTP status and which needles (e-mail, phone, name…) literally appear on the page. */
+function checkPages_(urls, needles) {
+  const ns = (needles || []).slice(0, 6);
+  const r = fetchAllSafe_(urls, { followRedirects: true });
+  return { ok: true, results: r.map(function (x) {
+    if (!x.resp) return { url: x.url, status: 0, found: ns.map(function () { return false; }) };
+    const t = textOf_(x.resp);
+    return { url: x.url, status: x.resp.getResponseCode(), found: ns.map(function (n) { return hasNeedle_(t, n); }) };
+  }) };
+}
+function fetchText_(urls, max) {
+  const r = fetchAllSafe_(urls, { followRedirects: true });
+  return { ok: true, pages: r.filter(function (x) { return x.resp && x.resp.getResponseCode() < 400; }).map(function (x) { return { url: x.url, text: textOf_(x.resp).slice(0, max || 3000) }; }) };
 }
 
 /* -------------------------------- helpers -------------------------------- */
