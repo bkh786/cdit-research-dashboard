@@ -1,6 +1,7 @@
 {
-  "name": "cdit-sales-intelligence-dashboard",
-  "version": "1.0.0",
+  "name": "brand-research-insights",
+  "version": "2.0.0",
   "private": true,
+  "description": "Sales-intelligence dashboard: brand signals, contacts and AI outreach drafts on your own Google Sheet.",
   "dependencies": {}
 }

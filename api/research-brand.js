@@ -1,236 +1,127 @@
-// Vercel serverless function: "+ Track this brand" on the Competitor Watch
-// page calls this. It researches a competitor/adjacent brand via Gemini
-// (grounded with Google Search so it isn't just guessing from training
-// data), then writes it straight into Brands Master, Pipeline, News feed,
-// Opportunities, and a Contacts placeholder row -- via the Apps Script
-// write bridge, server-to-server.
+// Researches one brand end-to-end with Gemini + live Google Search grounding and
+// writes the results into the workspace sheet:
+//   Brands Master / Pipeline (if new), News feed, Opportunities.
 //
-// Required environment variables:
-//   GEMINI_API_KEY  - from https://aistudio.google.com/apikey
-//   GEMINI_MODEL    - optional, defaults to "gemini-2.0-flash"
-//   DASHBOARD_PASSWORD, APPS_SCRIPT_URL, APPS_SCRIPT_SECRET
+// Used by: "Add brand → research with AI", "Refresh research" on a brand page,
+// the setup wizard's bulk research, and "Track this brand" in Competitor Watch.
+//
+// Body: { brand, profile, context?, brandInfo?, write? (default true) }
 
-const FALLBACK_MODELS = [
-  process.env.GEMINI_MODEL || "gemini-2.0-flash",
-  "gemini-2.5-flash-lite",
-  "gemini-1.5-flash",
+const { authorize, workspace, bridge, gemini, resolveSources, verifyUrl, companyBlurb, handle } = require("./_lib/common");
+
+const SIGNAL_TYPES = [
+  "Retail Expansion", "New Store / Experience Zone", "Product Launch", "Leadership Change",
+  "Festive / Seasonal Campaign", "Distribution / Channel Partnership", "Manufacturing / Capex",
+  "Funding / Financials", "Marketing Campaign", "Hiring / Workforce", "Other",
 ];
 
-module.exports = async (req, res) => {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
+module.exports = handle(async (req, res) => {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!authorize(req, res)) return;
+  const ws = workspace(req);
 
-  const suppliedPassword = req.headers["x-dashboard-password"];
-  if (!process.env.DASHBOARD_PASSWORD || suppliedPassword !== process.env.DASHBOARD_PASSWORD) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  if (!process.env.GEMINI_API_KEY) {
-    res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. Add it in Vercel project settings." });
-    return;
-  }
+  const { brand, profile, context, brandInfo, write = true } = req.body || {};
+  if (!brand || !String(brand).trim()) return res.status(400).json({ error: "brand is required" });
+  const name = String(brand).trim();
+  const co = companyBlurb(profile);
+  const today = new Date().toISOString().slice(0, 10);
 
-  try {
-    const { brand, context } = req.body || {};
-    if (!brand) {
-      res.status(400).json({ error: "brand is required" });
-      return;
-    }
+  const prompt = `You are a B2B sales-intelligence analyst working for ${co.company}${co.website ? ` (${co.website})` : ""}.
+${co.company} sells: ${co.servicesText}.
+${co.pitch ? `Positioning: ${co.pitch}` : ""}
 
-    const prompt = `You are a B2B sales research analyst for Channelplay, an Indian retail-execution and field-force outsourcing company (services: Visual Merchandising, Retail Execution, Promoter Staffing, Payroll Outsourcing, Merchandising Audits, Mystery Audits, Brand Activation, Sales Promotion, Retail Technology, Field Force Automation, Retail Analytics).
+TASK: Research the brand "${name}" in ${co.geography} (sector focus: ${co.sectors}). Use Google Search. Today is ${today}.
+The goal is to find REAL, RECENT (preferably the last 90 days) moves by this brand that create a reason for ${co.company} to reach out about: ${co.servicesText}.
+Look for: new/expanded retail stores, exclusive/experience stores, distribution or channel changes, product launches that need in-store demo/merchandising, festive or seasonal campaigns, leadership changes in sales/marketing/retail, capex or growth targets, workforce/hiring in retail.
+${brandInfo && brandInfo.sector ? `Already known: sector=${brandInfo.sector}; segment=${brandInfo.segment || ""}.` : ""}
+${context && context.headline ? `Known trigger: "${context.headline}" — ${context.summary || ""}` : ""}
 
-Research the consumer brand "${brand}" in the Indian market using real, current, verifiable information.
-${context && context.headline ? `KNOWN CONTEXT FROM RECENT SIGNALS: Headline: "${context.headline}", Summary: "${context.summary || ""}", Category: "${context.category || ""}"` : ""}
+STRICT RULES
+- Only report facts you found in search results. If you cannot verify something write "Not publicly confirmed". Never invent headlines, dates, numbers, people or URLs.
+- Each signal must have a real publication and, if available, its exact article URL from the search results.
+- Dates as YYYY-MM-DD (use YYYY-MM-01 if only a month is known).
+- recommendedService must be one of: ${co.services.map((s) => `"${s}"`).join(", ")} (or a combination joined with " + ").
+- Signal categories allowed: ${SIGNAL_TYPES.join(", ")}.
 
-Respond with ONLY a JSON object (no markdown code fences, no commentary) with exactly these keys:
+Return ONLY a JSON object, no markdown, in exactly this shape:
 {
-  "sector": "",
-  "segment": "",
-  "priorityTier": "High or Medium or Low",
-  "website": "bare domain, e.g. example.com",
-  "hqIndia": "city, state",
-  "statusNotes": "1-2 sentence summary of why this brand is relevant to Channelplay right now",
-  "newsHeadline": "",
-  "newsDate": "YYYY-MM-DD, your best estimate of a genuinely recent date",
-  "newsSource": "publication name",
-  "newsSummary": "2-3 sentences",
-  "newsUrl": "URL if known, else empty string",
-  "opportunityType": "one of the Channelplay services listed above",
-  "businessImpact": "",
-  "opportunityForChannelplay": "",
-  "recommendedService": "",
-  "recommendedContactDept": "",
-  "suggestedNextAction": "",
-  "priorityScore": integer 1-5,
-  "confidenceScore": integer 1-5
+  "profile": {
+    "sector": "", "segment": "", "priorityTier": "High|Medium|Low",
+    "website": "bare domain e.g. example.com", "hqIndia": "city, state",
+    "statusNotes": "1-2 sentences: why this brand matters to ${co.company} right now"
+  },
+  "signals": [
+    { "date": "YYYY-MM-DD", "headline": "", "category": "", "source": "publication", "url": "", "summary": "2 sentences, facts only", "whyItMatters": "1 sentence on the in-store / field-force implication" }
+  ],
+  "opportunities": [
+    { "type": "signal category", "businessImpact": "what is happening and its scale", "opportunityForUs": "specific way ${co.company} can help", "recommendedService": "", "contactDept": "e.g. Retail Operations / Trade Marketing / Sales", "nextAction": "one concrete next step", "whyNow": "timing trigger", "priorityScore": 1-5, "confidenceScore": 1-5, "linkedSignal": 1 }
+  ]
 }
+Give 2-5 signals (newest first) and 1-3 opportunities ranked best first. If nothing recent is verifiable return an empty "signals" array and one low-confidence opportunity.`;
 
-If you cannot verify a fact, write "Not publicly confirmed" for that field rather than inventing it. Do not fabricate news, dates, sources, or figures.`;
-
-    let r = null;
-    let fallbackUsed = false;
-
-    try {
-      r = await callGeminiWithFallbacks(prompt);
-    } catch (geminiErr) {
-      console.warn("All Gemini API calls encountered rate limits or errors:", geminiErr.message);
-      // Generate intelligent fallback research record from available context so brand is still tracked
-      r = generateFallbackResearch(brand, context);
-      fallbackUsed = true;
-    }
-
-    const today = new Date().toISOString().slice(0, 10);
-    const brandRow = {
-      "Brand": brand,
-      "Sector": r.sector || "Consumer Electronics",
-      "Segment": r.segment || (context?.category || "Large Appliances & Electronics"),
-      "Priority Tier": ["High", "Medium", "Low"].includes(r.priorityTier) ? r.priorityTier : "High",
-      "Website": r.website || `${brand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
-      "HQ / India Office": r.hqIndia || "India",
-      "Status Notes": (r.statusNotes || "") + (fallbackUsed ? " (Researched via recorded market signals — Gemini quota was rate-limited.)" : " (Auto-added from Competitor Watch, researched via Gemini -- verify before outreach.)"),
-      "Date Added": today,
-    };
-    const pipelineRow = {
-      "Brand": brand, "Stage": "Prospect", "Owner": "", "Last Update": today,
-      "Next Follow-up Date": "", "Notes": "Auto-added via Competitor Watch — verify research before outreach.",
-    };
-    const newsRow = {
-      "Brand": brand, "Date": r.newsDate || today, "Headline": r.newsHeadline || (context?.headline || `${brand} active in Indian market`),
-      "Category": r.opportunityType || (context?.category || "Market Move"), "Source": r.newsSource || (context?.source || "Competitor Watch"),
-      "AI Summary": r.newsSummary || (context?.summary || ""), "URL": r.newsUrl || (context?.url || ""),
-    };
-    const oppRow = {
-      "Brand": brand, "Opportunity Type": r.opportunityType || "Promoter Staffing", "Business Impact": r.businessImpact || "In-store promoter activation and shelf-share defense.",
-      "Opportunity for Channelplay": r.opportunityForChannelplay || "Channelplay promoter deployment and retail execution audit.", "Recommended Service": r.recommendedService || "Promoter Staffing",
-      "Recommended Contact Department": r.recommendedContactDept || "Trade Marketing / Sales", "Suggested Next Action": r.suggestedNextAction || "Engage trade marketing team for promoter audit.",
-      "Priority Score (1-5)": Math.max(1, Math.min(5, Number(r.priorityScore) || 4)),
-      "Confidence Score (1-5)": Math.max(1, Math.min(5, Number(r.confidenceScore) || 3)),
-    };
-    const contactRow = {
-      "Brand": brand, "Decision Maker Name": "", "Designation": "", "Department": r.recommendedContactDept || "Sales & Trade Marketing",
-      "LinkedIn Profile": "", "Official Email (public only)": "", "Official Contact Number (public only)": "",
-      "Company Website": r.website || "", "Office Location": r.hqIndia || "India",
-      "Research Status": "Not yet researched — brand auto-added via Competitor Watch",
-    };
-
-    await postToAppsScript({ action: "addBrand", brand: brandRow, pipeline: pipelineRow });
-    await postToAppsScript({ action: "appendRows", sheet: "News feed", rows: [newsRow] });
-    await postToAppsScript({ action: "appendRows", sheet: "Opportunities", rows: [oppRow] });
-    await postToAppsScript({ action: "appendRows", sheet: "Contacts", rows: [contactRow] });
-
-    res.status(200).json({ ok: true, brand: brandRow, researched: r, fallbackUsed });
+  let r, resolved = [], grounded = false, model = "", warning = "";
+  try {
+    const out = await gemini(ws, prompt, { search: true, temperature: 0.2, maxOutputTokens: 6000 });
+    r = out.data;
+    grounded = out.grounded;
+    model = out.model;
+    resolved = await resolveSources(out.sources, 12);
+    if (!grounded) warning = "Search grounding was unavailable (quota). Results are model knowledge only — verify before outreach.";
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message || "Failed to research/add brand" });
-  }
-};
-
-async function callGeminiWithFallbacks(prompt) {
-  let lastErr = null;
-  const uniqueModels = [...new Set(FALLBACK_MODELS)];
-
-  for (const model of uniqueModels) {
-    // 1. Try with Google Search Grounding
-    try {
-      return await callGeminiModel(model, prompt, true);
-    } catch (err) {
-      lastErr = err;
-      console.warn(`Gemini (${model}) with search failed: ${err.message}`);
-      if (err.message.includes("404") || err.message.includes("not found") || err.message.includes("no longer available")) {
-        continue;
-      }
-    }
-
-    // 2. Try without Search Grounding (higher rate limits / less quota usage)
-    try {
-      return await callGeminiModel(model, prompt, false);
-    } catch (err) {
-      lastErr = err;
-      console.warn(`Gemini (${model}) direct failed: ${err.message}`);
-      if (err.message.includes("404")) continue;
-      if (err.message.includes("429") || err.message.includes("quota") || err.message.includes("RESOURCE_EXHAUSTED")) {
-        await new Promise(r => setTimeout(r, 1200));
-      }
-    }
+    err.status = err.status || 502;
+    throw err;
   }
 
-  throw lastErr || new Error("All Gemini models encountered rate limits.");
-}
+  const p = r.profile || {};
+  const signals = (Array.isArray(r.signals) ? r.signals : []).slice(0, 5).map((s) => ({
+    ...s,
+    url: grounded ? verifyUrl(s.url, s.source, resolved) : "",
+  }));
+  const opps = (Array.isArray(r.opportunities) ? r.opportunities : []).slice(0, 3);
+  const clampScore = (v, d) => Math.max(1, Math.min(5, Math.round(Number(v)) || d));
 
-async function callGeminiModel(model, prompt, useSearch) {
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.3, maxOutputTokens: 3000 },
+  const brandRow = {
+    "Brand": name,
+    "Sector": p.sector || (brandInfo && brandInfo.sector) || co.sectors.split(/[|,]/)[0].trim(),
+    "Segment": p.segment || (brandInfo && brandInfo.segment) || "",
+    "Priority Tier": ["High", "Medium", "Low"].includes(p.priorityTier) ? p.priorityTier : "Medium",
+    "Website": (p.website || (brandInfo && brandInfo.website) || "").replace(/^https?:\/\//, "").replace(/\/$/, ""),
+    "HQ / India Office": p.hqIndia || (brandInfo && brandInfo.hq) || "",
+    "Status Notes": p.statusNotes || "",
+    "Date Added": today,
   };
-  if (useSearch) {
-    if (model.startsWith("gemini-1.5")) {
-      body.tools = [{ googleSearchRetrieval: {} }];
-    } else {
-      body.tools = [{ google_search: {} }];
-    }
+  const pipelineRow = { "Brand": name, "Stage": "Prospect", "Owner": (profile && profile.ownerName) || "", "Last Update": today, "Next Follow-up Date": "", "Notes": "Added with AI research — verify before outreach." };
+
+  const newsRows = signals.filter((s) => s.headline).map((s) => ({
+    "Brand": name,
+    "Date": s.date || today,
+    "Headline": s.headline,
+    "Category": SIGNAL_TYPES.includes(s.category) ? s.category : "Other",
+    "AI Summary": s.summary || "",
+    "Source": s.source || "",
+    "URL": s.url || "",
+    "Why It Matters": s.whyItMatters || "",
+  }));
+  const oppRows = opps.filter((o) => o.opportunityForUs || o.businessImpact).map((o) => ({
+    "Brand": name,
+    "Opportunity Type": o.type || "Retail Expansion",
+    "Business Impact": o.businessImpact || "",
+    "Opportunity for Channelplay": [o.opportunityForUs, o.whyNow ? `Why now: ${o.whyNow}` : ""].filter(Boolean).join(" "),
+    "Confidence Score (1-5)": clampScore(o.confidenceScore, 3),
+    "Priority Score (1-5)": clampScore(o.priorityScore, 3),
+    "Recommended Service": o.recommendedService || co.services[0],
+    "Recommended Contact Department": o.contactDept || "Retail Operations / Trade Marketing",
+    "Suggested Next Action": o.nextAction || "",
+    "Linked News Ref": o.linkedSignal && newsRows[o.linkedSignal - 1] ? newsRows[o.linkedSignal - 1].Headline : "",
+  }));
+
+  let written = null;
+  if (write) {
+    const add = await bridge(ws, { action: "addBrand", brand: brandRow, pipeline: pipelineRow });
+    const news = newsRows.length ? await bridge(ws, { action: "appendRows", sheet: "News feed", rows: newsRows, dedupeOn: ["Brand", "Headline"] }) : { added: 0 };
+    const opp = oppRows.length ? await bridge(ws, { action: "appendRows", sheet: "Opportunities", rows: oppRows, dedupeOn: ["Brand", "Opportunity Type", "Suggested Next Action"] }) : { added: 0 };
+    written = { brandAdded: add.brandAdded !== false, news: news.added ?? newsRows.length, opportunities: opp.added ?? oppRows.length };
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
-  const geminiResp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  if (!geminiResp.ok) {
-    const errText = await geminiResp.text();
-    let msg = errText;
-    try {
-      const j = JSON.parse(errText);
-      if (j.error && j.error.message) msg = j.error.message;
-    } catch (_) {}
-    throw new Error(`Gemini (${model}) ${geminiResp.status}: ${msg}`);
-  }
-
-  const geminiData = await geminiResp.json();
-  const finishReason = geminiData.candidates?.[0]?.finishReason;
-  const rawText = (geminiData.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error(`Gemini returned no usable JSON (finishReason: ${finishReason || "unknown"}).`);
-  return JSON.parse(jsonMatch[0]);
-}
-
-function generateFallbackResearch(brand, context = {}) {
-  const headline = context?.headline || `${brand} expanding presence in Indian market`;
-  const summary = context?.summary || `${brand} active in retail electronics and appliance channels in India.`;
-  return {
-    sector: "Consumer Electronics",
-    segment: context?.category || "Appliances & Consumer Tech",
-    priorityTier: "High",
-    website: `${brand.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
-    hqIndia: "India",
-    statusNotes: `Tracked from Competitor Watch: "${headline}".`,
-    newsHeadline: headline,
-    newsDate: context?.date || new Date().toISOString().slice(0, 10),
-    newsSource: context?.source || "Competitor Intelligence",
-    newsSummary: summary,
-    newsUrl: context?.url || "",
-    opportunityType: "Promoter Staffing",
-    businessImpact: "Retail store presence defense and promoter staffing against aggressive competitor moves.",
-    opportunityForChannelplay: "Deploy Channelplay promoters and field execution team to capture floor share.",
-    recommendedService: "Promoter Staffing & Merchandising Audit",
-    recommendedContactDept: "Trade Marketing & Sales",
-    suggestedNextAction: "Verify trade marketing contacts and schedule introductory meeting.",
-    priorityScore: 4,
-    confidenceScore: 3,
-  };
-}
-
-async function postToAppsScript(body) {
-  const resp = await fetch(process.env.APPS_SCRIPT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, secret: process.env.APPS_SCRIPT_SECRET }),
-    redirect: "follow",
-  });
-  const data = await resp.json();
-  if (data.error) throw new Error(data.error);
-  return data;
-}
+  res.status(200).json({ ok: true, brand: brandRow, signals: newsRows, opportunities: oppRows, grounded, model, warning, written });
+});
