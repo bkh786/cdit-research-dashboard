@@ -136,8 +136,8 @@ Object.assign(ACT, {
     if (!cfg.geminiKey) { msg.innerHTML = '<span class="pill bad">Paste your Gemini API key first.</span>'; t.disabled = false; return; }
     try {
       const r = await testGemini(); S.meta.geminiConnected = true;
-      msg.innerHTML = `<span class="pill good">${ic("check", 12)} Working · auto-selected ${esc(r.model)} (${r.available} models available${r.skipped.length ? `; skipped ${esc(r.skipped.join(", "))}` : ""})</span>`;
-      paintChrome(); setTimeout(renderSetup, 2500);
+      msg.innerHTML = `<span class="pill good">${ic("check", 12)} Working · auto-selected ${esc(r.model)} (${r.available} models available${r.skipped.length ? `; skipped ${esc(r.skipped.join(", "))}` : ""})</span>${r.search === "ok" ? ` <span class="pill good">${ic("check", 12)} Web search works</span>` : `<div class="note warn" style="margin-top:8px">${ic("warn", 16)}<div><b>Web search is not available on this key</b> — contact &amp; brand research need it. ${esc(r.searchMsg).slice(0, 380)}</div></div>`}`;
+      paintChrome(); if (r.search === "ok") setTimeout(renderSetup, 2500);
     } catch (e) { S.meta.geminiConnected = false; msg.innerHTML = `<span class="pill bad">${esc(e.message).slice(0, 260)}</span>`; paintChrome(); }
     t.disabled = false;
   },

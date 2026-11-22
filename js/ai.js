@@ -118,6 +118,7 @@ function extractJson(text) {
 async function gemini(prompt, opts = {}) {
   if (!cfg.geminiKey) { const e = new Error("No Gemini API key. Add yours in Setup → Gemini."); e.code = "nokey"; throw e; }
   const { search = false, allowUngrounded = true, expect = "json", deadline = 0 } = opts;
+  if (GEM.keyId !== cfg.geminiKey) { GEM.keyId = cfg.geminiKey; GEM.dead.clear(); GEM.cool = {}; GEM.fails = {}; GEM.good = ""; }
   const models = await candidateModels(cfg.geminiKey);
   const tried = [];
   if (!opts._retried && models.every((m) => GEM.dead.has(m) || (GEM.cool[m] || 0) > Date.now())) { GEM.dead.clear(); GEM.cool = {}; GEM.fails = {}; gmSave(); }
@@ -134,7 +135,7 @@ async function gemini(prompt, opts = {}) {
         GEM.fails[model] = 0;
         return { data, sources: r.sources, grounded: useSearch, model, tried };
       } catch (err) {
-        tried.push({ model, why: err.kind === "gone" ? "retired / unavailable" : err.kind === "quota" ? "quota reached" : err.kind === "nosearch" ? "search not supported" : err.kind === "busy" ? "busy" : err.kind === "timeout" ? "too slow" : err.kind === "badjson" ? "bad output" : String(err.message).slice(0, 90), kind: err.kind });
+        tried.push({ model, why: err.kind === "gone" ? "retired / unavailable" : err.kind === "quota" ? "quota reached" : err.kind === "nosearch" ? "search not supported" : err.kind === "busy" ? "busy" : err.kind === "timeout" ? "too slow" : err.kind === "badjson" ? "bad output" : String(err.message).slice(0, 90), kind: err.kind, raw: String(err.message || "") });
         if (err.kind === "key") throw geminiKeyError(err.status, err.message);
         if (err.kind === "gone") { GEM.dead.add(model); if (GEM.good === model) GEM.good = ""; if (err.status === 404) gmSave(); continue outer; }
         if (err.kind === "quota") { const sec = +((String(err.message).match(/retry (?:in|after) ([\d.]+)\s*s/i) || [])[1]) || 0, daily = /per ?day|daily/i.test(err.message); if (daily) tried[tried.length - 1].daily = true; if (sec) tried[tried.length - 1].wait = Math.ceil(sec); GEM.cool[model] = Date.now() + (daily ? 3600000 : Math.min(Math.max(sec, 20), 300) * 1000); if (useSearch && allowUngrounded) continue; continue outer; }
@@ -146,11 +147,16 @@ async function gemini(prompt, opts = {}) {
     }
   }
   if (deadline && left() < 4000) { const e = new Error("Gemini took too long to answer (time limit reached)."); e.code = "timeout"; e.tried = tried; throw e; }
-  const allQuota = tried.length && tried.every((t) => t.kind === "quota");
+  const quotas = tried.filter((t) => t.kind === "quota");
+  const zero = quotas.some((t) => /limit:\s*0\b/i.test(t.raw));
+  const google = ((quotas[0] || tried[0] || {}).raw || "").replace(/\s+/g, " ").replace(/For more information.*$/i, "").slice(0, 220);
   const wait = Math.min(...tried.map((t) => t.wait || 60));
-  const e = new Error(allQuota
-    ? `Gemini's ${search ? "web-search " : ""}quota is used up on all ${new Set(tried.map((t) => t.model)).size} models this key can use${tried.some((t) => t.daily) ? " (daily limit)" : ""}. ${tried.some((t) => t.daily) ? "It resets daily — or enable billing for the key in Google AI Studio." : `Wait about ${wait}s and retry; if it keeps happening, enable billing for the key in Google AI Studio (free keys allow very few searches per minute).`}`
-    : `No Gemini model could complete the request. Tried: ${[...new Set(tried.map((t) => `${t.model} (${t.why})`))].slice(0, 5).join(", ") || "none available"}.`);
+  const nQ = new Set(quotas.map((t) => t.model)).size;
+  const e = new Error(quotas.length && quotas.length >= tried.length - 1
+    ? (zero
+      ? `This API key has NO free ${search ? "web-search (Google Search grounding) " : ""}allowance on any of its ${nQ} models (Google reports limit 0). Contact research needs search, so enable billing on the key's Google Cloud project (AI Studio → Get API key → Set up billing), then retry. Google said: “${google}”`
+      : `Gemini's ${search ? "web-search " : ""}quota is exhausted on ${nQ} models${tried.some((t) => t.daily) ? " (daily limit — resets daily)" : `. Wait ~${wait}s and retry`}. Google said: “${google}”`)
+    : `No Gemini model could complete the request. ${[...new Set(tried.map((t) => `${t.model}: ${t.why}`))].slice(0, 6).join("; ") || "none available"}.${google ? ` Google said: “${google}”` : ""}`);
   e.code = "gemini"; throw e;
 }
 
@@ -160,7 +166,10 @@ async function testGemini() {
   GEM.dead.clear(); GEM.cool = {}; GEM.fails = {}; GEM.good = ""; gmSave();
   const r = await gemini('Reply with exactly this JSON and nothing else: {"ok": true}', { search: false, temperature: 0, maxOutputTokens: 256 });
   const skipped = r.tried.filter((t) => t.kind === "gone" || t.kind === "quota").map((t) => t.model);
-  return { model: r.model, available: names.length, skipped };
+  let search = "ok", searchMsg = "";
+  try { await gemini('Search the web and reply with JSON {"ok": true}', { search: true, allowUngrounded: false, temperature: 0, maxOutputTokens: 256, deadline: Date.now() + 25000, callTimeout: 12000 }); }
+  catch (e) { search = "no"; searchMsg = e.message; }
+  return { model: r.model, available: names.length, skipped, search, searchMsg };
 }
 
 /* -------------------------------- grounding sources -------------------------------- */
