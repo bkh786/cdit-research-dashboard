@@ -8,7 +8,71 @@
 
 const BRIDGE_URL_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[A-Za-z0-9.\-_]+\/|macros\/)s\/[A-Za-z0-9_\-]+\/exec$/;
 
-function authorize(req, res) {
+const crypto = require("crypto");
+
+/* ---------------- master mode (users, roles, workspaces live in the set-up-master sheet) ---------------- */
+
+function masterMode() { return !!process.env.MASTER_BRIDGE_URL; }
+
+async function master(body) {
+  const url = process.env.MASTER_BRIDGE_URL;
+  if (!url) { const e = new Error("MASTER_BRIDGE_URL is not configured on the server."); e.status = 500; throw e; }
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, secret: process.env.MASTER_BRIDGE_SECRET || "" }),
+    redirect: "follow",
+  });
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch (_) {
+    const e = new Error("The master sheet bridge did not return JSON. Check MASTER_BRIDGE_URL and that the script is deployed for “Anyone”.");
+    e.status = 502; throw e;
+  }
+  if (data && data.error) { const e = new Error(data.error); e.status = /unauthorized/i.test(data.error) ? 401 : 400; throw e; }
+  return data;
+}
+
+function sessionKey() { return process.env.SESSION_SECRET || process.env.MASTER_BRIDGE_SECRET || ""; }
+const b64u = (b) => Buffer.from(b).toString("base64url");
+
+function signToken(user, hours) {
+  const key = sessionKey();
+  if (!key) { const e = new Error("SESSION_SECRET is not configured on the server."); e.status = 500; throw e; }
+  const payload = b64u(JSON.stringify({ e: user.email, exp: Date.now() + (hours || 12) * 3600 * 1000 }));
+  const sig = crypto.createHmac("sha256", key).update(payload).digest("base64url");
+  return payload + "." + sig;
+}
+
+function verifyToken(token) {
+  const key = sessionKey();
+  if (!key || !token || !token.includes(".")) return null;
+  const [payload, sig] = token.split(".");
+  const good = crypto.createHmac("sha256", key).update(payload).digest("base64url");
+  const a = Buffer.from(sig), b = Buffer.from(good);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const p = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return p.exp > Date.now() ? p : null;
+  } catch (_) { return null; }
+}
+
+function bearer(req) {
+  const h = String((req.headers || {}).authorization || "");
+  return h.startsWith("Bearer ") ? h.slice(7) : "";
+}
+
+/** Authorizes the request. Master mode: signed session token + live check of the user in the master sheet. */
+async function authorize(req, res) {
+  if (masterMode()) {
+    const p = verifyToken(bearer(req));
+    if (!p) { res.status(401).json({ error: "Unauthorized" }); return false; }
+    try {
+      const { user } = await master({ action: "getUser", email: p.e });
+      req.user = user;
+      return true;
+    } catch (_) { res.status(401).json({ error: "Unauthorized" }); return false; }
+  }
   const supplied = req.headers["x-dashboard-password"] || (req.query && req.query.password);
   if (!process.env.DASHBOARD_PASSWORD || supplied !== process.env.DASHBOARD_PASSWORD) {
     res.status(401).json({ error: "Unauthorized" });
@@ -17,7 +81,46 @@ function authorize(req, res) {
   return true;
 }
 
-function workspace(req) {
+async function requireAdmin(req, res) {
+  if (!(await authorize(req, res))) return false;
+  if (!req.user || !req.user.isAdmin) { res.status(403).json({ error: "Administrator access required." }); return false; }
+  return true;
+}
+
+const wsCache = new Map();
+async function masterWorkspace(email) {
+  const hit = wsCache.get(email);
+  if (hit && hit.t > Date.now() - 30000) return hit.w;
+  const { workspace: w } = await master({ action: "getWorkspace", email });
+  wsCache.set(email, { t: Date.now(), w });
+  return w;
+}
+function clearWsCache(email) { if (email) wsCache.delete(email); else wsCache.clear(); }
+
+async function workspace(req) {
+  if (masterMode() && req.user) {
+    const w = (await masterWorkspace(req.user.email)) || {};
+    const bu = String(w["Bridge URL"] || "").trim();
+    if (bu && !BRIDGE_URL_RE.test(bu)) {
+      const e = new Error("The Bridge URL saved for this workspace is not a valid Apps Script /exec URL. Ask your administrator to fix it.");
+      e.status = 400; throw e;
+    }
+    return {
+      custom: true,
+      own: true,
+      bridgeUrl: String(w["Bridge URL"] || "").trim(),
+      bridgeSecret: String(w["Bridge Secret"] || "").trim(),
+      geminiKey: String(w["Gemini API Key"] || "").trim() || process.env.GEMINI_API_KEY || "",
+      geminiModel: String(w["Gemini Model"] || "").trim() || process.env.GEMINI_MODEL || "",
+      sheetId: "",
+      googleApiKey: "",
+      owner: req.user.email,
+    };
+  }
+  return legacyWorkspace(req);
+}
+
+function legacyWorkspace(req) {
   const h = req.headers || {};
   const customUrl = String(h["x-bridge-url"] || "").trim();
   const customSecret = String(h["x-bridge-secret"] || "").trim();
@@ -257,6 +360,7 @@ function escHtml(s) {
 }
 
 module.exports = {
-  authorize, workspace, bridge, upsert, gemini, resolveSources, verifyUrl, sameUrl,
+  masterMode, master, signToken, verifyToken, bearer, requireAdmin, clearWsCache,
+  authorize, workspace, legacyWorkspace, bridge, upsert, gemini, resolveSources, verifyUrl, sameUrl,
   companyBlurb, handle, escHtml, extractJson,
 };

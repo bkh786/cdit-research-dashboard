@@ -13,8 +13,8 @@ const ALLOWED = new Set([
 
 module.exports = handle(async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!authorize(req, res)) return;
-  const ws = workspace(req);
+  if (!(await authorize(req, res))) return;
+  const ws = await workspace(req);
 
   const { action, ...rest } = req.body || {};
   if (!ALLOWED.has(action)) return res.status(400).json({ error: `Unsupported action: ${action}` });

@@ -13,7 +13,8 @@ const PL = { showClosed: false, owner: "" };
 const NAV = [
   ["overview", "Overview", "home"], ["signals", "Signals", "radar"], ["opportunities", "Opportunities", "bolt"],
   ["contacts", "Contacts", "users"], ["pipeline", "Pipeline", "kanban"], ["competitors", "Competitor Watch", "eye"],
-  ["setup", "Setup guide", "rocket"], ["settings", "Settings", "gear"],
+  ["add-brand", "Add brand", "plus"],
+  ["setup", "Setup guide", "rocket"], ["settings", "Settings", "gear"], ["admin", "Administration", "users"],
 ];
 
 /* ------------------------------- boot / auth ------------------------------- */
@@ -24,6 +25,7 @@ function boot() {
   $("#refreshBtn").innerHTML = ic("refresh", 16);
   $("#themeBtn").innerHTML = ic("sun", 16);
   $("#lockBtn").innerHTML = ic("lock", 16);
+  $("#userBtn").innerHTML = ic("gear", 16);
   $('[data-act="add-brand"]').innerHTML = `${ic("plus", 15)}<span>Add brand</span>`;
   $("#unlockBtn").addEventListener("click", unlock);
   $("#pwInput").addEventListener("keydown", (e) => e.key === "Enter" && unlock());
@@ -38,12 +40,45 @@ function boot() {
     app.classList.toggle("collapsed");
     cfg.sidebarCollapsed = app.classList.contains("collapsed"); saveCfg();
   });
-  if (pwStore.get()) start(); else $("#pwInput").focus();
+  $("#emInput").addEventListener("keydown", (e) => e.key === "Enter" && $("#pwInput").focus());
+  detectMode().then(() => {
+    if (AUTH.mode === "master") {
+      $("#emWrap").classList.remove("hidden"); $("#gateTxt").textContent = "Sign in with your email and password.";
+      $("#pwInput").placeholder = "Password"; $("#emInput").focus();
+      if (tokStore.get()) startMaster().catch(() => { tokStore.clear(); $("#gate").classList.remove("hidden"); });
+    } else if (pwStore.get()) start(); else $("#pwInput").focus();
+  });
+}
+
+async function detectMode() {
+  try {
+    const r = await fetch("/api/auth", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "status" }) });
+    const d = await r.json(); AUTH.mode = d.mode === "master" ? "master" : "legacy";
+  } catch (_) { AUTH.mode = "legacy"; }
+}
+
+async function startMaster() {
+  await hydrateFromMaster();
+  try { if (localStorage.getItem("bri.lastUser") !== AUTH.user.email) { resetIdentity(); localStorage.setItem("bri.lastUser", AUTH.user.email); } } catch (_) {}
+  if (AUTH.user.mustChange) setTimeout(() => ACT["change-pw"] && ACT["change-pw"](), 600);
+  await start();
 }
 
 async function unlock() {
   const pw = $("#pwInput").value;
   if (!pw) return;
+  if (AUTH.mode === "master") {
+    const email = $("#emInput").value.trim();
+    if (!email) { $("#pwError").textContent = "Enter your email."; return; }
+    $("#pwError").textContent = ""; $("#unlockBtn").disabled = true;
+    try {
+      const r = await api("/api/auth", { action: "login", email, password: pw });
+      tokStore.set(r.token); $("#pwInput").value = "";
+      await startMaster();
+    } catch (e) { tokStore.clear(); $("#pwError").textContent = e.message; }
+    finally { $("#unlockBtn").disabled = false; }
+    return;
+  }
   pwStore.set(pw);
   $("#pwError").textContent = "";
   $("#unlockBtn").disabled = true;
@@ -58,7 +93,7 @@ async function start() {
   setStatus("load", "Syncing…");
   try { await loadData(); }
   catch (e) {
-    if (e.code === 401 || /expired/i.test(e.message)) { pwStore.clear(); setStatus("bad", "Locked"); throw e; }
+    if (e.code === 401 || /expired/i.test(e.message)) { pwStore.clear(); tokStore.clear(); setStatus("bad", "Locked"); throw e; }
     // Logged in but the sheet isn't reachable: still show the app so the user can fix it in Setup.
     S.loaded = true; S.D = S.D || { brands: [], news: [], opps: [], contacts: [], pipeline: [], comps: [], byName: {} };
     S.raw = {}; S.meta = { connection: "error", error: e.message };
@@ -75,7 +110,11 @@ async function start() {
   if (!cfg.onboarded) openWelcome();
 }
 
-function showApp() { $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden"); paintChrome(); }
+function showApp() {
+  $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden"); paintChrome();
+  const u = AUTH.mode === "master" && AUTH.user;
+  const ub = $("#userBtn"); if (ub) { ub.classList.toggle("hidden", !u); if (u) ub.title = `${u.name || u.email} · ${u.role} — change password`; }
+}
 
 function setStatus(kind, text) {
   const el = $("#sheetStatus"); if (!el) return;
@@ -88,6 +127,7 @@ function paintChrome() {
   const needsSetup = !S.meta || S.meta.connection === "none" || S.meta.connection === "error" || !D.brands.length;
   $$(".nav[data-view]").forEach((b, i) => {
     const [id, label, icon] = NAV.find((n) => n[0] === b.dataset.view);
+    b.classList.toggle("hidden", !canView(id));
     b.innerHTML = `${ic(icon, 17)}<span>${label}</span>${counts[id] !== undefined ? `<em class="count">${counts[id]}</em>` : id === "setup" && needsSetup ? '<em class="dot-alert"></em>' : ""}`;
     b.classList.toggle("active", id === view || (view === "brand" && id === "overview"));
   });
@@ -123,7 +163,7 @@ function routeFromHash() {
   const [v, ...rest] = h.split("/");
   const arg = decodeURIComponent(rest.join("/") || "");
   const known = NAV.map((n) => n[0]).concat(["brand"]);
-  view = known.includes(v) ? v : "overview";
+  view = known.includes(v) && canView(v) ? v : "overview";
   viewArg = arg;
   if (view === "brand" && !brandByName(arg)) { view = "overview"; viewArg = null; }
   document.documentElement.scrollTop = 0;
@@ -133,7 +173,7 @@ function routeFromHash() {
 function render() {
   paintChrome();
   const C = $("#content");
-  const fn = { overview: renderOverview, signals: renderSignals, opportunities: renderOpps, contacts: renderContacts, pipeline: renderPipeline, competitors: renderCompetitors, setup: renderSetup, settings: renderSettings, brand: () => renderBrand(viewArg) }[view];
+  const fn = { overview: renderOverview, signals: renderSignals, opportunities: renderOpps, contacts: renderContacts, pipeline: renderPipeline, competitors: renderCompetitors, setup: renderSetup, settings: renderSettings, admin: renderAdmin, brand: () => renderBrand(viewArg) }[view];
   C.style.animation = "none"; void C.offsetHeight; C.style.animation = "";
   fn();
 }
@@ -159,7 +199,7 @@ Object.assign(ACT, {
   go: (t) => go(t.dataset.view),
   brand: (t) => go("brand", t.dataset.brand),
   refresh: async (t) => { t.classList.add("spin"); try { await loadData(); render(); toast("Data refreshed"); } catch (e) { toast(e.message, "err"); } t.classList.remove("spin"); },
-  lock: () => { pwStore.clear(); location.hash = ""; location.reload(); },
+  lock: () => { pwStore.clear(); tokStore.clear(); location.hash = ""; location.reload(); },
   theme: (t) => { cfg.theme = t.dataset.v; saveCfg(); applyTheme(); paintChrome(); },
   accent: (t) => { cfg.accent = t.dataset.v; saveCfg(); applyTheme(); paintChrome(); },
   "add-brand": () => openAddBrand(),

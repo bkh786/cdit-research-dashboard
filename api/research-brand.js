@@ -17,8 +17,8 @@ const SIGNAL_TYPES = [
 
 module.exports = handle(async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!authorize(req, res)) return;
-  const ws = workspace(req);
+  if (!(await authorize(req, res))) return;
+  const ws = await workspace(req);
 
   const { brand, profile, context, brandInfo, write = true } = req.body || {};
   if (!brand || !String(brand).trim()) return res.status(400).json({ error: "brand is required" });

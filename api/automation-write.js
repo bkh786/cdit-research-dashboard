@@ -7,11 +7,14 @@
 //   ?password=…&action=updateRow&sheet=Pipeline&matchColumn=Brand&matchValue=Haier&updates=<JSON>
 //   ?password=…&action=createSheet&sheet=Competitor+Watch&headers=<JSON array>
 
-const { authorize, workspace, bridge, handle } = require("./_lib/common");
+const { masterMode, authorize, workspace, legacyWorkspace, bridge, handle } = require("./_lib/common");
 
 module.exports = handle(async (req, res) => {
-  if (!authorize(req, res)) return;
-  const ws = workspace(req);
+  // In master mode the daily automation authenticates with the server-side
+  // DASHBOARD_PASSWORD (as its automation key) and writes to the server-default bridge.
+  const automationKey = masterMode() && process.env.DASHBOARD_PASSWORD && req.query.password === process.env.DASHBOARD_PASSWORD;
+  if (!automationKey && !(await authorize(req, res))) return;
+  const ws = automationKey ? legacyWorkspace({ headers: {} }) : await workspace(req);
   const { action, sheet, rows, brand, pipeline, matchColumn, matchValue, updates, headers, dedupeOn } = req.query;
   const body = { action };
   if (sheet) body.sheet = sheet;

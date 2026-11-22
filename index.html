@@ -27,7 +27,8 @@
   <div class="card gate-card">
     <div class="logo-mark">BRI</div>
     <h1>Brand Research &amp; Insights</h1>
-    <p>Enter the access password to open your sales-intelligence workspace.</p>
+    <p id="gateTxt">Enter the access password to open your sales-intelligence workspace.</p>
+    <div id="emWrap" class="hidden"><input class="input" type="email" id="emInput" placeholder="Email" autocomplete="username" style="margin-bottom:10px;text-align:center" /></div>
     <input class="input" type="password" id="pwInput" placeholder="Access password" autocomplete="current-password" style="margin-bottom:12px;text-align:center" />
     <button class="btn lg" id="unlockBtn" style="width:100%">Unlock</button>
     <div class="err" id="pwError" role="alert"></div>
@@ -51,6 +52,7 @@
     <div class="nav-label">Workspace</div>
     <button class="nav" data-act="go" data-view="setup"></button>
     <button class="nav" data-act="go" data-view="settings"></button>
+    <button class="nav hidden" data-act="go" data-view="admin"></button>
     <div class="side-foot">
       <button class="btn" data-act="add-brand" style="width:100%"></button>
     </div>
@@ -84,7 +86,8 @@
             </div>
           </div>
         </div>
-        <button class="iconbtn" data-act="lock" title="Lock" id="lockBtn"></button>
+        <button class="iconbtn hidden" data-act="change-pw" title="Account" id="userBtn"></button>
+        <button class="iconbtn" data-act="lock" title="Sign out" id="lockBtn"></button>
       </div>
     </header>
     <main id="content" class="page"></main>
@@ -95,6 +98,7 @@
 <script src="js/views.js"></script>
 <script src="js/outreach.js"></script>
 <script src="js/setup.js"></script>
+<script src="js/admin.js"></script>
 <script>boot();</script>
 </body>
 </html>

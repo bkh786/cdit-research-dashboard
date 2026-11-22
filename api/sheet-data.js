@@ -13,8 +13,8 @@ const TABS = [
 ];
 
 module.exports = handle(async (req, res) => {
-  if (!authorize(req, res)) return;
-  const ws = workspace(req);
+  if (!(await authorize(req, res))) return;
+  const ws = await workspace(req);
   res.setHeader("Cache-Control", "no-store");
 
   const base = {

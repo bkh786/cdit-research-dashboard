@@ -62,7 +62,42 @@ function loadCfg() {
 }
 /** Called when switching workspace so one person's sender/profile never leaks into another's. */
 function resetIdentity() { cfg.profile = { ...DEFAULT_PROFILE }; cfg.sender = { ...DEFAULT_SENDER }; saveCfg(); }
-function saveCfg() { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (_) {} }
+function saveCfg() {
+  try {
+    // In master mode secrets live only in the master sheet — never in this browser.
+    const c = AUTH.mode === "master" ? { ...cfg, bridgeSecret: "", geminiKey: "" } : cfg;
+    localStorage.setItem(CFG_KEY, JSON.stringify(c));
+  } catch (_) {}
+  scheduleWorkspaceSync();
+}
+
+/* ---------------------- master-sheet login & workspace ---------------------- */
+const AUTH = { mode: "legacy", user: null, workspace: null };
+const tokStore = { get: () => sessionStorage.getItem("bri_tok") || "", set: (v) => sessionStorage.setItem("bri_tok", v), clear: () => sessionStorage.removeItem("bri_tok") };
+let _syncT = null;
+function scheduleWorkspaceSync() {
+  if (AUTH.mode !== "master" || !AUTH.user) return;
+  clearTimeout(_syncT);
+  _syncT = setTimeout(async () => {
+    const f = { bridgeUrl: cfg.bridgeUrl, geminiModel: cfg.geminiModel };
+    if (cfg.bridgeSecret) f.bridgeSecret = cfg.bridgeSecret;
+    if (cfg.geminiKey) f.geminiKey = cfg.geminiKey;
+    try { await api("/api/auth", { action: "saveMyWorkspace", fields: f }); } catch (e) { toast("Couldn't save to master sheet: " + e.message, "err"); }
+  }, 400);
+}
+/** Pull the signed-in user's workspace (from the master sheet) into the local config. */
+async function hydrateFromMaster() {
+  const me = await api("/api/auth", { action: "me" });
+  AUTH.user = me.user; AUTH.workspace = me.workspace;
+  const w = me.workspace || {};
+  cfg.mode = "own"; cfg.onboarded = true;
+  cfg.bridgeUrl = w.bridgeUrl || ""; cfg.geminiModel = w.geminiModel || "";
+  cfg.bridgeSecret = ""; cfg.geminiKey = "";
+  if (w.companyName && (!cfg.profile.companyName || cfg.profile.companyName === DEFAULT_PROFILE.companyName)) cfg.profile.companyName = w.companyName;
+  saveCfgLocalOnly();
+}
+function saveCfgLocalOnly() { try { localStorage.setItem(CFG_KEY, JSON.stringify({ ...cfg, bridgeSecret: "", geminiKey: "" })); } catch (_) {} }
+function canView(id) { return AUTH.mode !== "master" || !AUTH.user || (AUTH.user.pages || []).includes(id) || id === "brand"; }
 
 /* ------------------------------ helpers -------------------------------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -152,6 +187,7 @@ function toast(msg, kind = "ok", ms = 4200) {
 const pwStore = { get: () => sessionStorage.getItem("cdit_pw") || "", set: (v) => sessionStorage.setItem("cdit_pw", v), clear: () => sessionStorage.removeItem("cdit_pw") };
 
 function apiHeaders() {
+  if (AUTH.mode === "master") return { "Content-Type": "application/json", Authorization: "Bearer " + tokStore.get() };
   const h = { "Content-Type": "application/json", "x-dashboard-password": pwStore.get() };
   if (cfg.mode === "own") { h["x-workspace"] = "own"; if (cfg.bridgeUrl) { h["x-bridge-url"] = cfg.bridgeUrl; h["x-bridge-secret"] = cfg.bridgeSecret; } }
   if (cfg.geminiKey) h["x-gemini-key"] = cfg.geminiKey;
@@ -162,6 +198,7 @@ async function api(path, body, { method } = {}) {
   const resp = await fetch(path, { method: method || (body ? "POST" : "GET"), headers: apiHeaders(), body: body ? JSON.stringify(body) : undefined });
   let data = {};
   try { data = await resp.json(); } catch (_) {}
+  if (resp.status === 401 && AUTH.mode === "master" && path !== "/api/auth") { const e = new Error("Session expired — please sign in again."); e.code = 401; throw e; }
   if (resp.status === 401 && /unauthorized/i.test(data.error || "") && !/secret/i.test(data.error || "")) { const e = new Error("Session expired — please unlock again."); e.code = 401; throw e; }
   if (!resp.ok || data.error) { const e = new Error(data.error || `Request failed (${resp.status})`); e.code = resp.status; throw e; }
   return data;

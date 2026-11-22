@@ -28,8 +28,8 @@ async function fetchSiteContext(website) {
 
 module.exports = handle(async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!authorize(req, res)) return;
-  const ws = workspace(req);
+  if (!(await authorize(req, res))) return;
+  const ws = await workspace(req);
 
   const { brand, sector, segment, topOpportunity, recentNews, contactName, contactDesignation, profile, sender } = req.body || {};
   if (!brand) return res.status(400).json({ error: "brand is required" });
