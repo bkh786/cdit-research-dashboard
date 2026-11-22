@@ -10,7 +10,8 @@ async function researchContact(name, { silent } = {}) {
   const b = brandByName(name);
   const onlyPlaceholders = !b || b.contacts.every((c) => isPlaceholder(c["Decision Maker Name"]));
   const rec = b && b.top ? b.top["Recommended Contact Department"] : "";
-  const r = await researchContactAI(name, { profile: cfg.profile, recommendedDept: rec, mode: onlyPlaceholders ? "update" : "append" });
+  const guard = new Promise((_, rej) => setTimeout(() => rej(new Error("Contact search stopped after 1 minute. Please try again.")), 62000));
+  const r = await Promise.race([guard, researchContactAI(name, { profile: cfg.profile, recommendedDept: rec, mode: onlyPlaceholders ? "update" : "append" })]);
   if (!silent) toast(r.found ? `Found ${r.contacts[0]["Decision Maker Name"]} (${r.contacts[0].Designation || "leader"})` : (r.note || "No contact found"), r.found ? "ok" : "info");
   return r;
 }
@@ -59,7 +60,8 @@ function personCard(c, i) {
     <div class="pc-lines">
       ${em ? `<div class="pc-line">${ic("mail", 15)}<a href="mailto:${attr(em)}" class="grow">${esc(em)}</a>${emV ? `<span class="vchip" title="Printed on ${attr(emV)}">${ic("check", 11)} verified</span>` : ""}<button class="cbtn" data-act="copy-val" data-v="${attr(em)}" title="Copy e-mail">${ic("copy", 13)}</button></div>` : `<div class="pc-line miss">${ic("mail", 15)}<span class="grow">No public personal e-mail found</span></div>`}
       ${ph ? `<div class="pc-line">${ic("phone", 15)}<a href="tel:${attr(ph.replace(/[^+\d]/g, ""))}" class="grow">${esc(ph)}</a>${phV ? `<span class="vchip" title="Printed on ${attr(phV)}">${ic("check", 11)} verified</span>` : ""}<button class="cbtn" data-act="copy-val" data-v="${attr(ph)}" title="Copy number">${ic("copy", 13)}</button></div>` : `<div class="pc-line miss">${ic("phone", 15)}<span class="grow">No direct number published</span></div>`}
-      ${/^https?:/i.test(li) ? `<div class="pc-line">${ic("link", 15)}<a href="${attr(li)}" target="_blank" rel="noopener" class="grow">${isProfile ? "LinkedIn profile" : "Find on LinkedIn"}</a>${isProfile ? `<span class="vchip">${ic("check", 11)} found</span>` : `<span class="vchip off">search</span>`}${ic("ext", 12)}</div>` : ""}
+      <div class="pc-line">${ic("link", 15)}${isProfile ? `<a href="${attr(li)}" target="_blank" rel="noopener" class="grow">${esc(li.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, ""))}</a><span class="vchip">${ic("check", 11)} profile</span><button class="cbtn" data-act="copy-val" data-v="${attr(li)}" title="Copy LinkedIn link">${ic("copy", 13)}</button>`
+        : `<a href="${attr(/^https?:/i.test(li) ? li : "https://www.linkedin.com/search/results/people/?keywords=" + encodeURIComponent([name, c.Brand || ""].join(" ").trim()))}" target="_blank" rel="noopener" class="grow">LinkedIn profile not confirmed — search</a><span class="vchip off">search</span>`}${ic("ext", 12)}</div>
     </div>
     ${evidence ? `<details class="pc-ev"><summary>How we found this</summary><p>${esc(evidence)}</p>${src ? `<a href="${attr(src)}" target="_blank" rel="noopener">${ic("ext", 12)} Open source</a>` : ""}</details>` : ""}
   </div>`;

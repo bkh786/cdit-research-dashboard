@@ -9,13 +9,22 @@
 const GEM_BASE = "https://generativelanguage.googleapis.com/v1beta";
 /** Only used if the live model list cannot be fetched. */
 const GEM_LAST_RESORT = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
-const GEM = { dead: new Set(), cool: {}, good: "" };
+const GEM = { dead: new Set(), cool: {}, fails: {}, good: "" };
+/** The model that last worked for this key is remembered on this device, so runs start on it instead of re-probing. */
+const gmKey = () => "bri.gm.ok." + String(cfg.geminiKey || "").slice(-8);
+function gmLoad() {
+  try {
+    const c = JSON.parse(localStorage.getItem(gmKey()) || "null");
+    if (c && Date.now() - c.t < 7 * 864e5) { if (!GEM.good) GEM.good = c.good || ""; (c.dead || []).forEach((m) => GEM.dead.add(m)); }
+  } catch (_) {}
+}
+function gmSave() { try { localStorage.setItem(gmKey(), JSON.stringify({ t: Date.now(), good: GEM.good, dead: [...GEM.dead] })); } catch (_) {} }
 
 /* ------------------------------- model discovery ------------------------------- */
 function rankModels(names) {
   const usable = [...new Set(names)].filter((n) => /^gemini-/.test(n) && !/(embedding|aqa|imagen|veo|tts|image|live|audio|robotics|computer-use|learnlm|vision|-exp|customtools|thinking)/i.test(n));
   const key = (n) => {
-    const fam = /flash-lite/.test(n) ? 1 : /flash/.test(n) ? 0 : /pro/.test(n) ? 2 : 3;
+    const fam = /flash-lite/.test(n) ? 0 : /flash/.test(n) ? 1 : /pro/.test(n) ? 2 : 3; // lightest / fastest first
     const v = parseFloat((n.match(/^gemini-(\d+(?:\.\d+)?)/) || [])[1]) || 0;
     return [fam, /preview/.test(n) ? 1 : 0, /-\d{3}$|-\d{2}-\d{2}$|-\d{4}$/.test(n) ? 1 : 0, /-latest$/.test(n) ? 1 : 0, -v];
   };
@@ -55,8 +64,8 @@ async function gemModels(key, force) {
 
 async function candidateModels(key) {
   const listed = await gemModels(key);
-  const pref = String(cfg.geminiModel || "").trim().replace(/^models\//, "");
-  const order = [GEM.good, pref && listed.includes(pref) ? pref : "", ...listed].filter(Boolean);
+  gmLoad();
+  const order = [GEM.good && listed.includes(GEM.good) ? GEM.good : "", ...listed].filter(Boolean);
   return [...new Set(order)];
 }
 
@@ -70,14 +79,16 @@ function classify(status, msg) {
   return "other";
 }
 
-async function callGeminiOnce(model, prompt, { search, json, temperature, maxOutputTokens }) {
+async function callGeminiOnce(model, prompt, { search, json, temperature, maxOutputTokens, timeoutMs = 60000 }) {
   const body = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: temperature ?? 0.3, maxOutputTokens: maxOutputTokens || 4096 } };
   if (search) body.tools = [{ google_search: {} }];
   if (json && !search) body.generationConfig.responseMimeType = "application/json"; // JSON mode can't be combined with search grounding
   let resp;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), Math.max(3000, timeoutMs));
   try {
-    resp = await fetch(`${GEM_BASE}/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.geminiKey }, body: JSON.stringify(body) });
-  } catch (_) { const e = new Error("Couldn't reach Gemini (network)."); e.kind = "busy"; throw e; }
+    resp = await fetch(`${GEM_BASE}/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.geminiKey }, body: JSON.stringify(body), signal: ctl.signal });
+  } catch (err) { clearTimeout(timer); const e = new Error(err && err.name === "AbortError" ? "timed out" : "Couldn't reach Gemini (network)."); e.kind = err && err.name === "AbortError" ? "timeout" : "busy"; throw e; }
+  clearTimeout(timer);
   if (!resp.ok) {
     let msg = ""; try { msg = (await resp.json()).error.message; } catch (_) {}
     const e = new Error(msg || `HTTP ${resp.status}`); e.status = resp.status; e.kind = classify(resp.status, msg || ""); throw e;
@@ -105,27 +116,34 @@ function extractJson(text) {
  */
 async function gemini(prompt, opts = {}) {
   if (!cfg.geminiKey) { const e = new Error("No Gemini API key. Add yours in Setup → Gemini."); e.code = "nokey"; throw e; }
-  const { search = false, allowUngrounded = true, expect = "json" } = opts;
+  const { search = false, allowUngrounded = true, expect = "json", deadline = 0 } = opts;
   const models = await candidateModels(cfg.geminiKey);
   const tried = [];
-  for (const model of models) {
+  const left = () => (deadline ? deadline - Date.now() : 1e9);
+  outer: for (const model of models) {
     if (GEM.dead.has(model) || (GEM.cool[model] || 0) > Date.now()) continue;
     for (const useSearch of search ? (allowUngrounded ? [true, false] : [true]) : [false]) {
+      if (left() < 4000) break outer;
       try {
-        const r = await callGeminiOnce(model, prompt, { ...opts, search: useSearch, json: expect === "json" });
+        const r = await callGeminiOnce(model, prompt, { ...opts, search: useSearch, json: expect === "json", timeoutMs: Math.min(opts.callTimeout || 60000, left()) });
         let data = r.text;
         if (expect !== "text") { data = extractJson(r.text); if (!data) { const e = new Error(`returned no usable JSON (${r.finishReason || "unknown"})`); e.kind = "badjson"; throw e; } }
-        GEM.good = model;
+        if (GEM.good !== model) { GEM.good = model; gmSave(); }
+        GEM.fails[model] = 0;
         return { data, sources: r.sources, grounded: useSearch, model, tried };
       } catch (err) {
-        tried.push({ model, why: err.kind === "gone" ? "retired / unavailable" : err.kind === "quota" ? "quota reached" : err.kind === "nosearch" ? "search not supported" : err.kind === "busy" ? "busy" : err.kind === "badjson" ? "bad output" : String(err.message).slice(0, 90), kind: err.kind });
+        tried.push({ model, why: err.kind === "gone" ? "retired / unavailable" : err.kind === "quota" ? "quota reached" : err.kind === "nosearch" ? "search not supported" : err.kind === "busy" ? "busy" : err.kind === "timeout" ? "too slow" : err.kind === "badjson" ? "bad output" : String(err.message).slice(0, 90), kind: err.kind });
         if (err.kind === "key") throw geminiKeyError(err.status, err.message);
-        if (err.kind === "gone") { GEM.dead.add(model); break; }
-        if (err.kind === "quota") { GEM.cool[model] = Date.now() + 60000; if (useSearch && allowUngrounded) continue; break; }
-        if (err.kind === "busy") await new Promise((r) => setTimeout(r, 700));
+        if (err.kind === "gone") { GEM.dead.add(model); if (GEM.good === model) GEM.good = ""; gmSave(); continue outer; }
+        if (err.kind === "quota") { GEM.cool[model] = Date.now() + 60000; if (useSearch && allowUngrounded) continue; continue outer; }
+        // a model that keeps failing is parked for 10 min so it is not retried on every run
+        if ((GEM.fails[model] = (GEM.fails[model] || 0) + 1) >= 2) { GEM.cool[model] = Date.now() + 600000; GEM.fails[model] = 0; }
+        if (err.kind === "busy") await new Promise((r) => setTimeout(r, 500));
+        if (err.kind === "timeout" || err.kind === "badjson" || err.kind === "nosearch") continue outer;
       }
     }
   }
+  if (deadline && left() < 4000) { const e = new Error("Gemini took too long to answer (time limit reached)."); e.code = "timeout"; e.tried = tried; throw e; }
   const allQuota = tried.length && tried.every((t) => t.kind === "quota");
   const e = new Error(allQuota
     ? "Gemini quota is used up on every available model. Wait a minute and retry, or enable billing for this key in Google AI Studio."
@@ -136,7 +154,7 @@ async function gemini(prompt, opts = {}) {
 /** Setup → "Save & test": discovers models, makes a tiny call, reports what was auto-selected. */
 async function testGemini() {
   const names = await gemModels(cfg.geminiKey, true);
-  GEM.dead.clear(); GEM.cool = {}; GEM.good = "";
+  GEM.dead.clear(); GEM.cool = {}; GEM.fails = {}; GEM.good = ""; gmSave();
   const r = await gemini('Reply with exactly this JSON and nothing else: {"ok": true}', { search: false, temperature: 0, maxOutputTokens: 256 });
   const skipped = r.tried.filter((t) => t.kind === "gone" || t.kind === "quota").map((t) => t.model);
   return { model: r.model, available: names.length, skipped };
@@ -211,10 +229,10 @@ function scrubGeneric(c) {
 const linkedinProfile = (url) => { const m = String(url || "").match(/linkedin\.com\/in\/([^/?#\s]+)/i); return m ? `https://www.linkedin.com/in/${m[1].replace(/\/+$/, "")}/` : ""; };
 
 /** Fetches pages in Google's cloud (via the user's own bridge) and reports which needles appear on each. */
-async function checkPages(urls, needles) {
+async function checkPages(urls, needles, timeoutMs = 15000) {
   const u = [...new Set(urls.filter((x) => /^https?:\/\//i.test(x)))].slice(0, 8);
   if (!u.length) return { available: true, results: [] };
-  try { const r = await bridgeCall({ action: "checkPages", urls: u, needles }); return { available: true, results: r.results || [] }; }
+  try { const r = await Promise.race([bridgeCall({ action: "checkPages", urls: u, needles }), new Promise((_, rej) => setTimeout(() => rej(new Error("page check timed out")), timeoutMs))]); return { available: true, results: r.results || [] }; }
   catch (e) { if (/unknown action/i.test(e.message)) return { available: false, results: [] }; return { available: true, results: [], error: e.message }; }
 }
 
@@ -231,6 +249,7 @@ async function researchContactAI(name, { profile, recommendedDept, mode = "updat
   const co = companyBlurb(profile);
   const roles = profile && profile.buyerRoles ? String(profile.buyerRoles).split("|").map((s) => s.trim()).filter(Boolean) : DEFAULT_ROLES;
   const todayStr = new Date().toISOString().slice(0, 10);
+  const T0 = Date.now(), HARD = T0 + 60000; // whole contact search is capped at 1 minute
 
   /* ---- pass 1: who is the buyer? (names & roles only — no contact details) ---- */
   const p1 = `You are a B2B sales-intelligence researcher working for ${co.company}, which sells: ${co.servicesText}.
@@ -255,17 +274,19 @@ STRICT RULES
 Return ONLY JSON:
 { "people": [ { "name": "", "designation": "", "department": "", "location": "city, state", "linkedinUrl": "", "sourceUrl": "", "sourceDate": "", "evidence": "1-2 sentences: where this was found and how recent", "confidence": "High|Medium|Low" } ] }`;
 
-  const o1 = await gemini(p1, { search: true, temperature: 0.1, maxOutputTokens: 3500 });
+  let o1;
+  try { o1 = await gemini(p1, { search: true, allowUngrounded: false, temperature: 0.1, maxOutputTokens: 4000, deadline: T0 + 38000, callTimeout: 30000 }); }
+  catch (e) { if (e.code === "timeout") return { ok: true, found: false, contacts: [], note: "Search timed out after 1 minute — nothing was saved. Please try again." }; throw e; }
   let resolved = await resolveSources(o1.sources, 14);
   const people = (Array.isArray(o1.data.people) ? o1.data.people : Array.isArray(o1.data.contacts) ? o1.data.contacts : [])
     .filter((p) => p && String(p.name || "").trim().split(/\s+/).length >= 2).slice(0, 3);
   if (!people.length) return { ok: true, found: false, contacts: [], note: "No verifiable decision-maker found. Try again later or add one manually." };
 
   /* ---- pass 2: public, individual contact details for the top 2 people ---- */
-  const details = [];
   let verifyAvailable = true;
-  for (let i = 0; i < Math.min(2, people.length); i++) {
-    const p = people[i], d = { email: "", phone: "", emailNote: "", phoneNote: "" };
+  const details = await Promise.all(people.slice(0, 2).map(async (p) => {
+    const d = { email: "", phone: "", emailNote: "", phoneNote: "" };
+    if (HARD - Date.now() < 8000) { d.emailNote = "Ran out of time for the contact-detail search."; return d; }
     try {
       const p2 = `Find the OFFICIAL, INDIVIDUAL, publicly published business contact details of ${p.name}, ${p.designation || "leader"} at ${name}.
 Search for: "${p.name}" ${name} email · "${p.name}" ${name} contact · press releases that list this person as the media/business contact · the company's leadership / team page · speaker or panel bios · regulatory filings (BSE / NSE / MCA) signed by this person · industry-award nominations.
@@ -279,7 +300,7 @@ STRICT RULES
 
 Return ONLY JSON:
 { "email": "", "emailSource": "", "emailType": "personal|generic|none", "phone": "", "phoneSource": "", "phoneType": "direct|mobile|generic|toll_free|none" }`;
-      const o2 = await gemini(p2, { search: true, temperature: 0, maxOutputTokens: 1500 });
+      const o2 = await gemini(p2, { search: true, allowUngrounded: false, temperature: 0, maxOutputTokens: 1500, deadline: HARD - 9000, callTimeout: 25000 });
       const more = await resolveSources(o2.sources, 12);
       resolved = [...resolved, ...more];
       const r = o2.data || {};
@@ -289,7 +310,7 @@ Return ONLY JSON:
       if (email || phone) {
         // proof: the value must literally be printed on a page we can fetch (cited page first, then other search results)
         const urls = [r.emailSource, r.phoneSource, p.sourceUrl, ...resolved.map((s) => s.url)].filter(Boolean);
-        const chk = await checkPages(urls, [email, phone, nameTokens(p.name).slice(-1)[0] || p.name]);
+        const chk = await checkPages(urls, [email, phone, nameTokens(p.name).slice(-1)[0] || p.name], Math.max(4000, Math.min(12000, HARD - Date.now())));
         if (!chk.available) { verifyAvailable = false; email = ""; phone = ""; }
         else {
           const hitE = email && chk.results.find((x) => x.found && x.found[0]);
@@ -298,9 +319,9 @@ Return ONLY JSON:
           if (phone && hitP) { d.phone = phone; d.phoneNote = `Verified on ${hostOf(hitP.url)}`; } else if (phone) d.phoneNote = "A number was suggested but could not be confirmed on a page that names this person, so it was not saved.";
         }
       }
-    } catch (e) { if (e.keyProblem) throw e; d.emailNote = "Contact-detail search was unavailable."; }
-    details[i] = d;
-  }
+    } catch (e) { if (e.keyProblem) throw e; d.emailNote = e.code === "timeout" ? "Contact-detail search timed out." : "Contact-detail search was unavailable."; }
+    return d;
+  }));
 
   /* ---- shape + save ---- */
   const verifiedLinkedIn = resolved.map((s) => linkedinProfile(s.url)).filter(Boolean);
