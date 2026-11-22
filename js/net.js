@@ -28,7 +28,8 @@ async function gasCall(url, body, label) {
     e.code = "badjson"; throw e;
   }
   if (data && data.error) {
-    const e = new Error(data.error);
+    const stale = /SECRET is not defined/i.test(data.error);
+    const e = new Error(stale ? `The ${label} is running an OLD version of the script (it still expects a SECRET). Paste the latest ${label === "master sheet" ? "MasterCode.gs" : "Code.gs"} from the repo into Apps Script, Save, then Deploy → Manage deployments → ✏️ → Version: New version → Deploy.` : data.error);
     e.code = /^unauthorized/i.test(data.error) && !/secret/i.test(data.error) ? 401 : 400;
     throw e;
   }
